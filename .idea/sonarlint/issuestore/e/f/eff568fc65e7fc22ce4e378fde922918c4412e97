@@ -1,0 +1,101 @@
+
+p
+java:S2293Ô"YReplace the type specification in this constructor call with the diamond operator ("<>").(‚×“Ä
+\
+java:S2147¢"ECombine this catch with the one at line 287, which has the same body.(ä ¹€
+T	java:S106"9Replace this use of System.out or System.err by a logger.(±»’¶ùÿÿÿÿ
+O
+java:S1117¡"8Rename "list" which hides the field declared at line 22.(üÊÅï
+a
+java:S1124°"EReorder the modifiers to comply with the Java Language Specification.(ÛŒøÿÿÿÿ
+T	java:S106Ñ"9Replace this use of System.out or System.err by a logger.(‚ŞÏ¥ıÿÿÿÿ
+T	java:S106†"9Replace this use of System.out or System.err by a logger.(éøïÍùÿÿÿÿ
+\
+java:S2147"ECombine this catch with the one at line 267, which has the same body.(ä ¹€
+\
+java:S2147ú"ECombine this catch with the one at line 247, which has the same body.(ä ¹€
+J
+java:S1066B"/Merge this if statement with the enclosing one.(†½Ëşÿÿÿÿ
+\
+java:S2142/"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+“
+java:S1130Ğ"|Remove the declaration of thrown exception 'org.tinystruct.ApplicationException', as it cannot be thrown from method's body.(™ûÚ
+]
+java:S2142ç"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+\
+java:S2142j"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+p
+java:S2293Ò"YReplace the type specification in this constructor call with the diamond operator ("<>").(ä†‹ö
+]
+java:S2142ˆ"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+T	java:S106‰"9Replace this use of System.out or System.err by a logger.(äÕ•ÿÿÿÿÿ
+N
+java:S1135å"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+?
+java:S1604"(Make this anonymous inner class a lambda(õ¬¦Å
+N
+java:S1135Œ"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+>
+java:S1604a"(Make this anonymous inner class a lambda(õ¬¦Å
+]
+java:S2142¢"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+t
+java:S2293"YReplace the type specification in this constructor call with the diamond operator ("<>").(åé½…ùÿÿÿÿ
+N
+java:S1135™"2Complete the task associated to this TODO comment.(» æÿÿÿÿÿ
+u
+java:S2293Ö"YReplace the type specification in this constructor call with the diamond operator ("<>").(Éóß¥ıÿÿÿÿ
+N
+java:S1135û"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+U	java:S899‡":Do something with the "boolean" value returned by "await".(Ô˜¾ÿúÿÿÿÿ
+O	java:S106ñ"9Replace this use of System.out or System.err by a logger.(ÿÌİ±
+O	java:S106Ş"9Replace this use of System.out or System.err by a logger.(ÿÌİ±
+N	java:S106,"9Replace this use of System.out or System.err by a logger.(ı¼ªñ
+>
+java:S1604$"(Make this anonymous inner class a lambda(½“¥¾
+t
+java:S2293r"YReplace the type specification in this constructor call with the diamond operator ("<>").(µ–“ùÿÿÿÿ
+N
+java:S1135£"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+8
+java:S2189›""Add an end condition to this loop.(¤èÄ7
+?
+java:S1604î"(Make this anonymous inner class a lambda(õ¬¦Å
+g	java:S101"MRename this class name to match the regular expression '^[A-Z][a-zA-Z0-9]*$'.(ÒâÁøÿÿÿÿ
+N
+java:S1135 "2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+N
+java:S1135"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+?
+java:S1604•"(Make this anonymous inner class a lambda(õ¬¦Å
+8
+java:S2189‡""Add an end condition to this loop.(¤èÄ7
+t
+java:S2293"YReplace the type specification in this constructor call with the diamond operator ("<>").(˜š”ïüÿÿÿÿ
+t
+java:S2293"YReplace the type specification in this constructor call with the diamond operator ("<>").(»ÅúÙÿÿÿÿÿ
+N
+java:S1135è"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+]
+java:S2142ú"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+O	java:S106š"9Replace this use of System.out or System.err by a logger.(ÊÆÿ£
+\
+java:S2147ç"ECombine this catch with the one at line 228, which has the same body.(ä ¹€
+S	java:S106*"9Replace this use of System.out or System.err by a logger.(½¹Ô„ÿÿÿÿÿ
+]
+java:S2142"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€
+?
+java:S1604Û"(Make this anonymous inner class a lambda(õ¬¦Å
+p
+java:S2293Ó"YReplace the type specification in this constructor call with the diamond operator ("<>").(­«óÇ
+O	java:S106˜"9Replace this use of System.out or System.err by a logger.(ÿÌİ±
+o
+java:S2293Z"YReplace the type specification in this constructor call with the diamond operator ("<>").(¾»º‹
+O	java:S106„"9Replace this use of System.out or System.err by a logger.(ÿÌİ±
+N
+java:S1135ø"2Complete the task associated to this TODO comment.(ÕÌ®şÿÿÿÿ
+g	java:S117™"QRename this local variable to match the regular expression '^[a-z][a-zA-Z0-9]*$'.(Ë¶‘«
+N
+java:S1135…"2Complete the task associated to this TODO comment.(» æÿÿÿÿÿ
+i
+java:S3776Ğ"RRefactor this method to reduce its Cognitive Complexity from 32 to the 15 allowed.(™ûÚ

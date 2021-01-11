@@ -1,0 +1,7 @@
+#!/bin/sh
+ROOT="`pwd`"
+VERSION="0.1.4"
+cd "`dirname "$0"`"
+cd "../"
+cd "$ROOT"
+java -cp "$ROOT/lib/*:$ROOT/target/classes:$ROOT/WEB-INF/lib/*:$ROOT/WEB-INF/classes:$HOME/.m2/repository/org/tinystruct/tinystruct/$VERSION/tinystruct-$VERSION-jar-with-dependencies.jar" org.tinystruct.system.Dispatcher "$@"

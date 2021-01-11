@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <meta name="description" content="" />
+  <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator" />
+  <title>Small Talk</title>
+  <!-- Bootstrap core CSS -->
+  <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet" />
+  <!-- Custom styles for this template -->
+  <style type="text/css">
+  #list {
+    overflow-x:hidden;
+    max-height:320px;
+    padding:10px 0;
+  }
+  #list ul {
+    list-style: none;padding-left:0
+  }
+  #list ul li {
+  }
+  
+  #sender {
+      background-color: #fff;
+      border-color: #ddd;
+      border-radius: 4px 4px 0 0;
+      border-width: 1px;
+      box-shadow: none;
+      margin-left: 0;
+      margin-right: 0;
+  }
+
+  body > .container {
+    padding-top: 75px;
+  }
+  
+  #matrix { position: absolute; right:0;bottom:0; width:77px; height:77px;}
+  .note { position: relative }
+  .pad { margin: 10px 0;position:relative; }
+  .text { min-height:60px; _height:60px; padding:10px; font-size:12px; color:#777; border:1px solid #d9d9d9; outline:0; background:#fff; }
+  .text:hover, .hover .text { border-color:#337ab7; }
+  .arrowline:hover, .hover .arrowline { border-color:transparent transparent #337ab7 transparent; }
+  .arrowbox { width:20px; height:20px; position:absolute; left:52px; top:-12px; }
+  .arrow { width:0; height:0; font-size:0; line-height:0; position:absolute; overflow:hidden; }
+  .arrowline { top:-1px; border-style:solid solid solid; border-width:7px; border-color:transparent transparent #d9d9d9 transparent; }
+  .arrowbg { top:0.35px; border-style:solid solid solid; border-width:7px; border-color:transparent transparent #fff transparent; }
+
+  .file-loading {
+      top: 0;
+      right: 0;
+      width: 25px;
+      height: 25px;
+      font-size: 999px;
+      text-align: right;
+      color: #fff;
+      background: transparent url('/scripts/bootstrap/fileinput/loading.gif') top left no-repeat;
+      border: none;
+  }
+  
+  .file-object {
+      margin: 0 0 -5px 0;
+      padding: 0;
+  }
+  
+  .btn-file {
+      position: relative;
+      overflow: hidden;
+      background: #fff none repeat scroll 0 0;
+      border: 0 solid;
+      color: #000;
+      position: relative;
+  }
+  
+  .btn-file input[type=file] {
+      position: absolute;
+      top: 0;
+      right: 0;
+      min-width: 100%;
+      min-height: 100%;
+      text-align: right;
+      opacity: 0;
+      background: none repeat scroll 0 0 transparent;
+      cursor: inherit;
+      display: block;
+  }
+  
+  .file-caption-name {
+      display: inline-block;
+      overflow: hidden;
+      height: 20px;
+      word-break: break-all;
+  }
+  
+  .input-group-lg .file-caption-name {
+      height: 25px;
+  }
+  
+  .file-preview-detail-modal {
+      text-align: left;
+  }
+  
+  .file-error-message {
+      color: #a94442;
+      background-color: #f2dede;
+      margin: 5px;
+      border: 1px solid #ebccd1;
+      border-radius: 4px;
+      padding: 15px;
+  }
+  
+  .file-error-message pre, .file-error-message ul {
+      margin: 0;
+      text-align: left;
+  }
+  
+  .file-error-message pre {
+      margin: 5px 0;
+  }
+  
+  .file-caption-disabled {
+      background-color: #EEEEEE;
+      cursor: not-allowed;
+      opacity: 1;
+  }
+  
+  .file-preview {
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      padding: 5px;
+      width: 100%;
+      margin-bottom: 5px;
+  }
+  
+  .file-preview-frame {
+      display: table;
+      margin: 8px;
+      height: 160px;
+      border: 1px solid #ddd;
+      box-shadow: 1px 1px 5px 0 #a2958a;
+      padding: 6px;
+      float: left;
+      text-align: center;
+      vertical-align: middle;
+  }
+  
+  .file-preview-frame:not(.file-preview-error):hover {
+      box-shadow: 3px 3px 5px 0 #333;
+  }
+  
+  .file-preview-image {
+      height: 160px;
+      vertical-align: middle;
+  }
+  
+  .file-preview-text {
+      text-align: left;
+      width: 160px;
+      margin-bottom: 2px;
+      color: #428bca;
+      background: #fff;
+      overflow-x: hidden;
+  }
+  
+  .file-preview-other {
+      display: table-cell;
+      text-align: center;
+      vertical-align: middle;
+      width: 160px;
+      height: 160px;
+      border: 2px solid #999;
+      border-radius: 30px;
+  }
+  
+  .file-preview-other:hover {
+      opacity: 0.8;
+  }
+  
+  .file-actions, .file-other-error {
+      text-align: left;
+  }
+  
+  .file-icon-lg {
+      font-size: 1.2em;
+  }
+  
+  .file-icon-2x {
+      font-size: 2.4em;
+  }
+  
+  .file-icon-4x {
+      font-size: 4.8em;
+  }
+  
+  .file-input-new .file-preview, .file-input-new .close, .file-input-new .glyphicon-file,
+  .file-input-new .fileinput-remove-button, .file-input-new .fileinput-upload-button,
+  .file-input-ajax-new .fileinput-remove-button, .file-input-ajax-new .fileinput-upload-button {
+      display: none;
+  }
+  
+  .file-thumb-loading {
+      background: transparent url('../img/loading.gif') no-repeat scroll center center content-box !important;
+  }
+  
+  .file-actions {
+      margin-top: 15px;
+  }
+  
+  .file-footer-buttons {
+      float: right;
+  }
+  
+  .file-upload-indicator {
+      padding-top: 2px;
+      cursor: default;
+      opacity: 0.8;
+      width: 60%;
+  }
+  
+  .file-upload-indicator:hover {
+      font-weight: bold;
+      opacity: 1;
+  }
+  
+  .file-footer-caption {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 160px;
+      text-align: center;
+      padding-top: 4px;
+      font-size: 11px;
+      color: #777;
+      margin: 5px auto 10px auto;
+  }
+  
+  .file-preview-error {
+      opacity: 0.65;
+      box-shadow: none;
+  }
+  
+  .file-preview-frame:not(.file-preview-error) .file-footer-caption:hover {
+      color: #000;
+  }
+  
+  .file-drop-zone {
+      border: 1px dashed #aaa;
+      border-radius: 4px;
+      height: 100%;
+      text-align: center;
+      vertical-align: middle;
+      margin: 12px 15px 12px 12px;
+      padding: 5px;
+  }
+  
+  .file-drop-zone-title {
+      color: #aaa;
+      font-size: 40px;
+      padding: 85px 10px;
+  }
+  
+  .file-highlighted {
+      border: 2px dashed #999 !important;
+      background-color: #f0f0f0;
+  }
+  
+  .file-uploading {
+      background: url('../img/loading-sm.gif') no-repeat center bottom 10px;
+      opacity: 0.65;
+  }
+  
+  .file-thumb-progress .progress, .file-thumb-progress .progress-bar {
+      height: 10px;
+      font-size: 9px;
+      line-height: 10px;
+  }
+  
+  .file-thumbnail-footer {
+      position: relative;
+  }
+  
+  .file-thumb-progress {
+      position: absolute;
+      top: 22px;
+      left: 0;
+      right: 0;
+  }
+  
+  /* IE 10 fix */
+  .btn-file ::-ms-browse {
+      width:100%;
+      height:100%;
+  }
+  </style>
+  <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
+  <!--[if lt IE 9]><script src="http://getbootstrap.com/assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+  <script src="/scripts/bootstrap/ie-emulation-modes-warning.js?raw=true"></script>
+  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+  <![endif]-->
+  <script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
+  <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
+  <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
+  <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
+  <script type="text/javascript">
+  //<![CDATA[
+  var timer = new Timer(.5,function(){});
+  var old_title = document.title;
+  var dotted = '', user = struct.get("user")? struct.get("user"): false;
+  function update($data) {
+    if(typeof($data.message)!='undefined') {
+      $li = $("<li />");
+      $li.html($data.time + "\t" + $data.user + ": " + $data.message);
+      $('#messages').append($li);
+      $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
+      
+      if(document.title == old_title) {
+        document.title = 'New Message(s) Received!';
+      }
+      else {
+        document.title = old_title;
+      }
+    }
+    else {
+      if(typeof($data.cmd) != 'undefined') {
+        if(!user) {
+          $("#modal").modal();
+          return false;
+        }
+
+        $_user = $data.user;
+        if($_user) {
+          switch($data.cmd) 
+          {
+            case 'onblur':          
+              document.title = old_title;
+              timer.stop();
+              break;
+            case 'greeting':
+              $li = $("<li />");
+              $li.html("System Notification:\t" + $data.user + " joined this conversation.");
+              $('#messages').append($li);
+              $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
+              break;
+            case 'session-timeout':
+                $li = $("<li />");
+                $li.html("System Notification:\t" + $data.user + " left from this conversation.");
+                $('#messages').append($li);
+                $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
+                break;
+            case 'expired':
+                $li = $("<li />");
+                $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                $('#messages').append($li);
+                $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
+                break;
+            default:
+              timer.setAction(function(){
+                document.title = $_user + " is typing" + dotted;
+                dotted += '.';
+                if(dotted.length>3) this.complete();
+                this.start();
+              });
+              timer.start().complete(function(){ dotted = ''; });//.stop(4);
+          }
+        }
+      }
+    }
+  }
+
+  function command(cmd) {
+    $.ajax({
+      type: "POST",
+      url: "[%LINK:talk/command%]",
+      dataType: "json",
+      data: { cmd: cmd }
+    }).done(function( msg ) {
+      if(msg.error == "missing user") {
+          if (user) {
+            $.ajax({
+              type: "POST",
+              url: "[%LINK:talk/start%]/"+ user
+            }).done(function( msg ) {});
+          }
+          else {
+            $("#modal").modal();
+          }
+       }
+    }).fail(function( msg ) {
+      switch(msg.responseJSON.error) {
+        case 'session-timeout':
+            $li = $("<li />");
+            $li.html("System Notification:\t" + $data.user + " left from this conversation.");
+            $('#messages').append($li);
+            $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
+            
+            if(confirm("Your session is timed out, Do you want to reload the conversation?")) {
+               $.ajax({
+                 type: "POST",
+                 url: $('#link').text()
+               }).done(function( msg ) {});
+            }
+            break;
+          case 'expired':
+            $li = $("<li />");
+            $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
+            $('#messages').append($li);
+            $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
+            break;
+          default:break;
+      }
+      
+      console.log('Fail.');
+      console.log(msg);
+    });
+  }
+
+  function save() {
+    $.ajax({
+      type: "POST",
+      url: "[%LINK:talk/save%]",
+      data: { text: $("#text").html(), time: new Date().getTime() }
+    }).done(function( msg ) {
+      $("#text").html('');
+    });
+  }
+
+  var is_running = false;
+  var connection_timer = new Timer(5, function(){ autoupdate()});
+  var blur_timer = new Timer(5);
+  function autoupdate() {
+    if(!is_running) {
+      is_running = true;
+      $.getJSON( "[%LINK:talk/update%]/{%meeting_code%}/{%session_id%}", function(data) {
+        update(data);
+        is_running = false;
+      }).done(function( msg ) {
+        autoupdate();
+        is_running = false;
+      }).fail(function( err ) {
+        if(typeof(err.responseJSON) != 'undefined') {
+          $msg = err.responseJSON;
+          if($msg.error == "expired") {
+            command("expired");
+          }
+          else if($msg.error == "session-timeout") {
+            command("session-timeout");
+          }
+          else {
+            connection_timer.start();
+            is_running = false;
+            console.log($msg);
+          }
+        }
+        else {
+          connection_timer.start();
+          is_running = false;
+          console.log(err);
+        }
+      });
+    }
+  }
+  var i=0;
+  $(function(){
+    $("#button").click(function(){
+      save();
+      timer.stop();
+    });
+
+    $("#text").keydown(function(event){
+      if(event.which == 13) {
+        save();
+        timer.stop();
+      }
+    });
+
+    $("#text").focus(function(event){
+      command("onfocus");
+      document.title = old_title;
+    });
+
+    $("#text").blur(function(event){
+      blur_timer.setAction(function(){
+        command("onblur");
+        document.title = old_title;
+      });
+      blur_timer.start();
+    });
+
+    $("#sender").submit(function(event){
+      event.preventDefault();
+      save();
+    });
+
+    var post_timer = new Timer(.2, function(){
+      if(i++<200){
+        $("#text").text(user+' posts '+i);
+        $("#sender").submit();
+      }
+      else this.complete();
+      this.start();
+    });
+
+    $("#test").click(function(event){
+      event.preventDefault();
+      post_timer.start().complete(function(){ this.stop(); });
+    });
+
+    autoupdate();
+
+    $(".pad").hover(function(){
+      $(this).addClass("hover");  
+    },function(){
+      $(this).removeClass("hover"); 
+    });
+
+    $("#dialog_submit").click(function(){
+      $.ajax({
+        type: "POST",
+        url: "[%LINK:talk/start%]/"+ $("#nickname").val()
+      }).done(function( msg ) {
+        $("#modal").modal('hide');
+        user = $("#nickname").val();
+        struct.save("user", user);
+        command("greeting");
+      });
+    });
+
+    $("#topic_submit").click(function(){
+      $.ajax({
+        type: "POST",
+        url: "[%LINK:talk/topic%]/",
+        data: {topic: $("#brief").val()}
+      }).done(function( msg ) {
+        $("#topic_modal").modal('hide');
+        $("#topic").html($("#brief").val());
+      });
+    });
+
+    $("#nickname").keyup(function(event){
+      if(event.which == 13) {
+        $("#dialog_submit").click();
+      }
+    });
+
+    if(!$("#topic").text()) {
+        $("#topic_modal").modal();
+    }
+
+    $("#link").click(function(){
+      $.ajax({
+        type: "POST",
+        url: "[%LINK:talk/matrix%]/",
+        data: {meeting_code: "{%meeting_code%}"}
+      }).done(function( msg ) {
+        $("#matrix").css({"background":"url("+msg+") transparent center center"});
+        $("#matrix").show();
+      });
+    });
+
+    $("#link").mouseover(function(){
+      $("#matrix").show();
+    });
+
+    $("#link").mouseout(function(){
+      $("#matrix").hide();
+    });
+
+    $("#text").on('paste', function (e) {
+      if(e.originalEvent) {
+        var original = e.originalEvent;
+        for (var i = 0; i < original.clipboardData.items.length; i++) {
+          if (original.clipboardData.items[i].kind == "file" && original.clipboardData.items[i].type == "image/png") {
+            var file = original.clipboardData.items[i].getAsFile();
+            var reader = new FileReader();
+            reader.onloadend = function () {
+              var img = $("<img />");
+              img.attr('src', this.result);
+              $('#text').html(img);
+            }
+            reader.readAsDataURL(file);
+            break;
+          }
+        }
+      }
+    });
+
+    $("#attachment").fileinput({
+      uploadAsync: false,
+      showPreview: false,
+      showCaption: false, 
+      maxFileCount: 2,
+      uploadUrl: "/?q=talk/upload", // server upload action
+    });
+
+    $("#attachment").on('filebatchuploadsuccess', function(event, data, previewId, index) {
+      var form = data.form, files = data.files, extra = data.extra,
+          response = data.response, reader = data.reader;
+
+      $ul = $("<ul />");
+      for(var i = 0; i < response.length; i++) {
+        if(response[i].type.indexOf("image/")!=-1) {
+            e = $("<img />");e.attr("src", response[i].file);
+        }
+        else {
+          e = $("<a target='_blank' >" + response[i].file + "</a>");e.attr("href", response[i].file);
+        }
+
+        $li = $("<li />");
+        $li.append(e);
+        $ul.append($li);
+      }
+
+      $("#text").append($ul);
+    });
+  });
+  //]]>
+  </script>
+  </head>
+  <body>
+  <!-- Fixed navbar -->
+  <nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+      <div class="navbar-header">
+        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+          <span class="sr-only">Toggle navigation</span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+          <span class="icon-bar"></span>
+        </button>
+        <a class="navbar-brand" href="#">Small Talk</a>
+      </div>
+      <div id="navbar" class="collapse navbar-collapse">
+        <ul class="nav navbar-nav">
+          <li><a href="#">Settings</a></li>
+          <li class="dropdown">
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Help <span class="caret"></span></a>
+            <ul class="dropdown-menu">
+              <li><a href="#">Manual</a></li>
+              <li role="separator" class="divider"></li>
+              <li><a href="#">About</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div><!--/.nav-collapse -->
+    </div>
+  </nav>
+
+  <!-- Begin page content -->
+  <div class="container">
+    <div class="pageheader"></div>
+    <p>Welcome to use smalltalk application!</p>
+    <p id="topic">{%topic%}</p>
+  <div id="list">
+    <ul id="messages"></ul>
+  </div>
+  <form id="sender">
+    <div class="note">Share the link to invite others join this conversation: <a id="link" href="javascript:void(0)">[%LINK:talk/join%]/{%meeting_code%}</a>  <div id="matrix"><img /></div></div>
+    <div class="pad">
+        <div contenteditable="true" class="text" id="text"></div>
+        <span class="arrowbox">
+            <b class="arrow arrowline"></b>
+            <b class="arrow arrowbg"></b>
+        </span>
+    </div>
+      <label class="control-label" for="attachment">Select File</label>
+      <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true" />
+      <br />
+      <input type="button" id="button" value="Send" class="btn btn-primary" />
+      <input type="button" id="test" value="Test" class="btn btn-secondary" />
+  </form>
+  </div>
+  
+  <!-- Modal -->
+  <div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true"></span></button>
+          <h4 class="modal-title" id="myModalLabel">Dialog</h4>
+        </div>
+        <div class="modal-body">
+          <label for="nickname">Your Name:</label><input type="text" class="form-control" name="nickname" id="nickname"/>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="dialog_submit">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal -->
+  <div class="modal fade" id="topic_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true"></span></button>
+          <h4 class="modal-title" id="ModalLabel">Dialog</h4>
+        </div>
+        <div class="modal-body">
+          <label for="brief">Topics / Questions:</label><textarea class="form-control" name="brief" id="brief"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="topic_submit">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <p class="text-muted"> © 2017 </p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap core JavaScript
+  ================================================== -->
+  <!-- Placed at the end of the document so the pages load faster -->
+  <script src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
+  <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+  <script src="/scripts/bootstrap/ie10-viewport-bug-workaround.js?raw=true"></script>
+  </body>
+</html>

@@ -1,0 +1,32 @@
+
+
+java:S1130Ÿ"lRemove the declaration of thrown exception 'java.io.IOException', as it cannot be thrown from method's body.(š‡Ò‰øÿÿÿÿ8³è¹ì.
+e	java:S1174"QRename this local variable to match the regular expression '^[a-z][a-zA-Z0-9]*$'.(¿¯äg
+v
+java:S22931"YReplace the type specification in this constructor call with the diamond operator ("<>").(¾»º‹8³è¹ì.
+W
+java:S1161":Add the "@Override" annotation above this method signature( Üó8³è¹ì.
+i
+java:S1858°"F"getParameter" returns a string, there's no need to call "toString()".(±†·Òøÿÿÿÿ8³è¹ì.
+o
+java:S22938"YReplace the type specification in this constructor call with the diamond operator ("<>").(•Â±ş
+a
+java:S1192"FDefine a constant instead of duplicating this literal "topic" 5 times.(®¦²“ùÿÿÿÿ
+{
+java:S2293?"YReplace the type specification in this constructor call with the diamond operator ("<>").(÷ÜÌ™şÿÿÿÿ8³è¹ì.
+q
+java:S1192|"[Define a constant instead of duplicating this literal "{ \"error\": \"expired\" }" 4 times.(È‰®
+N	java:S106-"9Replace this use of System.out or System.err by a logger.(­Ö†¹
+
+java:S1130V"|Remove the declaration of thrown exception 'org.tinystruct.ApplicationException', as it cannot be thrown from method's body.(’ÖÑ«øÿÿÿÿ8³è¹ì.
+h
+java:S11925"KDefine a constant instead of duplicating this literal "session_id" 8 times.(áŞèÅ8—¯÷ë.
+l	java:S117­"QRename this local variable to match the regular expression '^[a-z][a-zA-Z0-9]*$'.(ó¨£†úÿÿÿÿ
+™
+java:S1130b"|Remove the declaration of thrown exception 'org.tinystruct.ApplicationException', as it cannot be thrown from method's body.(™×ˆŠ8³è¹ì.
+^	java:S125Ê"<This block of commented-out lines of code should be removed.(„ú¿”ÿÿÿÿÿ8»º…ºì.
+i
+java:S1192'"NDefine a constant instead of duplicating this literal "meeting_code" 15 times.(Ü‚Øûÿÿÿÿ
+g	java:S101"MRename this class name to match the regular expression '^[A-Z][a-zA-Z0-9]*$'.(üå®ãùÿÿÿÿ
+D
+java:S11218".Extract the assignment out of this expression.(•Â±ş

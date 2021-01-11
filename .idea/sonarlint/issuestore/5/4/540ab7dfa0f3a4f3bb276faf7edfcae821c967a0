@@ -1,0 +1,10 @@
+
+i	java:S101"MRename this class name to match the regular expression '^[A-Z][a-zA-Z0-9]*$'.(“ı³Ø8–º·ßæ.
+c
+java:S1858"F"getParameter" returns a string, there's no need to call "toString()".(ŒÄÕÂ8Óˆºì.
+V
+java:S3400$"9Remove this method and declare a constant for this value.(Ô‚éß8Óˆºì.
+[
+java:S3400"9Remove this method and declare a constant for this value.(àĞ©Æùÿÿÿÿ8Óˆºì.
+T
+java:S1135	"2Complete the task associated to this TODO comment.(» æÿÿÿÿÿ8–º·ßæ.
