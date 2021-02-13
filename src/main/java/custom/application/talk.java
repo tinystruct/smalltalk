@@ -4,15 +4,14 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.system.ApplicationManager;
+import org.tinystruct.valve.Lock;
+import org.tinystruct.valve.Watcher;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class talk extends AbstractApplication {
 
@@ -22,8 +21,7 @@ public class talk extends AbstractApplication {
     protected final Map<String, Queue<Builder>> list = new ConcurrentHashMap<String, Queue<Builder>>();
     protected final Map<String, List<String>> sessions = new ConcurrentHashMap<String, List<String>>();
     private ExecutorService service;
-    private final Lock lock = new ReentrantLock();
-    private final Condition consumer = lock.newCondition();
+    private final Lock lock = Watcher.getInstance().acquire();
 
     @Override
     public void init() {
@@ -130,11 +128,8 @@ public class talk extends AbstractApplication {
         long startTime = System.currentTimeMillis();
         while ((message = messages.poll()) == null && (System.currentTimeMillis() - startTime) <= TIMEOUT) {
             // If waited less than 10 seconds, then continue to wait
-            lock.lock();
             try {
-                consumer.await(TIMEOUT, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                throw new ApplicationException(e.getMessage(), e);
+                lock.tryLock(TIMEOUT, TimeUnit.MILLISECONDS);
             } finally {
                 lock.unlock();
             }
@@ -155,17 +150,22 @@ public class talk extends AbstractApplication {
         if ((_sessions = this.sessions.get(meetingCode)) != null) {
             final Collection<Entry<String, Queue<Builder>>> set = this.list.entrySet();
             final Iterator<Entry<String, Queue<Builder>>> iterator = set.iterator();
-            lock.lock();
             try {
+                lock.lock();
                 while (iterator.hasNext()) {
                     Entry<String, Queue<Builder>> list = iterator.next();
                     if (_sessions.contains(list.getKey())) {
                         list.getValue().add(builder);
-                        consumer.signalAll();
                     }
                 }
+            } catch (ApplicationException e) {
+                e.printStackTrace();
             } finally {
-                lock.unlock();
+                try {
+                    lock.unlock();
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -174,12 +174,7 @@ public class talk extends AbstractApplication {
      * Wake up those threads are working in message update.
      */
     final protected void wakeup() {
-        lock.lock();
-        try {
-            consumer.signalAll();
-        } finally {
-            lock.unlock();
-        }
+
     }
 
     /**

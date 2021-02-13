@@ -1,0 +1,12 @@
+
+H
+java:S1602#",Remove useless curly braces around statement(¸¦–&8Ñ¸è»ö.
+Z	java:S106"9Replace this use of System.out or System.err by a logger.(ò¢í¥şÿÿÿÿ8éì»ö.
+I
+java:S1602"",Remove useless curly braces around statement(‡ªú¢8Ñ¸è»ö.
+?
+java:S2189""Add an end condition to this loop.(´ÿÕ™8ªÇÚ»ö.
+>
+java:S2111"!Use "BigDecimal.valueOf" instead.(¤Û»8À©Õ»ö.
+H
+java:S1612#",Replace this lambda with a method reference.(¸¦–&8Ñ¸è»ö.

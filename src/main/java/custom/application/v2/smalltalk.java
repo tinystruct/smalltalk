@@ -199,9 +199,9 @@ public class smalltalk extends talk {
         context.setAttribute("topic", "This is an example base on Netty technology.");
 
         ApplicationManager.install(new NettyHttpServer());
-        ApplicationManager.install(new Dispatcher());
+//        ApplicationManager.install(new Dispatcher());
 //        ApplicationManager.install(new smalltalk());
-//        ApplicationManager.install(new hello());
+        ApplicationManager.install(new hello());
         ApplicationManager.call("--start-server", context);
 
         HashSet<PosixFilePermission> set = new HashSet<>();

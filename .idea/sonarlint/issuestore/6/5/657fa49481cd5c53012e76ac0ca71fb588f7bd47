@@ -1,0 +1,19 @@
+
+]	java:S125*"<This block of commented-out lines of code should be removed.(éØ»Úûÿÿÿÿ8‚¤æö.
+b	java:S101"MRename this class name to match the regular expression '^[A-Z][a-zA-Z0-9]*$'.(Ôìò¿
+]	java:S125"<This block of commented-out lines of code should be removed.(ú…ëİıÿÿÿÿ8ÈÖØäö.
+g
+java:S1124"EReorder the modifiers to comply with the Java Language Specification.(ë€¯ûÿÿÿÿ8ŒÕçÀö.
+S
+java:S2696)"6Make the enclosing method "static" or remove this set.(Š“Ÿó8ÈÖØäö.
+X	java:S125"<This block of commented-out lines of code should be removed.(÷üíí8õëØäö.
+]	java:S125#"<This block of commented-out lines of code should be removed.(õ¾’Çùÿÿÿÿ8‚¤æö.
+i	java:S101"MRename this class name to match the regular expression '^[A-Z][a-zA-Z0-9]*$'.(ç“ÿ—8ŒÕçÀö.
+
+java:S11868"€Add a nested comment explaining why this method is empty, throw an UnsupportedOperationException or complete the implementation.( Üó8™ñâö.
+y
+java:S2629)"\Invoke method(s) only conditionally. Use the built-in formatting to construct this argument.(Š“Ÿó8ùûëåö.
+c
+java:S2142&"FEither re-interrupt this method or rethrow the "InterruptedException".(ä ¹€8ÈÖØäö.
+^
+java:S3078)"AUse an "AtomicInteger" for this field; its operations are atomic.(Š“Ÿó8ÈÖØäö.
