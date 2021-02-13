@@ -1,5 +1,7 @@
-package custom.application;
+package custom.application.v2;
 
+import custom.application.hello;
+import custom.application.talk;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;

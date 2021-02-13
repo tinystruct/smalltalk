@@ -23,7 +23,7 @@ public class hello extends AbstractApplication {
 
     public String say() {
         if(null != this.context.getParameter("words"))
-            return this.context.getParameter("words").toString();
+            return this.context.getParameter("words");
 
         return "Invalid parameter(s).";
     }
