@@ -454,12 +454,14 @@
           else {
             connection_timer.start();
             is_running = false;
+            console.log("The message has not been sent successfully.error:" + $msg.error);
             console.log($msg);
           }
         }
         else {
           connection_timer.start();
           is_running = false;
+          console.log("The message has not been sent successfully.");
           console.log(err);
         }
       });
