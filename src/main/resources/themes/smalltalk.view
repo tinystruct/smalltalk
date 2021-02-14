@@ -15,7 +15,7 @@
   #list {
     overflow-x:hidden;
     max-height:320px;
-    padding:10px 0;
+    padding:10px;
     background: #000;
     color: #008000;
   }
