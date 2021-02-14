@@ -16,6 +16,8 @@
     overflow-x:hidden;
     max-height:320px;
     padding:10px 0;
+    background: #000;
+    color: #008000;
   }
   #list ul {
     list-style: none;padding-left:0
