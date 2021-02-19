@@ -1,26 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-  <meta charset="utf-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-  <meta name="description" content="" />
-  <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator" />
-  <title>Small Talk</title>
-  <!-- Bootstrap core CSS -->
-  <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet" />
-  <!-- Custom styles for this template -->
-  <style type="text/css">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content=""/>
+    <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
+    <title>Small Talk</title>
+    <!-- Bootstrap core CSS -->
+    <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
+    <!-- Custom styles for this template -->
+    <style type="text/css">
+  #list ::-moz-selection {
+    background: #1e1c9b;
+  }
+  #list ::selection {
+    background: #1e1c9b;
+  }
   #list {
     overflow-x:hidden;
     max-height:320px;
     padding:10px;
     background: #000;
-    color: #008000;
+    color: #45e05e;
   }
   #list ul {
-    list-style: none;padding-left:0
+    list-style: none;
+    padding-left: 0;
+    margin-bottom: 0;
   }
   #list ul li {
   }
@@ -38,7 +46,7 @@
   body > .container {
     padding-top: 75px;
   }
-  
+
   #matrix { position: absolute; right:0;bottom:0; width:77px; height:77px;}
   .note { position: relative }
   .pad { margin: 10px 0;position:relative; }
@@ -296,20 +304,63 @@
       width:100%;
       height:100%;
   }
-  </style>
-  <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
-  <!--[if lt IE 9]><script src="http://getbootstrap.com/assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-  <script src="/scripts/bootstrap/ie-emulation-modes-warning.js?raw=true"></script>
-  <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-  <!--[if lt IE 9]>
-  <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-  <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-  <![endif]-->
-  <script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
-  <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
-  <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
-  <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
-  <script type="text/javascript">
+
+
+  #text {
+    width: intrinsic;           /* Safari/WebKit uses a non-standard name */
+    width: -moz-max-content;    /* Firefox/Gecko */
+    width: -webkit-max-content; /* Chrome */
+    width: max-content;
+    float: left;
+    font-style: Consolas;
+    font-family: monospace;
+    --caret-color: transparent;
+  }
+
+  #text:focus {
+    outline: none;
+  }
+
+  #cursor {
+    width: intrinsic;           /* Safari/WebKit uses a non-standard name */
+    width: -moz-max-content;    /* Firefox/Gecko */
+    width: -webkit-max-content; /* Chrome */
+    width: max-content;
+    font-family: monospace;
+
+    border: 1px solid #45e05e;
+    background-color: none;
+
+    height: 17px;
+    float: left;
+    color: #fff;
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 10px;
+  }
+
+  #cursor.focus {
+    border: 1px solid #45e05e;
+    background-color: #45e05e;
+    color: #45e05e;
+  }
+
+    </style>
+    <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
+    <!--[if lt IE 9]>
+    <script src="http://getbootstrap.com/assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+    <script src="/scripts/bootstrap/ie-emulation-modes-warning.js?raw=true"></script>
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
+    <script type="text/javascript">
   //<![CDATA[
   var timer = new Timer(.5,function(){});
   var old_title = document.title;
@@ -469,23 +520,148 @@
       });
     }
   }
+
   var i=0;
+  var cursor = false;
+  var current_position = 0;
+  window.key = [];
+
+  function currentX(_, s, current_position) {
+      len = 0;
+      window.key = [];
+      for(i=0;i<s.length;i++) {
+          _.html(s.charAt(i));
+          window.key[i] = _.width()>0?_.width():0;
+          len += window.key[i];
+          if(i==current_position) break;
+      }
+
+      return len;
+  }
+
   $(function(){
     $("#button").click(function(){
       save();
       timer.stop();
     });
 
-    $("#text").keydown(function(event){
+    //Start here.
+    $("#text").keypress(function(event){
       if(event.which == 13) {
         save();
         timer.stop();
+        $("#cursor").parent().css({position: 'relative'});
+        $("#cursor").css({left: 0, position:'absolute'});
+      }
+    });
+
+    $("#text").mouseup(function(event){
+        if($(this).html().length > 0 && $(this).html().substring($(this).html().length-1)=='')
+          $("#cursor").html($(this).html().substring($(this).html().length-1));
+        else
+          $("#cursor").html("I");
+
+        current_position  = struct.getCaretPosition(this);
+        left = currentX($("#cursor"), $("#text").text(), current_position);
+
+        if(current_position>1)
+          width = window.key[current_position-1];
+
+        $("#cursor").parent().css({position: 'relative'});
+        $("#cursor").css({left: left-width, position:'absolute'});
+        console.log("left:"+left+",curr:"+current_position);
+
+        console.log(key);
+    });
+
+    $("#text").keyup(function(event){
+        if($(this).html().length > 0 && $(this).html().substring($(this).html().length-1)=='')
+          $("#cursor").html($(this).html().substring($(this).html().length-1));
+        else
+          $("#cursor").html("I");
+
+        current_position  = struct.getCaretPosition(this);
+        left = currentX($("#cursor"), $("#text").text(), current_position);
+    });
+
+    $("#text").keydown(function(event){
+      switch(event.which) {
+        case 8: // Backspace
+        case 37: // Left
+          current_position  = struct.getCaretPosition(this);
+          console.log("back："+current_position);
+
+          left = currentX($("#cursor"), $("#text").text(), current_position-1);
+          value = $("#text").text().charAt(current_position);
+          if(value.length>0)
+            $("#cursor").html(value);
+
+          if(current_position>=0 ) {
+            width = window.key[current_position-1];
+
+            $("#cursor").parent().css({position: 'relative'});
+            $("#cursor").css({left: left-width, position:'absolute'});
+          }
+        break;
+
+        case 16:
+        case 17:
+        case 18:
+        case 20:
+        case 27:
+        case 224:
+        break;
+        case 229: // Chinese input.
+          left = currentX($("#cursor"), $("#text").text(), current_position);
+          width = $("#cursor").width();
+          if(current_position<$("#text").text().length) width = 0;
+          $("#cursor").parent().css({position: 'relative'});
+          $("#cursor").css({left: left + width, position:'absolute'});
+          break;
+        case 38:
+        case 40:break;
+        case 39: // Right
+          current_position  = struct.getCaretPosition(this);
+          if(current_position<$("#text").text().length) {
+            left = currentX($("#cursor"), $("#text").text(), current_position);
+            width = window.key[current_position-1];
+
+            $("#cursor").html($("#text").text().charAt(current_position));
+            $("#cursor").parent().css({position: 'relative'});
+            $("#cursor").css({left: left, position:'absolute'});
+          }
+          break;
+        default:
+          $("#cursor").html($("#text").text().charAt(current_position));
+          width = $("#cursor").width();
+          left = currentX($("#cursor"), $("#text").text(), current_position);
+          if(current_position<$("#text").text().length) width = 0;
+          $("#cursor").parent().css({position: 'relative'});
+          $("#cursor").css({left: left+width, position:'absolute'});
+        break;
       }
     });
 
     $("#text").focus(function(event){
       command("onfocus");
       document.title = old_title;
+      $this = $(this);
+      $this.selectionStart = $this.selectionEnd = $this.val().length;
+
+      if(!cursor) {
+        cursor = window.setInterval(function() {
+                if ($('#cursor').css('visibility') === 'visible') {
+                  $('#cursor').css({
+                    visibility: 'hidden'
+                  });
+                } else {
+                  $('#cursor').css({
+                    visibility: 'visible'
+                  });
+                }
+              }, 500);
+        $('#cursor').addClass("focus");
+      }
     });
 
     $("#text").blur(function(event){
@@ -494,6 +670,13 @@
         document.title = old_title;
       });
       blur_timer.start();
+
+      clearInterval(cursor);
+      cursor = false;
+      $('#cursor').css({
+        visibility: 'visible'
+      });
+      $('#cursor').removeClass("focus");
     });
 
     $("#sender").submit(function(event){
@@ -518,9 +701,13 @@
     autoupdate();
 
     $(".pad").hover(function(){
-      $(this).addClass("hover");  
+      $(this).addClass("hover");
+      $("#text").focus();
     },function(){
       $(this).removeClass("hover"); 
+    });
+    $(".text").mousedown(function(){
+      $("#text").focus();
     });
 
     $("#dialog_submit").click(function(){
@@ -622,112 +809,130 @@
 
       $("#text").append($ul);
     });
+
   });
   //]]>
-  </script>
-  </head>
-  <body>
-  <!-- Fixed navbar -->
-  <nav class="navbar navbar-default navbar-fixed-top">
-    <div class="container">
-      <div class="navbar-header">
-        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-          <span class="sr-only">Toggle navigation</span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-          <span class="icon-bar"></span>
-        </button>
-        <a class="navbar-brand" href="#">Small Talk</a>
-      </div>
-      <div id="navbar" class="collapse navbar-collapse">
-        <ul class="nav navbar-nav">
-          <li><a href="#">Settings</a></li>
-          <li class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Help <span class="caret"></span></a>
-            <ul class="dropdown-menu">
-              <li><a href="#">Manual</a></li>
-              <li role="separator" class="divider"></li>
-              <li><a href="#">About</a></li>
-            </ul>
-          </li>
-        </ul>
-      </div><!--/.nav-collapse -->
-    </div>
-  </nav>
 
-  <!-- Begin page content -->
-  <div class="container">
+
+
+    </script>
+</head>
+<body>
+<!-- Fixed navbar -->
+<nav class="navbar navbar-default navbar-fixed-top">
+    <div class="container">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                    aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">Small Talk</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+                <li><a href="#">Settings</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+                       aria-expanded="false">Help <span class="caret"></span></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="#">Manual</a></li>
+                        <li role="separator" class="divider"></li>
+                        <li><a href="#">About</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </div>
+</nav>
+
+<!-- Begin page content -->
+<div class="container">
     <div class="pageheader"></div>
     <p>Welcome to use smalltalk application!</p>
     <p id="topic">{%topic%}</p>
-  <div id="list">
-    <ul id="messages"></ul>
-  </div>
-  <form id="sender">
-    <div class="note">Share the link to invite others join this conversation: <a id="link" href="javascript:void(0)">[%LINK:talk/join%]/{%meeting_code%}</a>  <div id="matrix"><img /></div></div>
-    <div class="pad">
-        <div contenteditable="true" class="text" id="text"></div>
-        <span class="arrowbox">
+    <div id="list">
+        <ul id="messages">
+            <li>Type your message(s) in the below input box...</li>
+        </ul>
+    </div>
+    <form id="sender">
+        <div class="note">Share the link to invite others join this conversation: <a id="link"
+                                                                                     href="javascript:void(0)">[%LINK:talk/join%]/{%meeting_code%}</a>
+            <div id="matrix"><img/></div>
+        </div>
+        <div class="pad">
+            <div class="text">
+                <div contenteditable="true" id="text"></div>
+                <div id="cursor">I</div>
+            </div>
+            <span class="arrowbox">
             <b class="arrow arrowline"></b>
             <b class="arrow arrowbg"></b>
         </span>
-    </div>
-      <label class="control-label" for="attachment">Select File</label>
-      <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true" />
-      <br />
-      <input type="button" id="button" value="Send" class="btn btn-primary" />
-      <input type="button" id="test" value="Test" class="btn btn-secondary" />
-  </form>
-  </div>
-  
-  <!-- Modal -->
-  <div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true"></span></button>
-          <h4 class="modal-title" id="myModalLabel">Dialog</h4>
         </div>
-        <div class="modal-body">
-          <label for="nickname">Your Name:</label><input type="text" class="form-control" name="nickname" id="nickname"/>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary" id="dialog_submit">Save changes</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Modal -->
-  <div class="modal fade" id="topic_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel">
-    <div class="modal-dialog" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true"></span></button>
-          <h4 class="modal-title" id="ModalLabel">Dialog</h4>
-        </div>
-        <div class="modal-body">
-          <label for="brief">Topics / Questions:</label><textarea class="form-control" name="brief" id="brief"></textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-primary" id="topic_submit">Save changes</button>
-        </div>
-      </div>
-    </div>
-  </div>
+        <label class="control-label" for="attachment">Select File</label>
+        <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true"/>
+        <br/>
+        <input type="button" id="button" value="Send" class="btn btn-primary"/>
+        <input type="button" id="test" value="Test" class="btn btn-secondary"/>
+    </form>
+</div>
 
-  <footer class="footer">
+<!-- Modal -->
+<div class="modal fade" id="modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true"></span></button>
+                <h4 class="modal-title" id="myModalLabel">Dialog</h4>
+            </div>
+            <div class="modal-body">
+                <label for="nickname">Your Name:</label><input type="text" class="form-control" name="nickname"
+                                                               id="nickname"/>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="dialog_submit">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="topic_modal" tabindex="-1" role="dialog" aria-labelledby="ModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true"></span></button>
+                <h4 class="modal-title" id="ModalLabel">Dialog</h4>
+            </div>
+            <div class="modal-body">
+                <label for="brief">Topics / Questions:</label><textarea class="form-control" name="brief"
+                                                                        id="brief"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="topic_submit">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
     <div class="container">
-      <p class="text-muted"> © 2017 </p>
+        <p class="text-muted"> © 2017 </p>
     </div>
-  </footer>
+</footer>
 
-  <!-- Bootstrap core JavaScript
-  ================================================== -->
-  <!-- Placed at the end of the document so the pages load faster -->
-  <script src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
-  <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-  <script src="/scripts/bootstrap/ie10-viewport-bug-workaround.js?raw=true"></script>
-  </body>
+<!-- Bootstrap core JavaScript
+================================================== -->
+<!-- Placed at the end of the document so the pages load faster -->
+<script src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
+<!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+<script src="/scripts/bootstrap/ie10-viewport-bug-workaround.js?raw=true"></script>
+</body>
 </html>
