@@ -589,8 +589,6 @@
         case 8: // Backspace
         case 37: // Left
           current_position  = struct.getCaretPosition(this);
-          console.log("back："+current_position);
-
           left = currentX($("#cursor"), $("#text").text(), current_position-1);
           value = $("#text").text().charAt(current_position);
           if(value.length>0)
@@ -645,8 +643,6 @@
     $("#text").focus(function(event){
       command("onfocus");
       document.title = old_title;
-      $this = $(this);
-      $this.selectionStart = $this.selectionEnd = $this.val().length;
 
       if(!cursor) {
         cursor = window.setInterval(function() {
@@ -703,11 +699,15 @@
     $(".pad").hover(function(){
       $(this).addClass("hover");
       $("#text").focus();
+      struct.setCursorToEndOf(document.getElementById("text"));
+
     },function(){
       $(this).removeClass("hover"); 
     });
-    $(".text").mousedown(function(){
+
+    $(".text").click(function(){
       $("#text").focus();
+      struct.setCursorToEndOf(document.getElementById("text"));
     });
 
     $("#dialog_submit").click(function(){
