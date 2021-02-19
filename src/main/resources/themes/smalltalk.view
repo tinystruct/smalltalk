@@ -531,7 +531,7 @@
       window.key = [];
       for(i=0;i<s.length;i++) {
           _.html(s.charAt(i));
-          window.key[i] = _.width()>0?_.width():0;
+          window.key[i] = _.width()>0?_.width():7;
           len += window.key[i];
           if(i==current_position) break;
       }
