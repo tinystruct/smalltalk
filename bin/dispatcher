@@ -4,4 +4,16 @@ VERSION="0.2.0"
 cd "`dirname "$0"`"
 cd "../"
 cd "$ROOT"
-java -cp "$ROOT/target/classes:$ROOT/lib/*:$ROOT/WEB-INF/lib/*:$ROOT/WEB-INF/classes:$HOME/.m2/repository/org/tinystruct/tinystruct/$VERSION/tinystruct-$VERSION-jar-with-dependencies.jar" org.tinystruct.system.Dispatcher "$@"
+JAVA_OPTS=""
+args=""
+for arg
+do
+ if [[ ${arg:0:2} == '-D' ]]
+ then
+     JAVA_OPTS=$JAVA_OPTS" "$arg
+ fi
+done
+java \
+$JAVA_OPTS \
+-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/ \
+-cp "$ROOT/target/classes:$ROOT/lib/*:$ROOT/WEB-INF/lib/*:$ROOT/WEB-INF/classes:$HOME/.m2/repository/org/tinystruct/tinystruct/$VERSION/tinystruct-$VERSION-jar-with-dependencies.jar" org.tinystruct.system.Dispatcher "$@"
