@@ -8,11 +8,15 @@ JAVA_OPTS=""
 args=""
 for arg
 do
- if [[ ${arg:0:2} == '-D' ]]
+ str=$(echo $arg | awk  '{ string=substr($0, 0, 2); print string; }' )
+ if [ "$str" = "-D" -o "$str" = "-X" ]
  then
      JAVA_OPTS=$JAVA_OPTS" "$arg
+ else
+     args=$args" "$arg
  fi
 done
+set -- $args
 java \
 $JAVA_OPTS \
 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/ \
