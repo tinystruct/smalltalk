@@ -54,7 +54,7 @@ You can access the below URLs after deployed the project in Tomcat 6.0+ :
 A demonstration for comet technology, without any websocket and support any web browser:
 * <a href="https://tinystruct.herokuapp.com/?q=talk">https://tinystruct.herokuapp.com/?q=talk</a><br />
 
-<img src="example.png" title="smalltalk - tinystruct" height="300"/> <br />
+<img src="https://github.com/m0ver/tinystruct-examples/blob/master/example.png" title="smalltalk - tinystruct" height="300"/> <br />
 
 Live Demo Site: 
 * https://tinystruct.herokuapp.com/
