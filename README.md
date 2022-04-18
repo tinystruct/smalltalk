@@ -14,7 +14,7 @@ To execute it in CLI mode
 $ bin/dispatcher --version
 
   _/  '         _ _/  _     _ _/
-  /  /  /) (/ _)  /  /  (/ (  /  2.0
+  /  /  /) (/ _)  /  /  (/ (  /  0.3.3
            /
 ```
 ```tcsh
@@ -32,7 +32,7 @@ Praise to the Lord
 Run it in a servlet container
 ---
 ```tcsh
-# bin/dispatcher --start-server --import-applications=org.tinystruct.system.TomcatServer
+# bin/dispatcher start --import org.tinystruct.system.TomcatServer
 ```
 Run it in docker container
 ---
