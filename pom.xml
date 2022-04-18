@@ -26,7 +26,7 @@
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>0.3.2</version>
+            <version>0.3.3</version>
             <classifier>jar-with-dependencies</classifier>
         </dependency>
     </dependencies>
