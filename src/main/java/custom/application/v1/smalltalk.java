@@ -5,15 +5,14 @@ import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
+import org.tinystruct.http.*;
+import org.tinystruct.http.servlet.MultipartFormData;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.system.util.StringUtilities;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
-import org.tinystruct.transfer.http.upload.MultipartFormData;
 
 import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 import java.awt.image.BufferedImage;
@@ -40,7 +39,7 @@ public class smalltalk extends talk implements HttpSessionListener {
   }
 
   public talk index() {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
     Object meetingCode = request.getSession().getAttribute("meeting_code");
 
     if ( meetingCode == null ) {
@@ -82,7 +81,7 @@ public class smalltalk extends talk implements HttpSessionListener {
   }
 
   public String matrix() throws ApplicationException {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
     System.out.println("this.getLink(\"talk/join\") = " + this.getLink("talk/join"));
     if (request.getParameter("meeting_code") != null) {
       BufferedImage qrImage = Matrix.toQRImage(this.getLink("talk/join") + "/" + request.getParameter("meeting_code"), 100, 100);
@@ -92,34 +91,32 @@ public class smalltalk extends talk implements HttpSessionListener {
     return "";
   }
 
-  public String join(String meetingCode) throws ApplicationException {
+  public Object join(String meetingCode) throws ApplicationException {
     if (meetings.containsKey(meetingCode)) {
-      final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
-      final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
+      final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+      final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
       request.getSession().setAttribute("meeting_code", meetingCode);
 
       this.setVariable("meeting_code", meetingCode);
 
       Reforward reforward = new Reforward(request, response);
       reforward.setDefault("/?q=talk");
-      reforward.forward();
+      return reforward.forward();
     } else {
       return "Invalid meeting code.";
     }
-
-    return "Please start the conversation with your name: " + this.config.get("default.base_url") + "talk/start/YOUR NAME";
   }
 
-  public String start(String name) throws ApplicationException {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
-    final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
+  public Object start(String name) throws ApplicationException {
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
     request.getSession().setAttribute("user", name);
     
     Object meetingCode = request.getSession().getAttribute("meeting_code");
     if (meetingCode == null) {
       Reforward reforward = new Reforward(request, response);
       reforward.setDefault("/?q=talk");
-      reforward.forward();
+      return reforward.forward();
     } else {
       this.setVariable("meeting_code", meetingCode.toString());
     }
@@ -128,9 +125,10 @@ public class smalltalk extends talk implements HttpSessionListener {
   }
 
   public String command() {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
-    final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
-    response.setContentType("application/json");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
+//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
 
     final Object meetingCode = request.getSession().getAttribute("meeting_code");
     final String sessionId = request.getSession().getId();
@@ -145,14 +143,15 @@ public class smalltalk extends talk implements HttpSessionListener {
 
       return this.save(meetingCode, builder);
     }
-    response.setStatus(403);
+//    response.setStatus(ResponseStatus.BAD_REQUEST);
     return "{ \"error\": \"expired\" }";
   }
 
   public String save() {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
-    final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
-    response.setContentType("application/json");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
+//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
 
     final Object meetingCode = request.getSession().getAttribute("meeting_code");
     if (this.meetings.containsKey(meetingCode)) {
@@ -160,7 +159,8 @@ public class smalltalk extends talk implements HttpSessionListener {
       if ( meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
         String message;
         if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
-          String[] agent = request.getHeader("User-Agent").split(" ");
+
+          String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
           this.setVariable("browser", agent[agent.length - 1]);
 
           final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
@@ -175,20 +175,21 @@ public class smalltalk extends talk implements HttpSessionListener {
       }
     }
     
-    response.setStatus(403);
+//    response.setStatus(ResponseStatus.BAD_REQUEST);
     return "{ \"error\": \"expired\" }";
   }
 
   public String update() throws ApplicationException, IOException {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
     final Object meetingCode = request.getSession().getAttribute("meeting_code");
     final String sessionId = request.getSession().getId();
     if (meetingCode != null) {
       return this.update(meetingCode.toString(), sessionId);
     }
-    final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
-    response.setContentType("application/json");
-    response.setStatus(403);
+//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
+//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
+//    response.setStatus(ResponseStatus.BAD_REQUEST);
     return "{ \"error\": \"expired\" }";
   }
 
@@ -202,16 +203,18 @@ public class smalltalk extends talk implements HttpSessionListener {
       error = "{ \"error\": \"session-timeout\" }";
     }
 
-    final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
-    response.setContentType("application/json");
-    response.setStatus(403);
+//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
+//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
+//    response.setStatus(ResponseStatus.BAD_REQUEST);
     return error;
   }
 
   public String upload() throws ApplicationException {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
-    final HttpServletResponse response = (HttpServletResponse) this.context.getAttribute("HTTP_RESPONSE");
-    response.setContentType("text/html;charset=UTF-8");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
+//    responseHeaders.add(Header.CONTENT_TYPE.set("text/html;charset=UTF-8"));
 
     // Create path components to save the file
     final String path = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
@@ -225,7 +228,7 @@ public class smalltalk extends talk implements HttpSessionListener {
         final String fileName = e.getFileName();
         final Builder builder = new Builder();
         builder.put("type", StringUtilities.implode(";", Arrays.asList(e.getContentType())));
-        builder.put("file", new StringBuffer().append(this.context.getAttribute("HTTP_SCHEME")).append("://").append(this.context.getAttribute("HTTP_SERVER")).append(":"+ request.getServerPort()).append( "/files/").append(fileName));
+        builder.put("file", new StringBuffer().append(this.context.getAttribute("HTTP_SCHEME")).append("://").append(this.context.getAttribute("HTTP_SERVER")).append(":"+ request.headers().get(Header.SERVER)).append( "/files/").append(fileName));
         final File f = new File(path + File.separator + fileName);
         if (!f.exists()) {
           if (!f.getParentFile().exists()) {
@@ -257,7 +260,7 @@ public class smalltalk extends talk implements HttpSessionListener {
   }
 
   public boolean topic() {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
     final Object meeting_code = request.getSession().getAttribute("meeting_code");
 
     if ( meeting_code != null ) {
@@ -269,7 +272,7 @@ public class smalltalk extends talk implements HttpSessionListener {
   }
 
   protected talk exit() {
-    final HttpServletRequest request = (HttpServletRequest) this.context.getAttribute("HTTP_REQUEST");
+    final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
     request.getSession().removeAttribute("meeting_code");
     return this;
   }
