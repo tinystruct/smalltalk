@@ -15,7 +15,7 @@ import java.util.concurrent.*;
 
 public class talk extends AbstractApplication {
 
-    private static final long TIMEOUT = 10000;
+    private static final long TIMEOUT = 100;
     protected static final int DEFAULT_MESSAGE_POOL_SIZE = 10;
     protected final Map<String, BlockingQueue<Builder>> meetings = new ConcurrentHashMap<String, BlockingQueue<Builder>>();
     protected final Map<String, Queue<Builder>> list = new ConcurrentHashMap<String, Queue<Builder>>();
@@ -126,13 +126,14 @@ public class talk extends AbstractApplication {
         // If there is RequestMerger new message, then return it directly
         if ((message = messages.poll()) != null) return message.toString();
         long startTime = System.currentTimeMillis();
-        while ((message = messages.poll()) == null && (System.currentTimeMillis() - startTime) <= TIMEOUT) {
-            // If waited less than 10 seconds, then continue to wait
-            try {
-                lock.tryLock(TIMEOUT, TimeUnit.MILLISECONDS);
-            } finally {
-                lock.unlock();
+        // If waited less than 10 seconds, then continue to wait
+        try {
+            lock.tryLock(TIMEOUT, TimeUnit.MILLISECONDS);
+            while ((message = messages.poll()) == null && (System.currentTimeMillis() - startTime) <= TIMEOUT) {
+                ;
             }
+        } finally {
+            lock.unlock();
         }
 
         return message != null ? message.toString() : "{}";
@@ -144,7 +145,7 @@ public class talk extends AbstractApplication {
      * @param meetingCode
      * @param builder
      */
-    private final void copy(Object meetingCode, Builder builder) {
+    private void copy(Object meetingCode, Builder builder) {
         final List<String> _sessions;
 
         if ((_sessions = this.sessions.get(meetingCode)) != null) {
