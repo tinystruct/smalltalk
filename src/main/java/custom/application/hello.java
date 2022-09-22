@@ -30,8 +30,8 @@ public class hello extends AbstractApplication {
     }
 
     public String say() {
-        if(null != this.context.getAttribute("words"))
-            return ((Word)this.context.getAttribute("words")).message;
+        if(null != this.context.getAttribute("--words"))
+            return this.context.getAttribute("--words").toString();
 
         return "Invalid parameter(s).";
     }
@@ -61,14 +61,10 @@ public class hello extends AbstractApplication {
         System.out.println(ApplicationManager.call("praise", null));
 
         ApplicationContext ctx = new ApplicationContext();
-        ctx.setAttribute("words", new Word());
+        ctx.setAttribute("--words", "Praise to the Lord!");
 
         System.out.println(ApplicationManager.call("say", ctx));
-        System.out.println(ApplicationManager.call("setdate/2022-01-01", ctx));
+        System.out.println(ApplicationManager.call("setdate/2022-01-01 00:00:00", ctx));
         System.out.println(ApplicationManager.call("stable/true", ctx));
-    }
-
-    static class Word {
-        public String message = "Praise to the Lord!";
     }
 }
