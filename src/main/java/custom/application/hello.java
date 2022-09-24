@@ -4,6 +4,8 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.system.ApplicationManager;
+import org.tinystruct.system.Dispatcher;
+import org.tinystruct.system.Settings;
 
 import java.util.Date;
 
@@ -48,16 +50,12 @@ public class hello extends AbstractApplication {
         return x;
     }
 
-    public String say(String words) {
-        return words;
-    }
-
     public String smile() {
         return ":)";
     }
 
     public static void main(String[] args) throws ApplicationException {
-        ApplicationManager.install(new hello());
+        ApplicationManager.install(new hello(), new Settings());
         System.out.println(ApplicationManager.call("praise", null));
 
         ApplicationContext ctx = new ApplicationContext();
