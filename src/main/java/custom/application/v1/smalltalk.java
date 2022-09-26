@@ -76,6 +76,10 @@ public class smalltalk extends talk implements HttpSessionListener {
         if ((topic = this.getVariable(meetingCode.toString())) != null) {
             this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
         }
+        else
+        {
+            this.setVariable("topic", "");
+        }
 
         return this;
     }
@@ -126,10 +130,6 @@ public class smalltalk extends talk implements HttpSessionListener {
 
     public String command() {
         final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
-//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
-//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
-//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
-
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
         if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
@@ -149,10 +149,6 @@ public class smalltalk extends talk implements HttpSessionListener {
 
     public String save() {
         final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
-//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
-//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
-//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
-
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (this.meetings.containsKey(meetingCode)) {
             final String sessionId = request.getSession().getId();
@@ -186,10 +182,6 @@ public class smalltalk extends talk implements HttpSessionListener {
         if (meetingCode != null) {
             return this.update(meetingCode.toString(), sessionId);
         }
-//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
-//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
-//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
-//    response.setStatus(ResponseStatus.BAD_REQUEST);
         return "{ \"error\": \"expired\" }";
     }
 
@@ -203,18 +195,11 @@ public class smalltalk extends talk implements HttpSessionListener {
             error = "{ \"error\": \"session-timeout\" }";
         }
 
-//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
-//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
-//    responseHeaders.add(Header.CONTENT_TYPE.set("application/json"));
-//    response.setStatus(ResponseStatus.BAD_REQUEST);
         return error;
     }
 
     public String upload() throws ApplicationException {
         final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
-//    final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
-//    ResponseHeaders responseHeaders = new ResponseHeaders(response);
-//    responseHeaders.add(Header.CONTENT_TYPE.set("text/html;charset=UTF-8"));
 
         // Create path components to save the file
         final String path = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
@@ -248,7 +233,7 @@ public class smalltalk extends talk implements HttpSessionListener {
                 bs.close();
 
                 builders.add(builder);
-                System.out.println(String.format("File %s being uploaded to %s", new Object[]{fileName, path}));
+                System.out.printf("File %s being uploaded to %s%n", fileName, path);
             }
         } catch (IOException e) {
             throw new ApplicationException(e.getMessage(), e);
@@ -264,7 +249,6 @@ public class smalltalk extends talk implements HttpSessionListener {
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
 
         if (meeting_code != null && request.getParameter("topic") != null) {
-
             this.setVariable(meeting_code.toString(), filter(request.getParameter("topic")));
             return true;
         }
@@ -304,7 +288,7 @@ public class smalltalk extends talk implements HttpSessionListener {
     public void sessionDestroyed(HttpSessionEvent arg0) {
         Object meetingCode = arg0.getSession().getAttribute("meeting_code");
         if (meetingCode != null) {
-            final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+            final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
             final Builder builder = new Builder();
             builder.put("user", null);
             builder.put("time", format.format(new Date()));
