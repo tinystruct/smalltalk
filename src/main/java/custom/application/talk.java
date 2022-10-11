@@ -159,14 +159,8 @@ public class talk extends AbstractApplication {
                         list.getValue().add(builder);
                     }
                 }
-            } catch (ApplicationException e) {
-                e.printStackTrace();
             } finally {
-                try {
-                    lock.unlock();
-                } catch (ApplicationException e) {
-                    e.printStackTrace();
-                }
+                lock.unlock();
             }
         }
     }

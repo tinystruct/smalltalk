@@ -44,14 +44,8 @@ public class lock extends AbstractApplication {
                     if (tickets > 0)
                         // TODO
                         logger.info(Thread.currentThread().getName() + " is selling #" + (tickets--) + " with Lock#" + lock.id());
-                } catch (ApplicationException e) {
-                    e.printStackTrace();
                 } finally {
-                    try {
-                        lock.unlock();
-                    } catch (ApplicationException e) {
-                        e.printStackTrace();
-                    }
+                    lock.unlock();
                 }
             }
         }
