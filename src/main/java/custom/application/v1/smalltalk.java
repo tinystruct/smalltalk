@@ -23,6 +23,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 
+import static org.tinystruct.http.Constants.HTTP_PROTOCOL;
+
 public class smalltalk extends talk implements HttpSessionListener {
 
     public void init() {
@@ -213,7 +215,7 @@ public class smalltalk extends talk implements HttpSessionListener {
                 final String fileName = e.getFileName();
                 final Builder builder = new Builder();
                 builder.put("type", String.join(";", Arrays.asList(e.getContentType())));
-                builder.put("file", new StringBuffer().append(this.context.getAttribute("HTTP_SCHEME")).append("://").append(request.headers().get(Header.HOST)).append("/files/").append(fileName));
+                builder.put("file", new StringBuffer().append(this.context.getAttribute(HTTP_PROTOCOL)).append(request.headers().get(Header.HOST)).append("/files/").append(fileName));
                 final File f = new File(path + File.separator + fileName);
                 if (!f.exists()) {
                     if (!f.getParentFile().exists()) {
