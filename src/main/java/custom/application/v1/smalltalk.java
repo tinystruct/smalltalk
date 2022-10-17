@@ -207,13 +207,13 @@ public class smalltalk extends talk implements HttpSessionListener {
         final Builders builders = new Builders();
         try {
             final MultipartFormData iter = new MultipartFormData(request);
-            ContentDisposition e = null;
+            ContentDisposition e;
             int read = 0;
             while ((e = iter.getNextPart()) != null) {
                 final String fileName = e.getFileName();
                 final Builder builder = new Builder();
-                builder.put("type", StringUtilities.implode(";", Arrays.asList(e.getContentType())));
-                builder.put("file", new StringBuffer().append(this.context.getAttribute("HTTP_SCHEME")).append("://").append(this.context.getAttribute("HTTP_SERVER")).append(":" + request.headers().get(Header.SERVER)).append("/files/").append(fileName));
+                builder.put("type", String.join(";", Arrays.asList(e.getContentType())));
+                builder.put("file", new StringBuffer().append(this.context.getAttribute("HTTP_SCHEME")).append("://").append(request.headers().get(Header.HOST)).append("/files/").append(fileName));
                 final File f = new File(path + File.separator + fileName);
                 if (!f.exists()) {
                     if (!f.getParentFile().exists()) {
