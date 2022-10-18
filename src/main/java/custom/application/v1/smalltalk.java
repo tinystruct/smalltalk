@@ -11,7 +11,6 @@ import org.tinystruct.http.Response;
 import org.tinystruct.http.servlet.MultipartFormData;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
-import org.tinystruct.system.util.StringUtilities;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
 import javax.servlet.ServletException;
@@ -19,11 +18,15 @@ import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 
-import static org.tinystruct.http.Constants.HTTP_PROTOCOL;
+import static org.tinystruct.http.Constants.HTTP_HOST;
 
 public class smalltalk extends talk implements HttpSessionListener {
 
@@ -37,6 +40,7 @@ public class smalltalk extends talk implements HttpSessionListener {
         this.setAction("talk/command", "command");
         this.setAction("talk/topic", "topic");
         this.setAction("talk/matrix", "matrix");
+        this.setAction("files", "download");
 
         this.setVariable("message", "");
         this.setVariable("topic", "");
@@ -77,9 +81,7 @@ public class smalltalk extends talk implements HttpSessionListener {
         Variable<?> topic;
         if ((topic = this.getVariable(meetingCode.toString())) != null) {
             this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
-        }
-        else
-        {
+        } else {
             this.setVariable("topic", "");
         }
 
@@ -202,6 +204,8 @@ public class smalltalk extends talk implements HttpSessionListener {
 
     public String upload() throws ApplicationException {
         final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Object meetingCode = request.getSession().getAttribute("meeting_code");
+        if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
 
         // Create path components to save the file
         final String path = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
@@ -210,12 +214,12 @@ public class smalltalk extends talk implements HttpSessionListener {
         try {
             final MultipartFormData iter = new MultipartFormData(request);
             ContentDisposition e;
-            int read = 0;
+            int read;
             while ((e = iter.getNextPart()) != null) {
                 final String fileName = e.getFileName();
                 final Builder builder = new Builder();
-                builder.put("type", String.join(";", Arrays.asList(e.getContentType())));
-                builder.put("file", new StringBuffer().append(this.context.getAttribute(HTTP_PROTOCOL)).append(request.headers().get(Header.HOST)).append("/files/").append(fileName));
+                builder.put("type", e.getContentType());
+                builder.put("file", new StringBuffer().append(this.context.getAttribute(HTTP_HOST)).append("files/").append(fileName));
                 final File f = new File(path + File.separator + fileName);
                 if (!f.exists()) {
                     if (!f.getParentFile().exists()) {
@@ -227,10 +231,15 @@ public class smalltalk extends talk implements HttpSessionListener {
                 final BufferedOutputStream bout = new BufferedOutputStream(out);
                 final ByteArrayInputStream is = new ByteArrayInputStream(e.getData());
                 final BufferedInputStream bs = new BufferedInputStream(is);
-                final byte[] bytes = new byte[8192];
+                final byte[] bytes = new byte[1024];
+                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
                 while ((read = bs.read(bytes)) != -1) {
+                    for (int i = 0; i < keys.length; i++) {
+                        bytes[i] = (byte) (bytes[i] ^ keys[i]);
+                    }
                     bout.write(bytes, 0, read);
                 }
+
                 bout.close();
                 bs.close();
 
@@ -244,6 +253,41 @@ public class smalltalk extends talk implements HttpSessionListener {
         }
 
         return builders.toString();
+    }
+
+    public byte[] download(String fileName) throws ApplicationException {
+        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+
+        final Object meetingCode = request.getSession().getAttribute("meeting_code");
+        if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
+
+        // Create path to download the file
+        final String fileDir = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
+
+        // Creating an object of Path class and
+        // assigning local directory path of file to it
+        Path path = Paths.get(fileDir, fileName);
+
+        // Converting the file into a byte array
+        // using Files.readAllBytes() method
+        byte[] arr = new byte[0];
+        try {
+            arr = Files.readAllBytes(path);
+            byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
+            for (int i = 0; i < arr.length; i = i + 1024) {
+                for (int j = 0; j < keys.length; j++) {
+                    arr[i + j] = (byte) (arr[i + j] ^ keys[j]);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        response.addHeader(Header.CONTENT_DISPOSITION.toString(), "application/octet-stream;filename=\"" + fileName + "\"");
+        response.addHeader(Header.CONTENT_LENGTH.toString(), arr.length);
+
+        return arr;
     }
 
     public boolean topic() {
