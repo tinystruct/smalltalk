@@ -271,7 +271,7 @@ public class smalltalk extends talk implements HttpSessionListener {
 
         // Creating an object of Path class and
         // assigning local directory path of file to it
-        Path path = Paths.get(fileDir, fileName);
+        Path path = Paths.get(fileDir, new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8));
 
         // Converting the file into a byte array
         // using Files.readAllBytes() method
