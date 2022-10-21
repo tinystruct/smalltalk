@@ -18,6 +18,7 @@ import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,6 +45,9 @@ public class smalltalk extends talk implements HttpSessionListener {
 
         this.setVariable("message", "");
         this.setVariable("topic", "");
+
+//      set env with LANG=en_US.UTF-8
+        System.setProperty("LANG", "en_US.UTF-8");
     }
 
     public talk index() {
@@ -219,7 +223,7 @@ public class smalltalk extends talk implements HttpSessionListener {
                 final String fileName = e.getFileName();
                 final Builder builder = new Builder();
                 builder.put("type", e.getContentType());
-                builder.put("file", new StringBuffer().append(this.context.getAttribute(HTTP_HOST)).append("files/").append(fileName));
+                builder.put("file", new StringBuilder().append(this.context.getAttribute(HTTP_HOST)).append("files/").append(fileName));
                 final File f = new File(path + File.separator + fileName);
                 if (!f.exists()) {
                     if (!f.getParentFile().exists()) {
@@ -260,10 +264,12 @@ public class smalltalk extends talk implements HttpSessionListener {
         final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
 
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
+        if (meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
 
         // Create path to download the file
-        final String fileDir = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
+        final String fileDir = this.config.get("system.directory") != null ? this.config.get("system.directory") + "/files" : "files";
+
+        fileName = new String(fileName.getBytes(StandardCharsets.UTF_8), Charset.forName("ISO-8859-1"));
 
         // Creating an object of Path class and
         // assigning local directory path of file to it
@@ -285,7 +291,6 @@ public class smalltalk extends talk implements HttpSessionListener {
         }
 
         response.addHeader(Header.CONTENT_DISPOSITION.toString(), "application/octet-stream;filename=\"" + fileName + "\"");
-        response.addHeader(Header.CONTENT_LENGTH.toString(), arr.length);
 
         return arr;
     }
