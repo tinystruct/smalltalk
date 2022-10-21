@@ -269,8 +269,6 @@ public class smalltalk extends talk implements HttpSessionListener {
         // Create path to download the file
         final String fileDir = this.config.get("system.directory") != null ? this.config.get("system.directory") + "/files" : "files";
 
-        fileName = new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
-
         // Creating an object of Path class and
         // assigning local directory path of file to it
         Path path = Paths.get(fileDir, new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8));
