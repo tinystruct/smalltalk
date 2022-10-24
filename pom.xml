@@ -16,17 +16,12 @@
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
-            <version>8.5.55</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat.embed</groupId>
-            <artifactId>tomcat-embed-jasper</artifactId>
-            <version>8.5.55</version>
+            <version>8.5.78</version>
         </dependency>
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>0.6.8</version>
+            <version>0.6.9</version>
             <classifier>jar-with-dependencies</classifier>
         </dependency>
     </dependencies>
