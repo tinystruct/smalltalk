@@ -17,9 +17,9 @@ public class talk extends AbstractApplication {
 
     private static final long TIMEOUT = 100;
     protected static final int DEFAULT_MESSAGE_POOL_SIZE = 10;
-    protected final Map<String, BlockingQueue<Builder>> meetings = new ConcurrentHashMap<String, BlockingQueue<Builder>>();
-    protected final Map<String, Queue<Builder>> list = new ConcurrentHashMap<String, Queue<Builder>>();
-    protected final Map<String, List<String>> sessions = new ConcurrentHashMap<String, List<String>>();
+    protected final Map<String, BlockingQueue<Builder>> meetings = Maps.MEETINGS;
+    protected final Map<String, Queue<Builder>> list = Maps.LIST;
+    protected final Map<String, List<String>> sessions = Maps.SESSIONS;
     private ExecutorService service;
     private final Lock lock = Watcher.getInstance().acquire();
 
@@ -287,4 +287,10 @@ public class talk extends AbstractApplication {
         return true;
     }
 
+}
+
+class Maps {
+    public static final Map<String, BlockingQueue<Builder>> MEETINGS = new ConcurrentHashMap<String, BlockingQueue<Builder>>();
+    public static final Map<String, Queue<Builder>> LIST = new ConcurrentHashMap<String, Queue<Builder>>();
+    public static final Map<String, List<String>> SESSIONS = new ConcurrentHashMap<String, List<String>>();
 }

@@ -2,6 +2,7 @@ package custom.application.v1;
 
 import custom.application.talk;
 import org.tinystruct.ApplicationException;
+import org.tinystruct.application.Variables;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
@@ -82,7 +83,7 @@ public class smalltalk extends talk implements HttpSessionListener {
         this.setVariable("session_id", request.getSession().getId());
 
         Variable<?> topic;
-        if ((topic = this.getVariable(meetingCode.toString())) != null) {
+        if ((topic = Variables.getInstance().get("{%" + meetingCode + "%}")) != null) {
             this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
         } else {
             this.setVariable("topic", "");
@@ -297,7 +298,7 @@ public class smalltalk extends talk implements HttpSessionListener {
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
 
         if (meeting_code != null && request.getParameter("topic") != null) {
-            this.setVariable(meeting_code.toString(), filter(request.getParameter("topic")));
+            this.setSharedVariable(meeting_code.toString(), filter(request.getParameter("topic")));
             return true;
         }
 
