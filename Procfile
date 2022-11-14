@@ -1,1 +1,1 @@
-web: bin/dispatcher start --import org.tinystruct.system.TomcatServer --server-port $PORT
+web: bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --server-port $PORT
