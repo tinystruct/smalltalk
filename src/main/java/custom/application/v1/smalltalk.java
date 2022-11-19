@@ -3,14 +3,13 @@ package custom.application.v1;
 import custom.application.talk;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.application.Variables;
+import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
-import org.tinystruct.http.servlet.MultipartFormData;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
-import org.tinystruct.transfer.http.upload.ContentDisposition;
 
 import javax.servlet.ServletException;
 import java.awt.image.BufferedImage;
@@ -213,28 +212,25 @@ public class smalltalk extends talk implements SessionListener {
         final String path = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
 
         final Builders builders = new Builders();
-        try {
-            final MultipartFormData iter = new MultipartFormData(request);
-            ContentDisposition e;
-            int read;
-            while ((e = iter.getNextPart()) != null) {
-                final String fileName = e.getFileName();
-                final Builder builder = new Builder();
-                builder.put("type", e.getContentType());
-                builder.put("file", new StringBuilder().append(this.context.getAttribute(HTTP_HOST)).append("files/").append(fileName));
-                final File f = new File(path + File.separator + fileName);
-                if (!f.exists()) {
-                    if (!f.getParentFile().exists()) {
-                        f.getParentFile().mkdirs();
-                    }
+        List<FileEntity> list = request.getAttachments();
+        for (FileEntity file : list) {
+            final Builder builder = new Builder();
+            builder.put("type", file.getContentType());
+            builder.put("file", new StringBuilder().append(this.context.getAttribute(HTTP_HOST)).append("files/").append(file.getFilename()));
+            final File f = new File(path + File.separator + file.getFilename());
+            if (!f.exists()) {
+                if (!f.getParentFile().exists()) {
+                    f.getParentFile().mkdirs();
                 }
+            }
 
-                final OutputStream out = new FileOutputStream(f);
-                final BufferedOutputStream bout = new BufferedOutputStream(out);
-                final ByteArrayInputStream is = new ByteArrayInputStream(e.getData());
-                final BufferedInputStream bs = new BufferedInputStream(is);
+            try (final OutputStream out = new FileOutputStream(f);
+                 final BufferedOutputStream bout = new BufferedOutputStream(out);
+                 final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));
+            ) {
                 final byte[] bytes = new byte[1024];
                 byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
+                int read;
                 while ((read = bs.read(bytes)) != -1) {
                     for (int i = 0; i < keys.length; i++) {
                         bytes[i] = (byte) (bytes[i] ^ keys[i]);
@@ -246,12 +242,12 @@ public class smalltalk extends talk implements SessionListener {
                 bs.close();
 
                 builders.add(builder);
-                System.out.printf("File %s being uploaded to %s%n", fileName, path);
+                System.out.printf("File %s being uploaded to %s%n", file.getFilename(), path);
+            } catch (FileNotFoundException e) {
+                throw new ApplicationException(e.getMessage(), e);
+            } catch (IOException e) {
+                throw new ApplicationException(e.getMessage(), e);
             }
-        } catch (IOException e) {
-            throw new ApplicationException(e.getMessage(), e);
-        } catch (ServletException e) {
-            throw new ApplicationException(e.getMessage(), e);
         }
 
         return builders.toString();
