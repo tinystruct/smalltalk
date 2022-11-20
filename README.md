@@ -14,19 +14,35 @@ To execute it in CLI mode
 $ bin/dispatcher --version
 
   _/  '         _ _/  _     _ _/
-  /  /  /) (/ _)  /  /  (/ (  /  0.6.0
+  /  /  /) (/ _)  /  /  (/ (  /  0.8.2
            /
 ```
+
 ```tcsh
 $ bin/dispatcher --help
-Usage:	dispatcher [--attributes] [actions[/args...]...]
-	where attributes include any custom attributes those defined in context 
-	or keypair parameters are going to be passed by context,
- 	such as: 
-	--http.proxyHost=127.0.0.1 or --http.proxyPort=3128 or --param=value
+Usage: bin/dispatcher COMMAND [OPTIONS]
+Commands: 
+        download        Download a resource from other servers
+        exec            To execute native command(s)
+        install         Install a package
+        say             Output words
+        set             Set system property
+        sql-query       SQL query needs to be executed.
+        update          Update for latest version
+
+Options: 
+        --help          Help command
+        --import        Import application
+        --logo          Print logo
+        --settings      Print settings
+        --version       Print version
+
+Run 'bin/dispatcher COMMAND --help' for more information on a command.
 	
 $ bin/dispatcher say/"Praise to the Lord"
 Praise to the Lord
+$ bin/dispatcher say --words Hello --import tinystruct.examples.example
+Hello
 ```
 
 Run it in a servlet container
