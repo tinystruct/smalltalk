@@ -11,7 +11,6 @@ import org.tinystruct.http.*;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 
-import javax.servlet.ServletException;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -22,7 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 
-import static org.tinystruct.http.Constants.HTTP_HOST;
+import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends talk implements SessionListener {
 
@@ -48,7 +47,7 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     public talk index() {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
         if (meetingCode == null) {
@@ -90,7 +89,7 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     public String matrix() throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         System.out.println("this.getLink(\"talk/join\") = " + this.getLink("talk/join"));
         if (request.getParameter("meeting_code") != null) {
             BufferedImage qrImage = Matrix.toQRImage(this.getLink("talk/join") + "/" + request.getParameter("meeting_code"), 100, 100);
@@ -102,8 +101,8 @@ public class smalltalk extends talk implements SessionListener {
 
     public Object join(String meetingCode) throws ApplicationException {
         if (meetings.containsKey(meetingCode)) {
-            final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
-            final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+            final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+            final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
             request.getSession().setAttribute("meeting_code", meetingCode);
 
             this.setVariable("meeting_code", meetingCode);
@@ -112,13 +111,15 @@ public class smalltalk extends talk implements SessionListener {
             reforward.setDefault("/?q=talk");
             return reforward.forward();
         } else {
+            final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+            response.setStatus(ResponseStatus.NOT_FOUND);
             return "Invalid meeting code.";
         }
     }
 
     public Object start(String name) throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
-        final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
         request.getSession().setAttribute("user", name);
 
         Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -134,11 +135,14 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     public String command() {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+
         if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
             if (request.getSession().getAttribute("user") == null) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
                 return "{ \"error\": \"missing user\" }";
             }
 
@@ -148,12 +152,12 @@ public class smalltalk extends talk implements SessionListener {
 
             return this.save(meetingCode, builder);
         }
-//    response.setStatus(ResponseStatus.BAD_REQUEST);
+        response.setStatus(ResponseStatus.UNAUTHORIZED);
         return "{ \"error\": \"expired\" }";
     }
 
     public String save() {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (this.meetings.containsKey(meetingCode)) {
             final String sessionId = request.getSession().getId();
@@ -176,17 +180,22 @@ public class smalltalk extends talk implements SessionListener {
             }
         }
 
-//    response.setStatus(ResponseStatus.BAD_REQUEST);
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
         return "{ \"error\": \"expired\" }";
     }
 
     public String update() throws ApplicationException, IOException {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
         if (meetingCode != null) {
             return this.update(meetingCode.toString(), sessionId);
         }
+
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
+
         return "{ \"error\": \"expired\" }";
     }
 
@@ -197,14 +206,17 @@ public class smalltalk extends talk implements SessionListener {
             if ((list = sessions.get(meetingCode)) != null && list.contains(sessionId)) {
                 return this.update(sessionId);
             }
+
             error = "{ \"error\": \"session-timeout\" }";
         }
 
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
         return error;
     }
 
     public String upload() throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
 
@@ -254,8 +266,8 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     public byte[] download(String fileName) throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
-        final Response response = (Response) this.context.getAttribute("HTTP_RESPONSE");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
 
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
@@ -288,7 +300,7 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     public boolean topic() {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
 
         if (meeting_code != null && request.getParameter("topic") != null) {
@@ -300,7 +312,7 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     protected talk exit() {
-        final Request request = (Request) this.context.getAttribute("HTTP_REQUEST");
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         request.getSession().removeAttribute("meeting_code");
         return this;
     }
