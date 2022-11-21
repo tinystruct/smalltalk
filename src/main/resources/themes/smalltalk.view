@@ -433,17 +433,7 @@
       dataType: "json",
       data: { cmd: cmd }
     }).done(function( msg ) {
-      if(msg.error == "missing user") {
-          if (user) {
-            $.ajax({
-              type: "POST",
-              url: "[%LINK:talk/start%]/"+ user
-            }).done(function( msg ) {});
-          }
-          else {
-            $("#modal").modal();
-          }
-       }
+
     }).fail(function( msg ) {
       switch(msg.responseJSON.error) {
         case 'session-timeout':
@@ -465,6 +455,17 @@
             $('#messages').append($li);
             $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
             break;
+          case 'missing user':
+              if (user) {
+                $.ajax({
+                  type: "POST",
+                  url: "[%LINK:talk/start%]/"+ user
+                }).done(function( msg ) {});
+              }
+              else {
+                $("#modal").modal();
+              }
+           break;
           default:break;
       }
       
