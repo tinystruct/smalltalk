@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/tinystruct/tinystruct2.0/master/favicon.png" title="tinystruct2.0" /> 
+<img src="https://avatars.githubusercontent.com/u/3723144?s=400&u=6c4b365e7feb0aab20383785d77ba27abf9f5bb8&v=4" title="tinystruct2.0" /> 
 
 tinystruct
 =========
