@@ -1,6 +1,5 @@
 package custom.application.v1;
 
-import custom.application.talk;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.application.Variables;
 import org.tinystruct.data.FileEntity;
@@ -10,6 +9,7 @@ import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
+import org.tinystruct.transfer.DistributedMessageQueue;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -23,7 +23,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.tinystruct.http.Constants.*;
 
-public class smalltalk extends talk implements SessionListener {
+public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
     public void init() {
         super.init();
@@ -31,6 +31,8 @@ public class smalltalk extends talk implements SessionListener {
         this.setAction("talk", "index");
         this.setAction("talk/join", "join");
         this.setAction("talk/start", "start");
+        this.setAction("talk/save", "save");
+        this.setAction("talk/update", "update");
         this.setAction("talk/upload", "upload");
         this.setAction("talk/command", "command");
         this.setAction("talk/topic", "topic");
@@ -46,7 +48,7 @@ public class smalltalk extends talk implements SessionListener {
         SessionManager.getInstance().addListener(this);
     }
 
-    public talk index() {
+    public smalltalk index() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
@@ -86,6 +88,14 @@ public class smalltalk extends talk implements SessionListener {
         }
 
         return this;
+    }
+
+    public String save(String groupId, String sessionid, String message) {
+        return this.put(groupId, sessionid, message);
+    }
+
+    public String update(String sessionId) throws ApplicationException {
+        return this.take(sessionId);
     }
 
     public String matrix() throws ApplicationException {
@@ -311,7 +321,7 @@ public class smalltalk extends talk implements SessionListener {
         return false;
     }
 
-    protected talk exit() {
+    protected smalltalk exit() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         request.getSession().removeAttribute("meeting_code");
         return this;
