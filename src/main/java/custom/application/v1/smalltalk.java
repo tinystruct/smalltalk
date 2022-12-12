@@ -59,8 +59,8 @@ public class smalltalk extends talk implements SessionListener {
 
         List<String> session_ids;
         final String sessionId = request.getSession().getId();
-        if (this.meetings.get(meetingCode) == null) {
-            this.meetings.put(meetingCode.toString(), new ArrayBlockingQueue<Builder>(DEFAULT_MESSAGE_POOL_SIZE));
+        if (this.groups.get(meetingCode) == null) {
+            this.groups.put(meetingCode.toString(), new ArrayBlockingQueue<Builder>(DEFAULT_MESSAGE_POOL_SIZE));
         }
 
         // If the current user is not in the list of the sessions, we create a default session list for the meeting generated.
@@ -100,7 +100,7 @@ public class smalltalk extends talk implements SessionListener {
     }
 
     public Object join(String meetingCode) throws ApplicationException {
-        if (meetings.containsKey(meetingCode)) {
+        if (groups.containsKey(meetingCode)) {
             final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
             final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
             request.getSession().setAttribute("meeting_code", meetingCode);
@@ -159,7 +159,7 @@ public class smalltalk extends talk implements SessionListener {
     public String save() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (this.meetings.containsKey(meetingCode)) {
+        if (this.groups.containsKey(meetingCode)) {
             final String sessionId = request.getSession().getId();
             if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
                 String message;
@@ -201,10 +201,10 @@ public class smalltalk extends talk implements SessionListener {
 
     public String update(String meetingCode, String sessionId) throws ApplicationException, IOException {
         String error = "{ \"error\": \"expired\" }";
-        if (this.meetings.containsKey(meetingCode)) {
+        if (this.groups.containsKey(meetingCode)) {
             List<String> list;
             if ((list = sessions.get(meetingCode)) != null && list.contains(sessionId)) {
-                return this.update(sessionId);
+                return this.take(sessionId);
             }
 
             error = "{ \"error\": \"session-timeout\" }";
@@ -353,7 +353,7 @@ public class smalltalk extends talk implements SessionListener {
                     session_ids.remove(arg0.getSession().getId());
                 }
 
-                if ((messages = this.meetings.get(meetingCode)) != null) {
+                if ((messages = this.groups.get(meetingCode)) != null) {
                     messages.remove(meetingCode);
                 }
 
