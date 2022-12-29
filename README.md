@@ -53,11 +53,7 @@ Run it in a servlet container
 Run it in docker container
 ---
 ```tcsh
-# wget https://github.com/tinystruct/smalltalk/archive/master.zip
-# unzip master.zip
-# mv smalltalk-master/Dockerfile .
-# docker build -t smalltalk:1.0 -f Dockerfile .
-# docker run -d -p 777:777 smalltalk:1.0
+# docker run -d -p 777:777 m0ver/smalltalk
 ```
 
 You can access the below URLs after deployed the project in Tomcat 6.0+ :
