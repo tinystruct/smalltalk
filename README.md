@@ -48,6 +48,7 @@ Hello
 Run it in a servlet container
 ---
 ```tcsh
+# ./mvnw compile
 # bin/dispatcher start --import org.tinystruct.system.NettyHttpServer
 ```
 Run it in docker container
