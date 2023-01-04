@@ -360,6 +360,7 @@
     <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/recorder.js"></script>
     <script type="text/javascript">
   //<![CDATA[
   var timer = new Timer(.5,function(){});

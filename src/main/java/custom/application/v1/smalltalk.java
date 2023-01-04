@@ -11,6 +11,7 @@ import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
+import javax.activation.MimetypesFileTypeMap;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -275,12 +276,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return builders.toString();
     }
 
-    public byte[] download(String fileName) throws ApplicationException {
+    public byte[] download(String fileName, boolean encoded) throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
 
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
+        if (encoded && meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
 
         // Create path to download the file
         final String fileDir = this.config.get("system.directory") != null ? this.config.get("system.directory") + "/files" : "files";
@@ -293,20 +294,30 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // using Files.readAllBytes() method
         byte[] arr = new byte[0];
         try {
+            String mimeType = new MimetypesFileTypeMap().getContentType(path.toFile());
+            if (mimeType != null)
+                response.addHeader(Header.CONTENT_TYPE.toString(), mimeType);
+            else
+                response.addHeader(Header.CONTENT_DISPOSITION.toString(), "application/octet-stream;filename=\"" + fileName + "\"");
+
             arr = Files.readAllBytes(path);
-            byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-            for (int i = 0; i < arr.length; i = i + 1024) {
-                for (int j = 0; j < keys.length; j++) {
-                    arr[i + j] = (byte) (arr[i + j] ^ keys[j]);
+            if (encoded) {
+                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
+                for (int i = 0; i < arr.length; i = i + 1024) {
+                    for (int j = 0; j < keys.length; j++) {
+                        arr[i + j] = (byte) (arr[i + j] ^ keys[j]);
+                    }
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        response.addHeader(Header.CONTENT_DISPOSITION.toString(), "application/octet-stream;filename=\"" + fileName + "\"");
-
         return arr;
+    }
+
+    public byte[] download(String fileName) throws ApplicationException {
+        return this.download(fileName, true);
     }
 
     public boolean topic() {
