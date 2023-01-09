@@ -14,7 +14,7 @@ To execute it in CLI mode
 $ bin/dispatcher --version
 
   _/  '         _ _/  _     _ _/
-  /  /  /) (/ _)  /  /  (/ (  /  0.8.6
+  /  /  /) (/ _)  /  /  (/ (  /  0.8.8
            /
 ```
 
@@ -44,7 +44,13 @@ Praise to the Lord
 $ bin/dispatcher say --words Hello --import tinystruct.examples.example
 Hello
 ```
-
+Configuration for ChatGPT
+---
+Add the below two lines to applications.properties
+```
+chatGPT.api_endpoint=https://api.openai.com/v1/completions
+chatGPT.api_key=sk-[secret key]
+```
 Run it in a servlet container
 ---
 ```tcsh
