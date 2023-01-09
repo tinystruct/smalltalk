@@ -200,7 +200,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
-    public String chatGPT() throws MalformedURLException, ApplicationException {
+    /**
+     * Call chat GPT API
+     *
+     * @return message from API
+     * @throws ApplicationException
+     */
+    public String chatGPT() throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (this.groups.containsKey(meetingCode)) {
@@ -217,7 +223,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
                     headers.add(Header.CONTENT_TYPE.set("application/json"));
 
-                    message = message.replaceAll("<br>|<br />","");
+                    message = message.replaceAll("<br>|<br />", "");
 
                     builder.setHeaders(headers)
                             .setMethod(Method.POST)
@@ -228,34 +234,33 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                                     "  \"temperature\": 0" +
                                     "}");
 
-                    URLRequest _request = new URLRequest(new URL(API_URL));
-
-                    byte[] bytes = null;
+                    URLRequest _request;
+                    byte[] bytes;
                     try {
+                        _request = new URLRequest(new URL(API_URL));
                         bytes = _request.send(builder);
-                    } catch (URISyntaxException e) {
-                        e.printStackTrace();
-                    }
+                        String response = new String(bytes);
+                        Builder tokens = new Builder();
+                        tokens.parse(response);
 
-                    String response = new String(bytes);
-                    Builder tokens = new Builder();
-                    tokens.parse(response);
+                        Builders builders;
+                        if (tokens.get("choices") != null) {
+                            builders = (Builders) tokens.get("choices");
 
-                    Builders builders;
-                    if (tokens.get("choices") != null) {
-                        builders = (Builders) tokens.get("choices");
+                            if (builders.get(0).size() > 0) {
+                                Builder choice = builders.get(0);
 
-                        if (builders.get(0).size() > 0) {
-                            Builder choice = builders.get(0);
+                                final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+                                final Builder data = new Builder();
+                                data.put("user", "ChatGPT");
+                                data.put("time", format.format(new Date()));
+                                data.put("message", filter(choice.get("text").toString()));
 
-                            final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-                            final Builder data = new Builder();
-                            data.put("user", "ChatGPT");
-                            data.put("time", format.format(new Date()));
-                            data.put("message", filter(choice.get("text").toString()));
-
-                            return data.toString();
+                                return data.toString();
+                            }
                         }
+                    } catch (URISyntaxException | MalformedURLException e) {
+                        throw new ApplicationException(e.getMessage(), e.getCause());
                     }
                 }
             }
