@@ -360,7 +360,6 @@
     <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
-    <script type="text/javascript" src="/scripts/recorder.js"></script>
     <script type="text/javascript">
   //<![CDATA[
   var timer = new Timer(.5,function(){});
@@ -479,9 +478,22 @@
     $.ajax({
       type: "POST",
       url: "[%LINK:talk/save%]",
+      dataType: "json",
       data: { text: $("#text").html(), time: new Date().getTime() }
     }).done(function( msg ) {
-      $("#text").html('');
+        console.log(msg.message);
+        $("#text").html('');
+        if($("#topic").html().indexOf("@ChatGPT")!=-1) {
+            $.ajax({
+              type: "POST",
+              url: "[%LINK:talk/chatbot%]",
+              dataType: "json",
+              data: { text: msg.message, time: new Date().getTime() }
+            }).done(function($data) {
+              update($data);
+              is_running = false;
+            });
+        }
     });
   }
 

@@ -14,6 +14,9 @@ import org.tinystruct.transfer.DistributedMessageQueue;
 import javax.activation.MimetypesFileTypeMap;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +41,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setAction("talk/command", "command");
         this.setAction("talk/topic", "topic");
         this.setAction("talk/matrix", "matrix");
+        this.setAction("talk/chatbot", "chatGPT");
         this.setAction("files", "download");
 
         this.setVariable("message", "");
@@ -196,6 +200,69 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
+    public String chatGPT() throws MalformedURLException, ApplicationException {
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Object meetingCode = request.getSession().getAttribute("meeting_code");
+        if (this.groups.containsKey(meetingCode)) {
+            final String sessionId = request.getSession().getId();
+            if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
+                String message;
+                if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
+                    // Replace YOUR_API_KEY with your actual API key
+                    String API_KEY = this.config.get("chatGPT.api_key");
+                    String API_URL = this.config.get("chatGPT.api_endpoint");
+
+                    HttpRequestBuilder builder = new HttpRequestBuilder();
+                    Headers headers = new Headers();
+                    headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
+                    headers.add(Header.CONTENT_TYPE.set("application/json"));
+
+                    message = message.replaceAll("<br>|<br />","");
+
+                    builder.setHeaders(headers)
+                            .setMethod(Method.POST)
+                            .setRequestBody("{\n" +
+                                    "  \"model\": \"text-davinci-003\"," +
+                                    "  \"prompt\": \"" + message + "\"," +
+                                    "  \"max_tokens\": 2000," +
+                                    "  \"temperature\": 0" +
+                                    "}");
+
+                    URLRequest _request = new URLRequest(new URL(API_URL));
+
+                    byte[] bytes = null;
+                    try {
+                        bytes = _request.send(builder);
+                    } catch (URISyntaxException e) {
+                        e.printStackTrace();
+                    }
+
+                    String response = new String(bytes);
+                    Builder tokens = new Builder();
+                    tokens.parse(response);
+
+                    Builders builders;
+                    if (tokens.get("choices") != null) {
+                        builders = (Builders) tokens.get("choices");
+
+                        if (builders.get(0).size() > 0) {
+                            Builder choice = builders.get(0);
+
+                            final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+                            final Builder data = new Builder();
+                            data.put("user", "ChatGPT");
+                            data.put("time", format.format(new Date()));
+                            data.put("message", filter(choice.get("text").toString()));
+
+                            return data.toString();
+                        }
+                    }
+                }
+            }
+        }
+        return "{}";
+    }
+
     public String update() throws ApplicationException, IOException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -341,6 +408,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Override
     protected String filter(String text) {
         text = text.replaceAll("<script(.*)>(.*)<\\/script>", "");
+        text = text.replaceAll("\\\\n", "<br />");
         return text;
     }
 
