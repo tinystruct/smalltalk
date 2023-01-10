@@ -481,14 +481,13 @@
       dataType: "json",
       data: { text: $("#text").html(), time: new Date().getTime() }
     }).done(function( msg ) {
-        console.log(msg.message);
         $("#text").html('');
         if($("#topic").html().indexOf("@ChatGPT")!=-1) {
             $.ajax({
               type: "POST",
               url: "[%LINK:talk/chatbot%]",
               dataType: "json",
-              data: { text: "@ChatGPT " + msg.message, time: new Date().getTime() }
+              data: { text: "@ChatGPT " + $("<div>"+msg.message+"</div>").text(), time: new Date().getTime() }
             }).done(function($data) {
               update($data);
               is_running = false;
@@ -826,9 +825,6 @@
 
   });
   //]]>
-
-
-
     </script>
 </head>
 <body>
