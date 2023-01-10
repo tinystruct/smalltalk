@@ -74,7 +74,7 @@ You can access the below URL after start the server:
 
 * <a href="http://localhost:777/?q=talk">http://localhost:777/?q=talk </a><br />
 
-If you want to talk with @ChatGPT, please type @ChatGPT in your topic of the conversation.
+If you want to talk with @ChatGPT, please type @ChatGPT in your topic of the conversation when you set up the topic.
 
 Demonstration
 ---
