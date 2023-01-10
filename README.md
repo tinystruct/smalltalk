@@ -62,14 +62,16 @@ Run it in docker container
 ```tcsh
 # docker run -d -p 777:777 m0ver/smalltalk
 ```
+Accesss
+---
+You can access the below URL after start the server:
 
-You can access the below URLs after deployed the project in Tomcat 6.0+ :
+* <a href="http://localhost:777/?q=talk">http://localhost:777/?q=talk </a><br />
 
-* <a href="http://localhost:777/?q=say/Praise%20to%20the%20Lord!">http://localhost:777/?q=say/Praise%20to%20the%20Lord! </a><br />
-* <a href="http://localhost:777/?q=praise">http://localhost:777/?q=praise </a><br />
-* <a href="http://localhost:777/?q=youhappy">http://localhost:777/?q=youhappy</a><br />
-* <a href="http://localhost:777/?q=say/%E4%BD%A0%E7%9F%A5%E9%81%93%E5%85%A8%E4%B8%96%E7%95%8C%E6%9C%80%E7%95%85%E9%94%80%E7%9A%84%E4%B9%A6%E6%98%AF%E5%93%AA%E4%B8%80%E6%9C%AC%E4%B9%A6%E5%90%97%EF%BC%9F">http://localhost:777/?q=say/%E4%BD%A0%E7%9F%A5%E9%81%93%E5%85%A8%E4%B8%96%E7%95%8C%E6%9C%80%E7%95%85%E9%94%80%E7%9A%84%E4%B9%A6%E6%98%AF%E5%93%AA%E4%B8%80%E6%9C%AC%E4%B9%A6%E5%90%97%EF%BC%9F</a>
+If you want to talk with @ChatGPT, please type @ChatGPT in your topic of the conversation.
 
+Demonstration
+---
 A demonstration for comet technology, without any websocket and support any web browser:
 * <a href="https://tinystruct.herokuapp.com/?q=talk">https://tinystruct.herokuapp.com/?q=talk</a><br />
 
@@ -96,7 +98,7 @@ Explore it
 * Please read more example code in the project.
 * Also please see this project: 
 	https://github.com/m0ver/mobile1.0
-	http://ingod.asia
+	http://ingod.today
 
 
 License
