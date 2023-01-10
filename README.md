@@ -62,7 +62,7 @@ Run it in docker container
 ```tcsh
 # docker run -d -p 777:777 m0ver/smalltalk
 ```
-Accesss
+Access
 ---
 You can access the below URL after start the server:
 
