@@ -488,7 +488,7 @@
               type: "POST",
               url: "[%LINK:talk/chatbot%]",
               dataType: "json",
-              data: { text: msg.message, time: new Date().getTime() }
+              data: { text: "@ChatGPT " + msg.message, time: new Date().getTime() }
             }).done(function($data) {
               update($data);
               is_running = false;
