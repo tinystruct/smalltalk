@@ -46,7 +46,7 @@ Hello
 ```
 Configuration for ChatGPT
 ---
-Add the below two lines to applications.properties
+Add the below two lines to application.properties
 ```
 chatGPT.api_endpoint=https://api.openai.com/v1/completions
 chatGPT.api_key=sk-[secret key]
