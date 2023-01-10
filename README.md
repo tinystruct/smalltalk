@@ -65,7 +65,7 @@ Tomcat server
 Run it in docker container
 ---
 ```tcsh
-# docker run -d -p 777:777 -e "CHATGPT_API_KEY=`[CHATGPT-API-KEY]`" m0ver/smalltalk
+# docker run -d -p 777:777 -e "CHATGPT_API_KEY=[YOUR-CHATGPT-API-KEY]" m0ver/smalltalk
 ```
 Access
 ---
