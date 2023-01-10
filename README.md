@@ -13,7 +13,7 @@ To execute it in CLI mode
 $ bin/dispatcher --version
 
   _/  '         _ _/  _     _ _/
-  /  /  /) (/ _)  /  /  (/ (  /  0.8.8
+  /  /  /) (/ _)  /  /  (/ (  /  0.8.9
            /
 ```
 
