@@ -218,21 +218,26 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     String API_KEY = this.config.get("chatGPT.api_key");
                     String API_URL = this.config.get("chatGPT.api_endpoint");
 
-                    HttpRequestBuilder builder = new HttpRequestBuilder();
                     Headers headers = new Headers();
                     headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
                     headers.add(Header.CONTENT_TYPE.set("application/json"));
 
                     message = message.replaceAll("<br>|<br />", "");
 
+                    String payload = "{\n" +
+                            "  \"model\": \"text-davinci-003\"," +
+                            "  \"prompt\": \"\"," +
+                            "  \"max_tokens\": 2500," +
+                            "  \"temperature\": 0" +
+                            "}";
+
+                    Builder _message = new Builder();
+                    _message.parse(payload);
+                    _message.put("prompt", message);
+
+                    HttpRequestBuilder builder = new HttpRequestBuilder();
                     builder.setHeaders(headers)
-                            .setMethod(Method.POST)
-                            .setRequestBody("{\n" +
-                                    "  \"model\": \"text-davinci-003\"," +
-                                    "  \"prompt\": \"" + message + "\"," +
-                                    "  \"max_tokens\": 2000," +
-                                    "  \"temperature\": 0" +
-                                    "}");
+                            .setMethod(Method.POST).setRequestBody(_message.toString());
 
                     URLRequest _request;
                     byte[] bytes;
