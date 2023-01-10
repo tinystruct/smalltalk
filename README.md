@@ -66,7 +66,7 @@ Tomcat server
 Run it in docker container
 ---
 ```tcsh
-# docker run -d -p 777:777 m0ver/smalltalk
+# docker run -d -p 777:777 -e "CHATGPT_API_KEY=`[CHATGPT-API-KEY]`" m0ver/smalltalk
 ```
 Access
 ---
@@ -83,32 +83,9 @@ A demonstration for comet technology, without any websocket and support any web 
 
 <img src="https://github.com/m0ver/tinystruct-examples/blob/master/example.png" title="smalltalk - tinystruct" height="300"/> <br />
 
-Live Demo Site: 
-* https://tinystruct.herokuapp.com/
-* <a href="https://tinystruct.herokuapp.com/?q=say/Praise%20to%20the%20Lord!">https://tinystruct.herokuapp.com/?q=say/Praise%20to%20the%20Lord! </a><br />
-* <a href="https://tinystruct.herokuapp.com/?q=praise">https://tinystruct.herokuapp.com/?q=praise</a><br />
-* <a href="https://tinystruct.herokuapp.com/?q=youhappy">https://tinystruct.herokuapp.com/?q=youhappy</a><br />
-* <a href="https://tinystruct.herokuapp.com/?q=say/%E4%BD%A0%E7%9F%A5%E9%81%93%E5%85%A8%E4%B8%96%E7%95%8C%E6%9C%80%E7%95%85%E9%94%80%E7%9A%84%E4%B9%A6%E6%98%AF%E5%93%AA%E4%B8%80%E6%9C%AC%E4%B9%A6%E5%90%97%EF%BC%9F">https://tinystruct.herokuapp.com/?q=say/%E4%BD%A0%E7%9F%A5%E9%81%93%E5%85%A8%E4%B8%96%E7%95%8C%E6%9C%80%E7%95%85%E9%94%80%E7%9A%84%E4%B9%A6%E6%98%AF%E5%93%AA%E4%B8%80%E6%9C%AC%E4%B9%A6%E5%90%97%EF%BC%9F</a>
-
-Results in your browser should be:
-
-<blockquote>
-<h1>Praise to the Lord!</h1>
-Praise to the Lord! 
-<i>true</i>
-<h1>你知道全世界最畅销的书是哪一本书吗？</h1>
-</blockquote>
-
-Explore it 
---
-* Please read more example code in the project.
-* Also please see this project: 
-	https://github.com/m0ver/mobile1.0
-	http://ingod.today
-
 
 License
---
+---
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
