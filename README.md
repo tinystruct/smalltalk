@@ -51,11 +51,17 @@ Add the below two lines to application.properties
 chatGPT.api_endpoint=https://api.openai.com/v1/completions
 chatGPT.api_key=sk-[secret key]
 ```
-Run it in a servlet container
+Run it in a servlet container / http server
 ---
+Netty http server
 ```tcsh
 # ./mvnw compile
-# bin/dispatcher start --import org.tinystruct.system.NettyHttpServer
+# bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --server-port 777
+```
+Tomcat server
+```tcsh
+# ./mvnw compile
+# bin/dispatcher start --import org.tinystruct.system.TomcatServer --server-port 777
 ```
 Run it in docker container
 ---
