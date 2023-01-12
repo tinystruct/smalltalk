@@ -20,37 +20,37 @@ You can run smalltalk in different ways:
 CLI mode
 1. Open a terminal and navigate to the project's root directory.
 2. To execute it in CLI mode, run the following command:
-```
+```tcsh
 $ bin/dispatcher --version
 ```
 To see the available commands, run the following command:
-```
+```tcsh
 $ bin/dispatcher --help
 ```
 To interact with ChatGPT, use the say command, for example:
-```
+```tcsh
 $ bin/dispatcher say/"What's your name?"
 ```
 Web mode
 
 1. Run the project in a servlet container or in a HTTP server:
 2. To run it in a servlet container, you need to compile the project first:
-```
+```tcsh
 # ./mvnw compile
 ```
 then you can run it on tomcat server by running the following command:
 
-```
+```tcsh
 # bin/dispatcher start --import org.tinystruct.system.TomcatServer --server-port 777
 ```
 or run it on netty http server by running the following command:
 
-```
+```tcsh
 # bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --server-port 777
 ```
 3. To run it in a Docker container, you can use the command below:
 
-```
+```tcsh
 # docker run -d -p 777:777 -e "CHATGPT_API_KEY=[YOUR-CHATGPT-API-KEY]" m0ver/smalltalk
 ```
 4. Access the application by navigating to http://localhost:777/?q=talk in your web browser
