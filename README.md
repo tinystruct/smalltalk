@@ -75,8 +75,6 @@ Acknowledgements
 ---
 smalltalk uses the OpenAI API to interact with the ChatGPT language model. We would like to thank OpenAI for providing this powerful tool to the community.
 
-This is a sample README file, you can use it as a starting point and adapt it to your own needs. You can also add more sections as needed, such as a "Dependencies" section to list the required libraries or a "Examples" section to show some sample usage of the project.
-
 License
 ---
 
