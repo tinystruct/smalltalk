@@ -11,7 +11,7 @@ Installation
 2. Extract the downloaded ZIP file to your local machine.
 3. You will need a Java Development Kit (JDK) installed on your computer, as well as a Java development environment such as Eclipse or IntelliJ IDEA.
 4. Import the extracted project into your Java development environment.
-5. Go to src/main/resources/application.properties file and update the chatGPT.api_key with your own key.
+5. Go to `src/main/resources/application.properties` file and update the `chatGPT.api_key` with your own key.
 
 Usage
 ---
