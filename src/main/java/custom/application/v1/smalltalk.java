@@ -7,6 +7,7 @@ import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
+import org.tinystruct.system.cli.CommandOption;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
@@ -29,6 +30,8 @@ import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
+    private boolean cli_mode;
+
     public void init() {
         super.init();
 
@@ -43,6 +46,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setAction("talk/matrix", "matrix");
         this.setAction("talk/chatbot", "chatGPT");
         this.setAction("files", "download");
+        this.setAction("chat", "chat");
+        this.commandLines.get("chat").setDescription("Chat with ChatGPT in command-line.");
 
         this.setVariable("message", "");
         this.setVariable("topic", "");
@@ -214,71 +219,111 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
                 String message;
                 if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
-                    // Replace YOUR_API_KEY with your actual API key
-                    String API_KEY = this.config.get("chatGPT.api_key");
-                    String API_URL = this.config.get("chatGPT.api_endpoint");
-                    Headers headers = new Headers();
-                    headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
-                    headers.add(Header.CONTENT_TYPE.set("application/json"));
-
-                    message = message.replaceAll("<br>|<br />", "");
-
-                    String payload = "{\n" +
-                            "  \"model\": \"text-davinci-003\"," +
-                            "  \"prompt\": \"\"," +
-                            "  \"max_tokens\": 2500," +
-                            "  \"temperature\": 0," +
-                            "  \"n\":1" +
-                            "}";
-
-                    Builder _message = new Builder();
-                    _message.parse(payload);
-                    if (this.getVariable("previous") != null) {
-                        _message.put("prompt", this.getVariable("previous").getValue() + "\\\\n" + message);
-                        _message.put("stop", "\\\\n");
-                    } else {
-                        _message.put("prompt", message);
-                    }
-                    _message.put("user", sessionId);
-
-                    this.setVariable("previous", message);
-
-                    HttpRequestBuilder builder = new HttpRequestBuilder();
-                    builder.setHeaders(headers)
-                            .setMethod(Method.POST).setRequestBody(_message.toString());
-
-                    URLRequest _request;
-                    byte[] bytes;
-                    try {
-                        _request = new URLRequest(new URL(API_URL));
-                        bytes = _request.send(builder);
-                        String response = new String(bytes);
-                        Builder tokens = new Builder();
-                        tokens.parse(response);
-
-                        Builders builders;
-                        if (tokens.get("choices") != null) {
-                            builders = (Builders) tokens.get("choices");
-
-                            if (builders.get(0).size() > 0) {
-                                Builder choice = builders.get(0);
-
-                                final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-                                final Builder data = new Builder();
-                                data.put("user", "ChatGPT");
-                                data.put("time", format.format(new Date()));
-                                data.put("message", filter(choice.get("text").toString()));
-
-                                return data.toString();
-                            }
-                        }
-                    } catch (URISyntaxException | MalformedURLException e) {
-                        throw new ApplicationException(e.getMessage(), e.getCause());
-                    }
+                    return chat(sessionId, message);
                 }
             }
         }
         return "{}";
+    }
+
+    public void chat() {
+        this.cli_mode = true;
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("Welcome to user smalltalk, you can type your questions or quite by type `exit`.");
+
+        String sessionId = UUID.randomUUID().toString();
+        final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+
+        while (true) {
+            System.out.print(String.format("%s >: ", format.format(new Date())));
+            String input = scanner.nextLine();
+
+            if (input.equals("exit")) {
+                System.out.println("Exiting...");
+                System.exit(-1);
+                break;
+            } else {
+                try {
+                    String message = this.chat(sessionId, "\n\n" + input.replaceAll("\n", "") + "\n");
+                    message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
+
+                    System.out.println(message);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        scanner.close();
+    }
+
+    private String chat(String sessionId, String message) throws ApplicationException {
+        // Replace YOUR_API_KEY with your actual API key
+        String API_KEY = this.config.get("chatGPT.api_key");
+        String API_URL = this.config.get("chatGPT.api_endpoint");
+        Headers headers = new Headers();
+        headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
+        headers.add(Header.CONTENT_TYPE.set("application/json"));
+
+        if (!cli_mode)
+            message = message.replaceAll("<br>|<br />", "");
+
+        String payload = "{\n" +
+                "  \"model\": \"text-davinci-003\"," +
+                "  \"prompt\": \"\"," +
+                "  \"max_tokens\": 2500," +
+                "  \"temperature\": 0," +
+                "  \"n\":1" +
+                "}";
+
+        Builder _message = new Builder();
+        _message.parse(payload);
+        if (this.getVariable("previous") != null) {
+            _message.put("prompt", this.getVariable("previous").getValue() + "\\\\n" + message);
+            _message.put("stop", "\\\\n");
+        } else {
+            _message.put("prompt", message);
+        }
+        _message.put("user", sessionId);
+
+        this.setVariable("previous", message);
+
+        HttpRequestBuilder builder = new HttpRequestBuilder();
+        builder.setHeaders(headers)
+                .setMethod(Method.POST).setRequestBody(_message +"\n");
+
+        URLRequest _request;
+        byte[] bytes;
+        try {
+            _request = new URLRequest(new URL(API_URL));
+            bytes = _request.send(builder);
+            String response = new String(bytes);
+            Builder tokens = new Builder();
+            tokens.parse(response);
+
+            Builders builders;
+            if (tokens.get("choices") != null) {
+                builders = (Builders) tokens.get("choices");
+
+                if (builders.get(0).size() > 0) {
+                    Builder choice = builders.get(0);
+
+                    final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+                    final Builder data = new Builder();
+                    data.put("user", "ChatGPT");
+                    data.put("time", format.format(new Date()));
+                    data.put("message", filter(choice.get("text").toString()));
+
+                    if (cli_mode)
+                        return String.format("%s %s >: %s", data.get("time"), data.get("user"), choice.get("text"));
+                    else
+                        return data.toString();
+                }
+            }
+        } catch (URISyntaxException | MalformedURLException e) {
+            throw new ApplicationException(e.getMessage(), e.getCause());
+        }
+        return "";
     }
 
     public String update() throws ApplicationException, IOException {
