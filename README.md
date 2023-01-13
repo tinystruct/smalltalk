@@ -21,6 +21,7 @@ CLI mode
 1. Open a terminal and navigate to the project's root directory.
 2. To execute it in CLI mode, run the following command:
 ```tcsh
+$ ./mvnw compile
 $ bin/dispatcher --version
 ```
 To see the available commands, run the following command:
