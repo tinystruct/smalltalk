@@ -29,7 +29,7 @@ $ bin/dispatcher --help
 ```
 To interact with ChatGPT, use the say command, for example:
 ```tcsh
-$ bin/dispatcher say/"What's your name?"
+$ bin/dispatcher chat
 ```
 Web mode
 
