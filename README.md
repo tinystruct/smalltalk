@@ -32,6 +32,7 @@ To interact with ChatGPT, use the say command, for example:
 ```tcsh
 $ bin/dispatcher chat
 ```
+<img src="https://raw.githubusercontent.com/tinystruct/smalltalk/master/screenshot.png" />
 Web mode
 
 1. Run the project in a servlet container or in a HTTP server:
