@@ -41,12 +41,12 @@ Web mode
 then you can run it on tomcat server by running the following command:
 
 ```tcsh
-# bin/dispatcher start --import org.tinystruct.system.TomcatServer --server-port 777
+$ sudo bin/dispatcher start --import org.tinystruct.system.TomcatServer --server-port 777
 ```
 or run it on netty http server by running the following command:
 
 ```tcsh
-# bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --server-port 777
+$ sudo bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --server-port 777
 ```
 3. To run it in a Docker container, you can use the command below:
 
