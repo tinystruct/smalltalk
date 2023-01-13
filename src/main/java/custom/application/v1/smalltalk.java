@@ -229,13 +229,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     public void chat() {
         this.cli_mode = true;
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Welcome to user smalltalk, you can type your questions or quite by type `exit`.");
+        System.out.println("Welcome to use smalltalk, you can type your questions or quite by type `exit`.");
 
         String sessionId = UUID.randomUUID().toString();
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
 
         while (true) {
-            System.out.print(String.format("%s >: ", format.format(new Date())));
+            System.out.printf("%s >: ", format.format(new Date()));
             String input = scanner.nextLine();
 
             if (input.equals("exit")) {
@@ -244,7 +244,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 break;
             } else {
                 try {
-                    String message = this.chat(sessionId, "\n\n" + input.replaceAll("\n", "") + "\n");
+                    String message = this.chat(sessionId, "\n\n" + input.replaceAll("\n", " ") + "\n");
                     message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
 
                     System.out.println(message);
