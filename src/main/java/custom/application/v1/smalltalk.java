@@ -31,6 +31,7 @@ import static org.tinystruct.http.Constants.*;
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
     private boolean cli_mode;
+    private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
 
     public void init() {
         super.init();
@@ -185,10 +186,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 String message;
                 if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
 
-                    String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
-                    this.setVariable("browser", agent[agent.length - 1]);
+                    if(request.headers().get(Header.USER_AGENT)!=null) {
+                        String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
+                        this.setVariable("browser", agent[agent.length - 1]);
+                    }
 
-                    final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
                     final Builder builder = new Builder();
                     builder.put("user", request.getSession().getAttribute("user"));
                     builder.put("time", format.format(new Date()));
@@ -419,9 +421,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         try {
             String mimeType = new MimetypesFileTypeMap().getContentType(path.toFile());
             if (mimeType != null)
-                response.addHeader(Header.CONTENT_TYPE.toString(), mimeType);
+                response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
             else
-                response.addHeader(Header.CONTENT_DISPOSITION.toString(), "application/octet-stream;filename=\"" + fileName + "\"");
+                response.addHeader(Header.CONTENT_DISPOSITION.name(), "application/octet-stream;filename=\"" + fileName + "\"");
 
             arr = Files.readAllBytes(path);
             if (encoded) {
