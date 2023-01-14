@@ -278,15 +278,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         Builder _message = new Builder();
         _message.parse(payload);
-        if (this.getVariable("previous") != null) {
-            _message.put("prompt", this.getVariable("previous").getValue() + "\\\\n" + message);
-            _message.put("stop", "\\\\n");
-        } else {
-            _message.put("prompt", message);
-        }
+        _message.put("prompt", message);
         _message.put("user", sessionId);
-
-        this.setVariable("previous", message);
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers)
