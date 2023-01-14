@@ -47,6 +47,11 @@
     padding-top: 75px;
   }
 
+  body > .container img {
+      width: 100%;
+      max-width: 100%;
+  }
+
   #matrix { position: absolute; right:0;bottom:0; width:77px; height:77px;}
   .note { position: relative }
   .pad { margin: 10px 0;position:relative; }
@@ -311,7 +316,7 @@
     width: -moz-max-content;    /* Firefox/Gecko */
     width: -webkit-max-content; /* Chrome */
     width: max-content;
-    float: left;
+    display: inline;
     font-style: Consolas;
     font-family: monospace;
     --caret-color: transparent;
