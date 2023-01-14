@@ -487,12 +487,13 @@
       data: { text: $("#text").html(), time: new Date().getTime() }
     }).done(function( msg ) {
         $("#text").html('');
-        if($("#topic").html().indexOf("@ChatGPT")!=-1) {
+        if($("#topic").html().toLowerCase().indexOf("@chatgpt")!=-1) {
+            if(msg.message != "")
             $.ajax({
               type: "POST",
               url: "[%LINK:talk/chatbot%]",
               dataType: "json",
-              data: { text: "\n" + $("<div>"+msg.message+"</div>").text(), time: new Date().getTime() }
+              data: { text: "\n" + $("<div>"+msg.message+"</div>").text() + "\n", time: new Date().getTime() }
             }).done(function($data) {
               update($data);
               is_running = false;

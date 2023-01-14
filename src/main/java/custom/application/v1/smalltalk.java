@@ -7,7 +7,6 @@ import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
-import org.tinystruct.system.cli.CommandOption;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
@@ -246,10 +245,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 break;
             } else {
                 try {
-                    String message = this.chat(sessionId, "\n\n" + input.replaceAll("\n", " ") + "\n");
-                    message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
+                    if(input.trim().length() > 0) {
+                        String message = this.chat(sessionId, "\n" + input.replaceAll("\n", " ") + "\n");
+                        message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
 
-                    System.out.println(message);
+                        System.out.println(message);
+                    }
                 } catch (ApplicationException e) {
                     e.printStackTrace();
                 }
@@ -285,7 +286,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers)
-                .setMethod(Method.POST).setRequestBody(_message +"\n");
+                .setMethod(Method.POST).setRequestBody(_message.toString());
 
         URLRequest _request;
         byte[] bytes;
