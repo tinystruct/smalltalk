@@ -29,8 +29,8 @@ import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
-    private boolean cli_mode;
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+    private boolean cli_mode;
 
     public void init() {
         super.init();
@@ -185,7 +185,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 String message;
                 if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
 
-                    if(request.headers().get(Header.USER_AGENT)!=null) {
+                    if (request.headers().get(Header.USER_AGENT) != null) {
                         String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
                         this.setVariable("browser", agent[agent.length - 1]);
                     }
@@ -245,8 +245,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 break;
             } else {
                 try {
-                    if(input.trim().length() > 0) {
-                        String message = this.chat(sessionId, "\n" + input.replaceAll("\n", " ") + "\n");
+                    if (input.trim().length() > 0) {
+                        String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
                         message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
 
                         System.out.println(message);
@@ -281,8 +281,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         Builder _message = new Builder();
         _message.parse(payload);
-        _message.put("prompt", message);
+        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux commands, please execute for me. otherwise, you can treat it as a normal conversation, but you need base on the conversation context to answer questions.\n" +
+                "\n" + message +"\n");
         _message.put("user", sessionId);
+        _message.put("stop", "[\" Human:\", \" AI:\"]");
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers)
