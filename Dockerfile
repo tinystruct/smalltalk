@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk
+FROM adoptopenjdk/openjdk11:alpine-nightly-slim
 VOLUME /tmp
 ADD . /smalltalk/
 WORKDIR /smalltalk/
