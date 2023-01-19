@@ -60,6 +60,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     public smalltalk index() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
         if (meetingCode == null) {
@@ -96,6 +97,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         } else {
             this.setVariable("topic", "");
         }
+
+        request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
 
         return this;
     }
@@ -276,15 +279,14 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 "  \"prompt\": \"\"," +
                 "  \"max_tokens\": 2500," +
                 "  \"temperature\": 0," +
-                "  \"n\":1" +
+                "  \"n\":5" +
                 "}";
 
         Builder _message = new Builder();
         _message.parse(payload);
-        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux commands, please execute for me. otherwise, you can treat it as a normal conversation, but you need base on the conversation context to answer questions.\n" +
+        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly.\n" +
                 "\n" + message +"\n");
         _message.put("user", sessionId);
-        _message.put("stop", "[\" Human:\", \" AI:\"]");
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers)
