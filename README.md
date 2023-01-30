@@ -15,7 +15,7 @@ git clone https://github.com/tinystruct/smalltalk.git
 ```  
 4. You will need a Java Development Kit (JDK) installed on your computer, as well as a Java development environment such as Eclipse or IntelliJ IDEA.
 5. Import the extracted / cloned project into your Java development environment.
-6. Go to `src/main/resources/application.properties` file and update the `chatGPT.api_key` with your own key.
+6. Go to `src/main/resources/application.properties` file and update the `chatGPT.api_key` with your own key or set the environment variable `CHATGPT_API_KEY` with your own key.
 
 Usage
 ---
