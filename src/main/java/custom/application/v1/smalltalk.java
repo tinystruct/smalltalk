@@ -1,6 +1,7 @@
 package custom.application.v1;
 
 import org.tinystruct.ApplicationException;
+import org.tinystruct.ApplicationRuntimeException;
 import org.tinystruct.application.Variables;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
@@ -60,6 +61,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     public smalltalk index() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
 
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
@@ -99,7 +101,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
 
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
-
+        response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         return this;
     }
 
@@ -232,8 +234,19 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     public void chat() {
         this.cli_mode = true;
+        if (this.config.get("chatGPT.api_key") == null || this.config.get("chatGPT.api_key").isEmpty()) {
+            Console console = System.console();
+            String prompt = "Enter your ChatGPT Secret Key: ";
+            if (console != null) {
+                char[] chars;
+                while ((chars = console.readPassword(prompt)) == null || chars.length == 0) ;
+                this.config.set("chatGPT.api_key", new String(chars));
+            } else {
+                throw new ApplicationRuntimeException("chatGPT.api_key is required.");
+            }
+        }
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Welcome to use smalltalk, you can type your questions or quite by type `exit`.");
+        System.out.println("Welcome to use smalltalk, you can type your questions or quit by type `exit`.");
 
         String sessionId = UUID.randomUUID().toString();
         final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
@@ -285,7 +298,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builder _message = new Builder();
         _message.parse(payload);
         _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly.\n" +
-                "\n" + message +"\n");
+                "\n" + message + "\n");
         _message.put("user", sessionId);
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
@@ -298,12 +311,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             _request = new URLRequest(new URL(API_URL));
             bytes = _request.send(builder);
             String response = new String(bytes);
-            Builder tokens = new Builder();
-            tokens.parse(response);
+            Builder apiResponse = new Builder();
+            apiResponse.parse(response);
 
             Builders builders;
-            if (tokens.get("choices") != null) {
-                builders = (Builders) tokens.get("choices");
+            if (apiResponse.get("choices") != null) {
+                builders = (Builders) apiResponse.get("choices");
 
                 if (builders.get(0).size() > 0) {
                     Builder choice = builders.get(0);
@@ -318,6 +331,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                         return String.format("%s %s >: %s", data.get("time"), data.get("user"), choice.get("text"));
                     else
                         return data.toString();
+                }
+            } else if (apiResponse.get("error") != null) {
+                Builder error = (Builder) apiResponse.get("error");
+                if (error.get("message") != null) {
+                    throw new ApplicationRuntimeException(error.get("message").toString());
                 }
             }
         } catch (URISyntaxException | MalformedURLException e) {
