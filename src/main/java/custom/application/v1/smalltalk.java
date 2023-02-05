@@ -1,21 +1,26 @@
 package custom.application.v1;
 
+import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
+import org.tinystruct.application.Context;
 import org.tinystruct.application.Variables;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
+import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
 import javax.activation.MimetypesFileTypeMap;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +29,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.tinystruct.http.Constants.*;
@@ -235,8 +241,19 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     public void chat() {
         this.cli_mode = true;
         if (this.config.get("chatGPT.api_key") == null || this.config.get("chatGPT.api_key").isEmpty()) {
+            String url = "https://platform.openai.com/account/api-keys";
+
+            Context ctx = new ApplicationContext();
+            ctx.setAttribute("--url", url);
+            try {
+                ApplicationManager.call("open", ctx);
+            } catch (ApplicationException e) {
+                e.printStackTrace();
+            }
+
             Console console = System.console();
             String prompt = "Enter your ChatGPT Secret Key: ";
+
             if (console != null) {
                 char[] chars;
                 while ((chars = console.readPassword(prompt)) == null || chars.length == 0) ;
