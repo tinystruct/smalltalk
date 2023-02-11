@@ -9,13 +9,17 @@ Installation
 ---
 1. Download the project from GitHub by clicking the "Clone or download" button, then selecting "Download ZIP".
 2. Extract the downloaded ZIP file to your local machine.
-3. If you are using git clone, then you should execute the following command:
+3. If you used to us git, then you should execute the following command to instead of above steps:
 ```bash
 git clone https://github.com/tinystruct/smalltalk.git 
 ```  
-4. You will need a Java Development Kit (JDK) installed on your computer, as well as a Java development environment such as Eclipse or IntelliJ IDEA.
+4. You will need a Java Development Kit (JDK) installed on your computer, a Java development environment such as Eclipse or IntelliJ IDEA is just better to have, not required.
 5. Import the extracted / cloned project into your Java development environment.
 6. Go to `src/main/resources/application.properties` file and update the `chatGPT.api_key` with your own key or set the environment variable `CHATGPT_API_KEY` with your own key.
+7. Here is the last step for installation:
+```tcsh
+./mvnw compile
+```
 
 Usage
 ---
@@ -25,7 +29,6 @@ CLI mode
 1. Open a terminal and navigate to the project's root directory.
 2. To execute it in CLI mode, run the following command:
 ```tcsh
-./mvnw compile
 bin/dispatcher --version
 ```
 To see the available commands, run the following command:
@@ -41,9 +44,7 @@ Web mode
 
 1. Run the project in a servlet container or in a HTTP server:
 2. To run it in a servlet container, you need to compile the project first:
-```tcsh
-./mvnw compile
-```
+
 then you can run it on tomcat server by running the following command:
 
 ```tcsh
