@@ -16,11 +16,9 @@ import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
 import javax.activation.MimetypesFileTypeMap;
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -29,13 +27,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
+    public static final String CHAT_GPT = "ChatGPT";
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
     private boolean cli_mode;
 
@@ -51,7 +49,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setAction("talk/command", "command");
         this.setAction("talk/topic", "topic");
         this.setAction("talk/matrix", "matrix");
-        this.setAction("talk/chatbot", "chatGPT");
         this.setAction("files", "download");
         this.setAction("chat", "chat");
         this.commandLines.get("chat").setDescription("Chat with ChatGPT in command-line.");
@@ -109,10 +106,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         return this;
-    }
-
-    public String save(String groupId, String sessionid, String message) {
-        return this.put(groupId, sessionid, message);
     }
 
     public String update(String sessionId) throws ApplicationException {
@@ -195,6 +188,41 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
                 String message;
                 if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
+                    if (message.contains("@" + CHAT_GPT)) {
+                        message = message.replaceAll("@" + CHAT_GPT, "");
+                        final String finalMessage = message;
+                        new Thread(new Runnable() {
+                            /**
+                             * When an object implementing interface {@code Runnable} is used
+                             * to create a thread, starting the thread causes the object's
+                             * {@code run} method to be called in that separately executing
+                             * thread.
+                             * <p>
+                             * The general contract of the method {@code run} is that it may
+                             * take any action whatsoever.
+                             *
+                             * @see Thread#run()
+                             */
+                            @Override
+                            public void run() {
+                                final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+                                final Builder data = new Builder();
+                                data.put("user", CHAT_GPT);
+                                data.put("session_id", request.getSession().getId());
+                                try {
+                                    String filterMessage = filter(chat(sessionId, finalMessage));
+
+                                    data.put("time", format.format(new Date()));
+                                    data.put("message", filterMessage);
+                                    save(meetingCode, data);
+                                } catch (ApplicationException e) {
+                                    data.put("time", format.format(new Date()));
+                                    data.put("message", e.getMessage());
+                                    save(meetingCode, data);
+                                }
+                            }
+                        }).start();
+                    }
 
                     if (request.headers().get(Header.USER_AGENT) != null) {
                         String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
@@ -215,27 +243,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
         response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
         return "{ \"error\": \"expired\" }";
-    }
-
-    /**
-     * Call chat GPT API
-     *
-     * @return message from API
-     * @throws ApplicationException
-     */
-    public String chatGPT() throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-        final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (this.groups.containsKey(meetingCode)) {
-            final String sessionId = request.getSession().getId();
-            if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
-                String message;
-                if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
-                    return chat(sessionId, message);
-                }
-            }
-        }
-        return "{}";
     }
 
     public void chat() {
@@ -293,6 +300,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         scanner.close();
     }
 
+    /**
+     * Call chat GPT API
+     *
+     * @return message from API
+     * @throws ApplicationException while the failure occurred due to an exception
+     */
     private String chat(String sessionId, String message) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
         String API_KEY = this.config.get("chatGPT.api_key");
@@ -339,20 +352,15 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     Builder choice = builders.get(0);
 
                     final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-                    final Builder data = new Builder();
-                    data.put("user", "ChatGPT");
-                    data.put("time", format.format(new Date()));
-                    data.put("message", filter(choice.get("text").toString()));
-
                     if (cli_mode)
-                        return String.format("%s %s >: %s", data.get("time"), data.get("user"), choice.get("text"));
+                        return String.format("%s %s >: %s", format.format(new Date()), CHAT_GPT, choice.get("text"));
                     else
-                        return data.toString();
+                        return choice.get("text").toString();
                 }
             } else if (apiResponse.get("error") != null) {
                 Builder error = (Builder) apiResponse.get("error");
                 if (error.get("message") != null) {
-                    throw new ApplicationRuntimeException(error.get("message").toString());
+                    throw new ApplicationException(error.get("message").toString());
                 }
             }
         } catch (URISyntaxException | MalformedURLException e) {
@@ -361,7 +369,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "";
     }
 
-    public String update() throws ApplicationException, IOException {
+    public String update() throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
@@ -375,20 +383,25 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
-    public String update(String meetingCode, String sessionId) throws ApplicationException, IOException {
-        String error = "{ \"error\": \"expired\" }";
-        if (this.groups.containsKey(meetingCode)) {
-            List<String> list;
-            if ((list = sessions.get(meetingCode)) != null && list.contains(sessionId)) {
-                return this.take(sessionId);
+    public String update(String meetingCode, String sessionId) throws ApplicationException {
+        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
+            String error = "{ \"error\": \"expired\" }";
+            if (this.groups.containsKey(meetingCode)) {
+                List<String> list;
+                if ((list = sessions.get(meetingCode)) != null && list.contains(sessionId)) {
+                    return this.take(sessionId);
+                }
+
+                error = "{ \"error\": \"session-timeout\" }";
             }
 
-            error = "{ \"error\": \"session-timeout\" }";
+            final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+            response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
+            return error;
         }
 
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
-        response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
-        return error;
+        return "{}";
     }
 
     public String upload() throws ApplicationException {
