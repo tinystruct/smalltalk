@@ -61,6 +61,10 @@ var Timer = function() {
   this.done = null;
   this.status = list[0];
 
+  this.setInterval = function() {
+    this.limit = arguments[0];
+  };
+
   this.setAction = function() {
     this.action = arguments[0];
   };

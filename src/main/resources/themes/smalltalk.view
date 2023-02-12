@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
-<meta name="description" content=""/>
-<meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
-<title>Small Talk</title>
-<!-- Bootstrap core CSS -->
-<link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
-<!-- Custom styles for this template -->
-<style type="text/css">
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content=""/>
+    <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
+    <title>Small Talk</title>
+    <!-- Bootstrap core CSS -->
+    <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
+    <!-- Custom styles for this template -->
+    <style type="text/css">
   #list ::-moz-selection {
     background: #0000ff;
   }
@@ -351,30 +351,77 @@
     color: #00ff00;
   }
 
-</style>
-<!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
-<!--[if lt IE 9]>
-<script src="http://getbootstrap.com/assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-<script src="/scripts/bootstrap/ie-emulation-modes-warning.js?raw=true"></script>
-<!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-<!--[if lt IE 9]>
-<script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-<![endif]-->
-<script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
-<script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
-<script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
-<script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
-<script type="text/javascript">
+#messages li {
+    overflow-x: auto !important;
+    white-space: pre-wrap !important;       /* Since CSS 2.1 */
+    white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap !important;      /* Opera 4-6 */
+    white-space: -o-pre-wrap !important;    /* Opera 7 */
+    word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
+}
+
+code{
+    white-space: normal !important;
+}
+    </style>
+    <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
+    <!--[if lt IE 9]>
+    <script src="http://getbootstrap.com/assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+    <script src="/scripts/bootstrap/ie-emulation-modes-warning.js?raw=true"></script>
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
+    <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
+    <script type="text/javascript">
   //<![CDATA[
   var timer = new Timer(.5,function(){});
   var old_title = document.title;
   var dotted = '', user = struct.get("user")? struct.get("user"): false;
   function update($data) {
     if(typeof($data.message)!='undefined') {
-      $li = $("<li />");
-      $li.html($data.time + "\t" + $data.user + ": " + $data.message);
-      $('#messages').append($li);
+      placeholder = document.createElement('li');
+      placeholder.innerHTML = $data.time + " " + $data.user + ": ";
+      $('#messages').append(placeholder);
+
+      $text = $data.message;
+      $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
+      console.log($tmp.length);
+
+      if($data.user == 'ChatGPT') {
+          k = 0;
+          animation_timer = new Timer(.01, function(){});
+          animation_timer.setAction(function(){
+            if(k < $tmp.length) {
+                c = $tmp.charAt(k++);
+                if(c=='\n')
+                  placeholder.innerHTML += "<br />";
+                else if(c==' ')
+                  placeholder.innerHTML += "&nbsp;";
+                else
+                  placeholder.innerHTML += c;
+
+                if(c == ',') {
+                    this.setInterval(0.1);
+                }
+                else {
+                    this.setInterval(0.01);
+                }
+
+                this.start();
+            }
+            else this.complete();
+          });
+          animation_timer.start().complete(function(){ this.stop();});
+      }
+      else {
+        placeholder.innerHTML += $data.message;
+      }
+
       $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
       
       if(document.title == old_title) {
@@ -481,9 +528,10 @@
 
   function save() {
     $message = $("#text").html();
-    if($("#topic").html().toLowerCase().indexOf("@chatgpt")!=-1) {
-      $message = "\n@ChatGPT " + $("#text").text() + "\n";
+    if($("#topic").html().toLowerCase().indexOf("@chatgpt")!=-1 || $message.toLowerCase().indexOf("@chatgpt")!=-1) {
+      $message = "@ChatGPT " + $("#text").text() + "\n";
     }
+
     $.ajax({
       type: "POST",
       url: "[%LINK:talk/save%]",
@@ -532,7 +580,7 @@
     }
   }
 
-  var i=0;
+  var n=0;
   var cursor = false;
   var current_position = 0;
   window.key = [];
@@ -540,7 +588,7 @@
   function currentX(_, s, current_position) {
       len = 0;
       window.key = [];
-      for(i=0;i<s.length;i++) {
+      for(var i=0;i<s.length;i++) {
           _.html(s.charAt(i));
           window.key[i] = _.width()>0?_.width():7;
           len += window.key[i];
@@ -692,8 +740,8 @@
     });
 
     var post_timer = new Timer(.2, function(){
-      if(i++<200){
-        $("#text").text(user+' posts '+i);
+      if(n++<200){
+        $("#text").text(user+' posts '+n);
         $("#sender").submit();
       }
       else this.complete();
@@ -823,7 +871,8 @@
 
   });
   //]]>
-  </script>
+
+    </script>
 </head>
 <body>
 <!-- Fixed navbar -->
