@@ -28,6 +28,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.tinystruct.http.Constants.*;
 
@@ -287,11 +288,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 try {
                     if (input.trim().length() > 0) {
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
+                        System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
                         message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
+                        for (int i = 0; i < message.length(); i++) {
+                            System.out.print(message.charAt(i));
+                            if (message.charAt(i) == ',')
+                                Thread.sleep(777);
+                            else
+                                Thread.sleep(ThreadLocalRandom.current().nextInt(7, 77));
+                        }
 
-                        System.out.println(message);
+                        System.out.println();
                     }
                 } catch (ApplicationException e) {
+                    e.printStackTrace();
+                } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
@@ -351,11 +362,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 if (builders.get(0).size() > 0) {
                     Builder choice = builders.get(0);
 
-                    final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-                    if (cli_mode)
-                        return String.format("%s %s >: %s", format.format(new Date()), CHAT_GPT, choice.get("text"));
-                    else
-                        return choice.get("text").toString();
+                    return choice.get("text").toString();
                 }
             } else if (apiResponse.get("error") != null) {
                 Builder error = (Builder) apiResponse.get("error");
