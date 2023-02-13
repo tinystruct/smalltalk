@@ -1,5 +1,5 @@
 FROM adoptopenjdk/openjdk11:alpine-nightly-slim
-VOLUME /tmp
+#VOLUME /tmp
 ADD . /smalltalk/
 WORKDIR /smalltalk/
 RUN ./mvnw compile
