@@ -189,10 +189,20 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
                 String message;
                 if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
+                    if (request.headers().get(Header.USER_AGENT) != null) {
+                        String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
+                        this.setVariable("browser", agent[agent.length - 1]);
+                    }
+
+                    final Builder builder = new Builder();
+                    builder.put("user", request.getSession().getAttribute("user"));
+                    builder.put("time", format.format(new Date()));
+                    builder.put("message", filter(message));
+                    builder.put("session_id", sessionId);
+
                     if (message.contains("@" + CHAT_GPT)) {
-                        message = message.replaceAll("@" + CHAT_GPT, "");
-                        final String finalMessage = message;
-                        new Thread(new Runnable() {
+                        final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
+                        return this.save(meetingCode, builder, new Runnable() {
                             /**
                              * When an object implementing interface {@code Runnable} is used
                              * to create a thread, starting the thread causes the object's
@@ -222,19 +232,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                                     save(meetingCode, data);
                                 }
                             }
-                        }).start();
+                        });
                     }
-
-                    if (request.headers().get(Header.USER_AGENT) != null) {
-                        String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
-                        this.setVariable("browser", agent[agent.length - 1]);
-                    }
-
-                    final Builder builder = new Builder();
-                    builder.put("user", request.getSession().getAttribute("user"));
-                    builder.put("time", format.format(new Date()));
-                    builder.put("message", filter(message));
-                    builder.put("session_id", sessionId);
 
                     return this.save(meetingCode, builder);
                 }
@@ -289,7 +288,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     if (input.trim().length() > 0) {
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
                         System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
-                        message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
+                        message = message.replaceAll("\\\\n", "\n");//.replaceAll("\\\\\"", "\"");
                         for (int i = 0; i < message.length(); i++) {
                             System.out.print(message.charAt(i));
                             if (message.charAt(i) == ',')
