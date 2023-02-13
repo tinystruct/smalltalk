@@ -300,9 +300,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                         System.out.println();
                     }
                 } catch (ApplicationException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    System.out.println(e.getMessage());
                 }
             }
         }
