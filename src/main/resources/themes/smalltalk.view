@@ -390,7 +390,6 @@ code{
 
       $text = $data.message;
       $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
-      console.log($tmp.length);
 
       if($data.user == 'ChatGPT') {
           k = 0;
@@ -527,9 +526,9 @@ code{
   }
 
   function save() {
-    $message = $("#text").html();
-    if($("#topic").html().toLowerCase().indexOf("@chatgpt")!=-1 || $message.toLowerCase().indexOf("@chatgpt")!=-1) {
-      $message = "@ChatGPT " + $("#text").text() + "\n";
+    $t = $("#text").html();
+    if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1 || $t.toLowerCase().indexOf("@chatgpt")!=-1) {
+      $message = "@ChatGPT " + $t + "\n";
     }
 
     $.ajax({
