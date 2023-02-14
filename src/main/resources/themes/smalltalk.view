@@ -526,9 +526,9 @@ code{
   }
 
   function save() {
-    $t = $("#text").html();
-    if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1 || $t.toLowerCase().indexOf("@chatgpt")!=-1) {
-      $message = "@ChatGPT " + $t + "\n";
+    $message = $("#text").html();
+    if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1 || $message.toLowerCase().indexOf("@chatgpt")!=-1) {
+      $message = "@ChatGPT " + $message + "\n";
     }
 
     $.ajax({
