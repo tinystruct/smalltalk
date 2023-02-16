@@ -343,6 +343,7 @@
     left: 0;
     top: 0;
     margin: 10px;
+    display: none;
   }
 
   #cursor.focus {
@@ -351,18 +352,18 @@
     color: #00ff00;
   }
 
-#messages li {
+  #messages li {
     overflow-x: auto !important;
     white-space: pre-wrap !important;       /* Since CSS 2.1 */
     white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
     white-space: -pre-wrap !important;      /* Opera 4-6 */
     white-space: -o-pre-wrap !important;    /* Opera 7 */
     word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
-}
+  }
 
-code{
+  code {
     white-space: normal !important;
-}
+  }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -580,7 +581,6 @@ code{
   }
 
   var n=0;
-  var cursor = false;
   var current_position = 0;
   window.key = [];
 
@@ -608,114 +608,12 @@ code{
       if(event.which == 13) {
         save();
         timer.stop();
-        $("#cursor").parent().css({position: 'relative'});
-        $("#cursor").css({left: 0, position:'absolute'});
-      }
-    });
-
-    $("#text").mouseup(function(event){
-        if($(this).html().length > 0 && $(this).html().substring($(this).html().length-1)=='')
-          $("#cursor").html($(this).html().substring($(this).html().length-1));
-        else
-          $("#cursor").html("I");
-
-        current_position  = struct.getCaretPosition(this);
-        left = currentX($("#cursor"), $("#text").text(), current_position);
-
-        if(current_position>1)
-          width = window.key[current_position-1];
-
-        $("#cursor").parent().css({position: 'relative'});
-        $("#cursor").css({left: left-width, position:'absolute'});
-        console.log("left:"+left+",curr:"+current_position);
-
-        console.log(key);
-    });
-
-    $("#text").keyup(function(event){
-        if($(this).html().length > 0 && $(this).html().substring($(this).html().length-1)=='')
-          $("#cursor").html($(this).html().substring($(this).html().length-1));
-        else
-          $("#cursor").html("I");
-
-        current_position  = struct.getCaretPosition(this);
-        left = currentX($("#cursor"), $("#text").text(), current_position);
-    });
-
-    $("#text").keydown(function(event){
-      switch(event.which) {
-        case 8: // Backspace
-        case 37: // Left
-          current_position  = struct.getCaretPosition(this);
-          left = currentX($("#cursor"), $("#text").text(), current_position-1);
-          value = $("#text").text().charAt(current_position);
-          if(value.length>0)
-            $("#cursor").html(value);
-
-          if(current_position>=0 ) {
-            width = window.key[current_position-1];
-
-            $("#cursor").parent().css({position: 'relative'});
-            $("#cursor").css({left: left-width, position:'absolute'});
-          }
-        break;
-
-        case 16:
-        case 17:
-        case 18:
-        case 20:
-        case 27:
-        case 224:
-        break;
-        case 229: // Chinese input.
-          left = currentX($("#cursor"), $("#text").text(), current_position);
-          width = $("#cursor").width();
-          if(current_position<$("#text").text().length) width = 0;
-          $("#cursor").parent().css({position: 'relative'});
-          $("#cursor").css({left: left + width, position:'absolute'});
-          break;
-        case 38:
-        case 40:break;
-        case 39: // Right
-          current_position  = struct.getCaretPosition(this);
-          if(current_position<$("#text").text().length) {
-            left = currentX($("#cursor"), $("#text").text(), current_position);
-            width = window.key[current_position-1];
-
-            $("#cursor").html($("#text").text().charAt(current_position));
-            $("#cursor").parent().css({position: 'relative'});
-            $("#cursor").css({left: left, position:'absolute'});
-          }
-          break;
-        default:
-          $("#cursor").html($("#text").text().charAt(current_position));
-          width = $("#cursor").width();
-          left = currentX($("#cursor"), $("#text").text(), current_position);
-          if(current_position<$("#text").text().length) width = 0;
-          $("#cursor").parent().css({position: 'relative'});
-          $("#cursor").css({left: left+width, position:'absolute'});
-        break;
       }
     });
 
     $("#text").focus(function(event){
       command("onfocus");
       document.title = old_title;
-
-      if(!cursor) {
-        cursor = window.setInterval(function() {
-                if ($('#cursor').css('visibility') === 'visible') {
-                  $('#cursor').css({
-                    visibility: 'hidden'
-                  });
-                } else {
-                  $('#cursor').css({
-                    visibility: 'visible'
-                  });
-                }
-              }, 500);
-        $('#cursor').addClass("focus");
-      }
     });
 
     $("#text").blur(function(event){
@@ -724,13 +622,6 @@ code{
         document.title = old_title;
       });
       blur_timer.start();
-
-      clearInterval(cursor);
-      cursor = false;
-      $('#cursor').css({
-        visibility: 'visible'
-      });
-      $('#cursor').removeClass("focus");
     });
 
     $("#sender").submit(function(event){
@@ -757,15 +648,12 @@ code{
     $(".pad").hover(function(){
       $(this).addClass("hover");
       $("#text").focus();
-      struct.setCursorToEndOf(document.getElementById("text"));
-
     },function(){
       $(this).removeClass("hover"); 
     });
 
     $(".text").click(function(){
       $("#text").focus();
-      struct.setCursorToEndOf(document.getElementById("text"));
     });
 
     $("#dialog_submit").click(function(){
@@ -804,7 +692,7 @@ code{
     $("#link").click(function(){
       $.ajax({
         type: "POST",
-        url: "[%LINK:talk/matrix%]/",
+        url: "[%LINK:talk/matrix%]/{%meeting_code%}",
         data: {meeting_code: "{%meeting_code%}"}
       }).done(function( msg ) {
         $("#matrix").css({"background":"url("+msg+") transparent center center"});
