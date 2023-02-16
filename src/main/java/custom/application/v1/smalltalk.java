@@ -113,11 +113,14 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return this.take(sessionId);
     }
 
-    public String matrix() throws ApplicationException {
+    public String matrix(String meetingCode) throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-        System.out.println("this.getLink(\"talk/join\") = " + this.getLink("talk/join"));
-        if (request.getParameter("meeting_code") != null) {
-            BufferedImage qrImage = Matrix.toQRImage(this.getLink("talk/join") + "/" + request.getParameter("meeting_code"), 100, 100);
+        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+
+        request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
+        response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
+        if (meetingCode != null && meetingCode.length() > 32) {
+            BufferedImage qrImage = Matrix.toQRImage(this.getLink("talk/join") + "/" + meetingCode, 100, 100);
             return "data:image/png;base64," + Matrix.getBase64Image(qrImage);
         }
 
