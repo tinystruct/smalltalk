@@ -276,8 +276,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         System.out.println("Welcome to use smalltalk, you can type your questions or quit by type `exit`.");
 
         String sessionId = UUID.randomUUID().toString();
-        final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-
         while (true) {
             System.out.printf("%s >: ", format.format(new Date()));
             String input = scanner.nextLine();
@@ -334,8 +332,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 "  \"model\": \"text-davinci-003\"," +
                 "  \"prompt\": \"\"," +
                 "  \"max_tokens\": 2500," +
-                "  \"temperature\": 0," +
-                "  \"n\":5" +
+                "  \"temperature\": 0.8," +
+                "  \"n\":1" +
                 "}";
 
         Builder _message = new Builder();
