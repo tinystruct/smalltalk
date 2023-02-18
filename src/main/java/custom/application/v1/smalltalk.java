@@ -323,7 +323,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         String API_URL = this.config.get("chatGPT.api_endpoint");
         Headers headers = new Headers();
         headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
-        headers.add(Header.CONTENT_TYPE.set("application/json"));
+        headers.add(Header.CONTENT_TYPE.set("application/json;charset=utf-8"));
 
         if (!cli_mode)
             message = message.replaceAll("<br>|<br />", "");
