@@ -289,7 +289,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     if (input.trim().length() > 0) {
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
                         System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
-                        message = message.replaceAll("\\\\n", "\n");//.replaceAll("\\\\\"", "\"");
+                        message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
                         for (int i = 0; i < message.length(); i++) {
                             System.out.print(message.charAt(i));
                             if (message.charAt(i) == ',')
