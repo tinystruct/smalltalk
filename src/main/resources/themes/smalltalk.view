@@ -448,19 +448,19 @@
               break;
             case 'greeting':
               $li = $("<li />");
-              $li.html("System Notification:\t" + $data.user + " joined this conversation.");
+              $li.html("System Notification: " + $data.user + " joined this conversation.");
               $('#messages').append($li);
               $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
               break;
             case 'session-timeout':
                 $li = $("<li />");
-                $li.html("System Notification:\t" + $data.user + " left from this conversation.");
+                $li.html("System Notification: " + $data.user + " left from this conversation.");
                 $('#messages').append($li);
                 $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
                 break;
             case 'expired':
                 $li = $("<li />");
-                $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
                 $('#messages').append($li);
                 $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
                 break;
