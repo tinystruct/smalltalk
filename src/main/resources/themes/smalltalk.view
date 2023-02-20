@@ -20,11 +20,12 @@
   }
   #list {
     overflow-x:hidden;
-    max-height:320px;
+    max-height:350px;
     padding:10px;
     background: #000;
     color: #00ff00;
     border: 1px solid #f5f5f5;
+    resize: vertical;
   }
   #list ul {
     list-style: none;
@@ -32,6 +33,19 @@
     margin-bottom: 0;
   }
   #list ul li {
+    padding: 4px 5px;
+  }
+  #list ul li.even, .chat-gpt {
+    background: #033300;
+  }
+
+  #list ul li span.time {
+  }
+
+  #list ul li span.name {
+  }
+
+  #list ul li span.content {
   }
   
   #sender {
@@ -386,13 +400,14 @@
   function update($data) {
     if(typeof($data.message)!='undefined') {
       placeholder = document.createElement('li');
-      placeholder.innerHTML = $data.time + " " + $data.user + ": ";
+      placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
       $('#messages').append(placeholder);
 
       $text = $data.message;
       $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
 
       if($data.user == 'ChatGPT') {
+          placeholder.innerHTML += "<span class='content'>";
           k = 0;
           animation_timer = new Timer(.01, function(){});
           animation_timer.setAction(function(){
@@ -416,10 +431,10 @@
             }
             else this.complete();
           });
-          animation_timer.start().complete(function(){ this.stop();});
+          animation_timer.start().complete(function(){ this.stop(); placeholder.innerHTML += "</span>";$(placeholder).addClass('chat-gpt');});
       }
       else {
-        placeholder.innerHTML += $data.message;
+        placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
       }
 
       $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
@@ -540,6 +555,8 @@
     }).done(function( msg ) {
         $("#text").html('');
     });
+
+    // $("li").even().addClass("even);
   }
 
   var is_running = false;
@@ -817,11 +834,11 @@
             <b class="arrow arrowbg"></b>
         </span>
         </div>
-        <label class="control-label" for="attachment">Select File</label>
+        <label class="control-label" for="attachment">Select File(s)</label>
         <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true"/>
         <br/>
         <input type="button" id="button" value="Send" class="btn btn-primary"/>
-        <input type="button" id="test" value="Test" class="btn btn-secondary"/>
+<!--        <input type="button" id="test" value="Test" class="btn btn-secondary"/>-->
     </form>
 </div>
 
