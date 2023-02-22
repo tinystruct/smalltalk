@@ -133,8 +133,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
             request.getSession().setAttribute("meeting_code", meetingCode);
 
-            this.setVariable("meeting_code", meetingCode);
-
             Reforward reforward = new Reforward(request, response);
             reforward.setDefault("/?q=talk");
             return reforward.forward();
