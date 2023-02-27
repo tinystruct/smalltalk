@@ -1,5 +1,8 @@
 package custom.application.v1;
 
+import custom.ai.ImageProcessorType;
+import custom.ai.OpenAI;
+import custom.ai.StabilityAI;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
@@ -18,9 +21,6 @@ import org.tinystruct.transfer.DistributedMessageQueue;
 import javax.activation.MimetypesFileTypeMap;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,11 +30,13 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static custom.ai.OpenAI.*;
 import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
     public static final String CHAT_GPT = "ChatGPT";
+
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
     private boolean cli_mode;
 
@@ -61,6 +63,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         System.setProperty("LANG", "en_US.UTF-8");
 
         SessionManager.getInstance().addListener(this);
+
+        ApplicationManager.install(new OpenAI());
+        ApplicationManager.install(new StabilityAI());
     }
 
     public smalltalk index() {
@@ -288,12 +293,16 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
                         System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
                         message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
-                        for (int i = 0; i < message.length(); i++) {
-                            System.out.print(message.charAt(i));
-                            if (message.charAt(i) == ',')
-                                Thread.sleep(777);
-                            else
-                                Thread.sleep(ThreadLocalRandom.current().nextInt(7, 77));
+                        if (!message.startsWith("data:image/png;base64,")) {
+                            for (int i = 0; i < message.length(); i++) {
+                                System.out.print(message.charAt(i));
+                                if (message.charAt(i) == ',')
+                                    Thread.sleep(777);
+                                else
+                                    Thread.sleep(ThreadLocalRandom.current().nextInt(7, 77));
+                            }
+                        } else {
+                            System.out.print(message);
                         }
 
                         System.out.println();
@@ -317,11 +326,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     private String chat(String sessionId, String message) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
-        String API_KEY = this.config.get("chatGPT.api_key");
         String API_URL = this.config.get("chatGPT.api_endpoint");
-        Headers headers = new Headers();
-        headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
-        headers.add(Header.CONTENT_TYPE.set("application/json;charset=utf-8"));
 
         if (!cli_mode)
             message = message.replaceAll("<br>|<br />", "");
@@ -336,40 +341,245 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         Builder _message = new Builder();
         _message.parse(payload);
-        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly.\n" +
+        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n" +
                 "\n" + message + "\n");
         _message.put("user", sessionId);
 
-        HttpRequestBuilder builder = new HttpRequestBuilder();
-        builder.setHeaders(headers)
-                .setMethod(Method.POST).setRequestBody(_message.toString());
+        Context context = new ApplicationContext();
+        context.setAttribute("payload", _message);
+        context.setAttribute("api", API_URL);
 
-        URLRequest _request;
-        byte[] bytes;
-        try {
-            _request = new URLRequest(new URL(API_URL));
-            bytes = _request.send(builder);
-            String response = new String(bytes);
-            Builder apiResponse = new Builder();
-            apiResponse.parse(response);
+        Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
+        assert apiResponse != null;
+        Builders builders;
+        if (apiResponse.get("choices") != null) {
+            builders = (Builders) apiResponse.get("choices");
 
-            Builders builders;
-            if (apiResponse.get("choices") != null) {
-                builders = (Builders) apiResponse.get("choices");
+            if (builders.get(0).size() > 0) {
+                Builder choice = builders.get(0);
 
-                if (builders.get(0).size() > 0) {
-                    Builder choice = builders.get(0);
+                if (choice.get("text") != null) {
+                    String choiceText = choice.get("text").toString();
+                    if (choiceText.contains(IMAGES_GENERATIONS)) {
+                        return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
+                    } else if (choiceText.contains(IMAGES_EDITS)) {
+                        return this.imageProcessor(ImageProcessorType.EDITS, "", sessionId + ":" + message);
+                    } else if (choiceText.contains(IMAGES_VARIATIONS)) {
+                        return this.imageProcessor(ImageProcessorType.VARIATIONS, "", sessionId + ":" + message);
+                    }
 
-                    return choice.get("text").toString();
+                    return choiceText;
+                }
+            }
+        } else if (apiResponse.get("error") != null) {
+            Builder error = (Builder) apiResponse.get("error");
+            if (error.get("message") != null) {
+                throw new ApplicationException(error.get("message").toString());
+            }
+        }
+
+        return "";
+    }
+
+    /**
+     * Process image requests with the given image processor from stability AI.
+     *
+     * @param imageProcessorType
+     * @param image
+     * @param message
+     * @return image base64 encoded string
+     */
+    private String imageProcessorStability(ImageProcessorType imageProcessorType, String image, String message) throws ApplicationException {
+        Builder _message = new Builder();
+        Builders builders;
+        Builder apiResponse = null;
+        String[] prompt = message.trim().split(":");
+        String payload;
+        Context context = new ApplicationContext();
+        switch (imageProcessorType) {
+            case GENERATIONS:
+                payload = "{\"text_prompts\": [\n" +
+                        "      {\n" +
+                        "        \"text\": \"A lighthouse on a cliff\"\n" +
+                        "      }\n" +
+                        "    ],\n" +
+                        "    \"cfg_scale\": 7,\n" +
+                        "    \"clip_guidance_preset\": \"FAST_BLUE\",\n" +
+                        "    \"height\": 512,\n" +
+                        "    \"width\": 512,\n" +
+                        "    \"samples\": 1,\n" +
+                        "    \"steps\": 50" +
+                        "}";
+
+                try {
+                    _message.parse(payload);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+
+                Builders textPrompts = new Builders();
+                Builder textBuilder = new Builder();
+                textBuilder.put("text", prompt[1]);
+                textPrompts.add(textBuilder);
+
+                _message.put("text_prompts", textPrompts);
+                context.setAttribute("payload", _message);
+                context.setAttribute("api", "v1beta/generation/stable-diffusion-512-v2-1/text-to-image");
+
+                apiResponse = (Builder) ApplicationManager.call("stability", context);
+                if (apiResponse.size() > 0) {
+                    Builders artifacts = (Builders) apiResponse.get("artifacts");
+                    if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
+                        return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
+                    }
+                }
+
+                return "";
+            case EDITS:
+                payload = "{\n" +
+                        " \"image\": \"\"," +
+                        "  \"prompt\": \"\"," +
+                        "  \"n\":1," +
+                        "  \"response_format\":\"b64_json\"" +
+                        "}";
+                try {
+                    _message.parse(payload);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+                _message.put("prompt", prompt[1]);
+                _message.put("user", prompt[0]);
+
+                context.setAttribute("payload", _message);
+                context.setAttribute("api", IMAGES_GENERATIONS);
+
+                apiResponse = (Builder) ApplicationManager.call("openai", context);
+                break;
+            case VARIATIONS:
+                payload = "{\n" +
+                        " \"image\": \"\"," +
+                        "  \"prompt\": \"\"," +
+                        "  \"n\":1," +
+                        "  \"response_format\":\"b64_json\"" +
+                        "}";
+
+                try {
+                    _message.parse(payload);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+                _message.put("prompt", prompt[1]);
+                _message.put("user", prompt[0]);
+
+                context.setAttribute("payload", _message);
+                context.setAttribute("api", IMAGES_VARIATIONS);
+
+                apiResponse = (Builder) ApplicationManager.call("openai", context);
+            default:
+                break;
+        }
+
+        if (apiResponse != null) {
+            if (apiResponse.get("data") != null) {
+                builders = (Builders) apiResponse.get("data");
+                if (builders.size() > 0 && builders.get(0) != null) {
+                    return "data:image/png;base64," + builders.get(0).get("b64_json").toString();
                 }
             } else if (apiResponse.get("error") != null) {
                 Builder error = (Builder) apiResponse.get("error");
                 if (error.get("message") != null) {
-                    throw new ApplicationException(error.get("message").toString());
+                    return error.get("message").toString();
                 }
             }
-        } catch (URISyntaxException | MalformedURLException e) {
-            throw new ApplicationException(e.getMessage(), e.getCause());
+        }
+
+        return "";
+    }
+
+    private String imageProcessor(ImageProcessorType imageProcessorType, String image, String message) throws ApplicationException {
+        Builder _message = new Builder();
+        Builders builders;
+        Builder apiResponse = null;
+        String[] prompt = message.trim().split(":");
+        String payload;
+        switch (imageProcessorType) {
+            case GENERATIONS:
+                payload = "{\n" +
+                        "  \"prompt\": \"\"," +
+                        "  \"n\":1," +
+                        "  \"response_format\":\"b64_json\"" +
+                        "}";
+
+                try {
+                    _message.parse(payload);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+
+                _message.put("prompt", prompt[1]);
+                _message.put("user", prompt[0]);
+
+                context.setAttribute("payload", _message);
+                context.setAttribute("api", IMAGES_GENERATIONS);
+
+                apiResponse = (Builder) ApplicationManager.call("openai", context);
+                break;
+            case EDITS:
+                payload = "{\n" +
+                        " \"image\": \"\"," +
+                        "  \"prompt\": \"\"," +
+                        "  \"n\":1," +
+                        "  \"response_format\":\"b64_json\"" +
+                        "}";
+                try {
+                    _message.parse(payload);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+                _message.put("prompt", prompt[1]);
+                _message.put("user", prompt[0]);
+
+                context.setAttribute("payload", _message);
+                context.setAttribute("api", IMAGES_GENERATIONS);
+
+                apiResponse = (Builder) ApplicationManager.call("openai", context);
+                break;
+            case VARIATIONS:
+                payload = "{\n" +
+                        " \"image\": \"\"," +
+                        "  \"prompt\": \"\"," +
+                        "  \"n\":1," +
+                        "  \"response_format\":\"b64_json\"" +
+                        "}";
+
+                try {
+                    _message.parse(payload);
+                } catch (ApplicationException e) {
+                    e.printStackTrace();
+                }
+                _message.put("prompt", prompt[1]);
+                _message.put("user", prompt[0]);
+
+                context.setAttribute("payload", _message);
+                context.setAttribute("api", IMAGES_VARIATIONS);
+
+                apiResponse = (Builder) ApplicationManager.call("openai", context);
+            default:
+                break;
+        }
+
+        if (apiResponse != null) {
+            if (apiResponse.get("data") != null) {
+                builders = (Builders) apiResponse.get("data");
+                if (builders.size() > 0 && builders.get(0) != null) {
+                    return "data:image/png;base64," + builders.get(0).get("b64_json").toString();
+                }
+            } else if (apiResponse.get("error") != null) {
+                Builder error = (Builder) apiResponse.get("error");
+                if (error.get("message") != null) {
+                    return error.get("message").toString();
+                }
+            }
         }
         return "";
     }
