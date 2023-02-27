@@ -436,6 +436,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                 return "";
             case EDITS:
+                // TODO
                 payload = "{\n" +
                         " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
@@ -456,6 +457,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 apiResponse = (Builder) ApplicationManager.call("openai", context);
                 break;
             case VARIATIONS:
+                // TODO
                 payload = "{\n" +
                         " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
@@ -525,6 +527,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 apiResponse = (Builder) ApplicationManager.call("openai", context);
                 break;
             case EDITS:
+                // TODO
                 payload = "{\n" +
                         " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
@@ -545,6 +548,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 apiResponse = (Builder) ApplicationManager.call("openai", context);
                 break;
             case VARIATIONS:
+                // TODO
                 payload = "{\n" +
                         " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
