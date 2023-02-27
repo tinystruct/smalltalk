@@ -401,6 +401,7 @@
   code {
     white-space: normal !important;
   }
+
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -427,9 +428,15 @@
       $('#messages').append(placeholder);
 
       $text = $data.message;
-      $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
-
-      if($data.user == 'ChatGPT') {
+      if($text.indexOf("data:image/png;base64,") == 0) {
+        placeholder.innerHTML += "<span class='content'>";
+        placeholder.innerHTML += "<img src='"+$text+"' />"
+        placeholder.innerHTML += "</span>";
+        $(placeholder).addClass('chat-gpt');
+      }
+      else {
+        $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
+        if($data.user == 'ChatGPT') {
           placeholder.innerHTML += "<span class='content'>";
           k = 0;
           animation_timer = new Timer(.01, function(){});
@@ -455,11 +462,11 @@
             else this.complete();
           });
           animation_timer.start().complete(function(){ this.stop(); placeholder.innerHTML += "</span>";$(placeholder).addClass('chat-gpt');});
+        }
+        else {
+          placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
+        }
       }
-      else {
-        placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
-      }
-
       $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
       
       if(document.title == old_title) {
@@ -567,7 +574,7 @@
   function save() {
     $message = $("#text").html();
     if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1 || $message.toLowerCase().indexOf("@chatgpt")!=-1) {
-      $message = "@ChatGPT " + $message + "\n";
+      $message = "@ChatGPT " + $("#text").text() + "\n";
     }
 
     $.ajax({
@@ -804,6 +811,7 @@
   });
   //]]>
 
+
     </script>
 </head>
 <body>
@@ -827,15 +835,22 @@
                        aria-expanded="false">Settings <span class="caret"></span></a>
                     <ul class="dropdown-menu">
                         <li>
-                            <a class="btn disabled" href="#" role="button" data-toggle="dropdown" aria-expanded="false">Appearance <span class="caret"></span></a>
+                            <a class="btn disabled" href="#" role="button" data-toggle="dropdown" aria-expanded="false">Appearance
+                                <span class="caret"></span></a>
                         </li>
                         <li role="separator" class="divider"></li>
-                        <li><a class="dropdown-item theme" href="#">Default <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check" viewBox="0 0 16 16">
-                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                        </svg></a></li>
-                        <li><a class="dropdown-item theme" href="#">Dark Green <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check hidden" viewBox="0 0 16 16">
-                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                        </svg></a></li>
+                        <li><a class="dropdown-item theme" href="#">Default
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                 class="bi bi-check" viewBox="0 0 16 16">
+                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                            </svg>
+                        </a></li>
+                        <li><a class="dropdown-item theme" href="#">Dark Green
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                 class="bi bi-check hidden" viewBox="0 0 16 16">
+                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                            </svg>
+                        </a></li>
                     </ul>
                 </li>
                 <li class="dropdown">
@@ -881,7 +896,7 @@
         <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true"/>
         <br/>
         <input type="button" id="button" value="Send" class="btn btn-primary"/>
-<!--        <input type="button" id="test" value="Test" class="btn btn-secondary"/>-->
+        <!--        <input type="button" id="test" value="Test" class="btn btn-secondary"/>-->
     </form>
 </div>
 
