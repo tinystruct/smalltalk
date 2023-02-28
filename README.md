@@ -39,7 +39,8 @@ To interact with ChatGPT, use the say command, for example:
 ```tcsh
 bin/dispatcher chat
 ```
-<img src="https://raw.githubusercontent.com/tinystruct/smalltalk/master/screenshot.png" />
+![CLI](https://raw.githubusercontent.com/tinystruct/smalltalk/master/screenshot.png)
+
 Web mode
 
 1. Run the project in a servlet container or in a HTTP server:
@@ -62,6 +63,8 @@ docker run -d -p 777:777 -e "CHATGPT_API_KEY=[YOUR-CHATGPT-API-KEY]" m0ver/small
 ```
 4. Access the application by navigating to http://localhost:777/?q=talk in your web browser
 5. If you want to talk with ChatGPT, please type @ChatGPT in your topic of the conversation when you set up the topic.
+
+![Web](https://raw.githubusercontent.com/tinystruct/smalltalk/master/screenshot-web.png)
 
 Demonstration
 ---
