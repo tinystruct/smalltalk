@@ -9,7 +9,7 @@ Installation
 ---
 1. Download the project from GitHub by clicking the "Clone or download" button, then selecting "Download ZIP".
 2. Extract the downloaded ZIP file to your local machine.
-3. If you used to us git, then you should execute the following command to instead of above steps:
+3. If you used to use git, then you should execute the following command to instead of above steps:
 ```bash
 git clone https://github.com/tinystruct/smalltalk.git 
 ```  
