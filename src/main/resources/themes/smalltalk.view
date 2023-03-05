@@ -573,15 +573,19 @@
 
   function save() {
     $message = $("#text").html();
+    image = "";
     if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1 || $message.toLowerCase().indexOf("@chatgpt")!=-1) {
       $message = "@ChatGPT " + $("#text").text() + "\n";
+      $("#text").find("img").each(function() {
+          image = $(this).attr("src");
+      });
     }
 
     $.ajax({
       type: "POST",
       url: "[%LINK:talk/save%]",
       dataType: "json",
-      data: { text: $message, time: new Date().getTime() }
+      data: { text: $message, time: new Date().getTime(), image: image }
     }).done(function( msg ) {
         $("#text").html('');
     });
@@ -765,7 +769,7 @@
             reader.onloadend = function () {
               var img = $("<img />");
               img.attr('src', this.result);
-              $('#text').html(img);
+              $('#text').append(img);
             }
             reader.readAsDataURL(file);
             break;
