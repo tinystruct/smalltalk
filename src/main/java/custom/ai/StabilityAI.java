@@ -3,7 +3,6 @@ package custom.ai;
 import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
-import org.tinystruct.data.component.Builders;
 import org.tinystruct.http.*;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
@@ -30,10 +29,6 @@ public class StabilityAI extends AbstractApplication implements Provider {
             throw new ApplicationException("Payload is required");
         }
 
-        if (this.context.getAttribute("payload") != null) {
-            payload = (Builder) this.context.getAttribute("payload");
-        }
-
         String api = this.context.getAttribute("api").toString();
 
         // Replace YOUR_API_KEY with your actual API key
@@ -48,18 +43,20 @@ public class StabilityAI extends AbstractApplication implements Provider {
         builder.setVersion(Version.HTTP1_1);
         builder.setHeaders(headers).setMethod(Method.POST);
 
-        if (!contentType.equalsIgnoreCase("multipart/form-data")) {
-            assert payload != null;
-            builder.setRequestBody(payload.toString());
+        if (this.context.getAttribute("payload") != null) {
+            payload = (Builder) this.context.getAttribute("payload");
+            if (contentType.equalsIgnoreCase("multipart/form-data")) {
+                builder.setParameter("text_prompts[0][text]", payload.get("text_prompts[0][text]").toString());
+                builder.setParameter("cfg_scale", Float.parseFloat(payload.get("cfg_scale").toString()));
+                builder.setParameter("clip_guidance_preset", payload.get("clip_guidance_preset").toString());
+                builder.setParameter("height", Integer.parseInt(payload.get("height").toString()));
+                builder.setParameter("width", Integer.parseInt(payload.get("width").toString()));
+                builder.setParameter("samples", Integer.parseInt(payload.get("samples").toString()));
+                builder.setParameter("steps", Integer.parseInt(payload.get("steps").toString()));
+            } else {
+                builder.setRequestBody(payload.toString());
+            }
         }
-
-        builder.setParameter("text_prompts[0][text]", payload.get("text_prompts[0][text]").toString());
-        builder.setParameter("cfg_scale", Float.parseFloat(payload.get("cfg_scale").toString()));
-        builder.setParameter("clip_guidance_preset", payload.get("clip_guidance_preset").toString());
-        builder.setParameter("height", Integer.parseInt(payload.get("height").toString()));
-        builder.setParameter("width", Integer.parseInt(payload.get("width").toString()));
-        builder.setParameter("samples", Integer.parseInt(payload.get("samples").toString()));
-        builder.setParameter("steps", Integer.parseInt(payload.get("steps").toString()));
 
         if (image != null) {
             ContentDisposition imageContent = new ContentDisposition("init_image", "image.png", "image/png", Base64.getDecoder().decode(image.toString()));

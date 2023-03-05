@@ -37,10 +37,6 @@ public class OpenAI extends AbstractApplication implements Provider {
             throw new ApplicationException("Payload is required");
         }
 
-        if (this.context.getAttribute("payload") != null) {
-            payload = (Builder) this.context.getAttribute("payload");
-        }
-
         String api = this.context.getAttribute("api").toString();
 
         // Replace YOUR_API_KEY with your actual API key
@@ -52,15 +48,18 @@ public class OpenAI extends AbstractApplication implements Provider {
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers).setMethod(Method.POST);
-        if (!contentType.equalsIgnoreCase("multipart/form-data")) {
-            assert payload != null;
-            builder.setRequestBody(payload.toString());
-        }
 
-        builder.setParameter("prompt", payload.get("prompt").toString());
-        builder.setParameter("user", payload.get("user").toString());
-        builder.setParameter("n", Integer.parseInt(payload.get("n").toString()));
-        builder.setParameter("response_format", "b64_json");
+        if (this.context.getAttribute("payload") != null) {
+            payload = (Builder) this.context.getAttribute("payload");
+            if (contentType.equalsIgnoreCase("multipart/form-data")) {
+                builder.setParameter("prompt", payload.get("prompt").toString());
+                builder.setParameter("user", payload.get("user").toString());
+                builder.setParameter("n", Integer.parseInt(payload.get("n").toString()));
+                builder.setParameter("response_format", "b64_json");
+            } else {
+                builder.setRequestBody(payload.toString());
+            }
+        }
 
         if (image != null) {
             ContentDisposition imageContent = new ContentDisposition("image", "image.png", "image/png", Base64.getDecoder().decode(image.toString()));
@@ -86,7 +85,6 @@ public class OpenAI extends AbstractApplication implements Provider {
         } catch (URISyntaxException e) {
             throw new ApplicationException(e.getMessage(), e.getCause());
         }
-
     }
 
     /**
