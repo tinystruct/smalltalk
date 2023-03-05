@@ -203,8 +203,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     final Builder builder = new Builder();
                     builder.put("user", request.getSession().getAttribute("user"));
                     builder.put("time", format.format(new Date()));
-                    builder.put("message", filter(message));
                     builder.put("session_id", sessionId);
+                    String image;
+                    if ((image = request.getParameter("image")) != null && !image.isEmpty()) {
+                        builder.put("message", filter(message) + "<img src=\"" + image + "\" />");
+                    } else {
+                        builder.put("message", filter(message));
+                    }
 
                     if (message.contains("@" + CHAT_GPT)) {
                         final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
@@ -227,7 +232,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                                 data.put("user", CHAT_GPT);
                                 data.put("session_id", request.getSession().getId());
                                 try {
-                                    String filterMessage = filter(chat(sessionId, finalMessage));
+                                    String filterMessage = filter(chat(sessionId, finalMessage, image));
 
                                     data.put("time", format.format(new Date()));
                                     data.put("message", filterMessage);
@@ -253,7 +258,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     public void chat() {
         this.cli_mode = true;
-        if (this.config.get("chatGPT.api_key") == null || this.config.get("chatGPT.api_key").isEmpty()) {
+        if (this.config.get("openai.api_key") == null || this.config.get("openai.api_key").isEmpty()) {
             String url = "https://platform.openai.com/account/api-keys";
 
             Context ctx = new ApplicationContext();
@@ -265,14 +270,14 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             }
 
             Console console = System.console();
-            String prompt = "Enter your ChatGPT Secret Key: ";
+            String prompt = "Enter your OpenAI Secret Key: ";
 
             if (console != null) {
                 char[] chars;
                 while ((chars = console.readPassword(prompt)) == null || chars.length == 0) ;
-                this.config.set("chatGPT.api_key", new String(chars));
+                this.config.set("openai.api_key", new String(chars));
             } else {
-                throw new ApplicationRuntimeException("chatGPT.api_key is required.");
+                throw new ApplicationRuntimeException("openai.api_key is required.");
             }
         }
         Scanner scanner = new Scanner(System.in);
@@ -318,15 +323,19 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         scanner.close();
     }
 
+    private String chat(String sessionId, String message) throws ApplicationException {
+        return this.chat(sessionId, message, null);
+    }
+
     /**
      * Call chat GPT API
      *
      * @return message from API
      * @throws ApplicationException while the failure occurred due to an exception
      */
-    private String chat(String sessionId, String message) throws ApplicationException {
+    private String chat(String sessionId, String message, String image) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
-        String API_URL = this.config.get("chatGPT.api_endpoint");
+        String API_URL = this.config.get("openai.api_endpoint");
 
         if (!cli_mode)
             message = message.replaceAll("<br>|<br />", "");
@@ -363,9 +372,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     if (choiceText.contains(IMAGES_GENERATIONS)) {
                         return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
                     } else if (choiceText.contains(IMAGES_EDITS)) {
-                        return this.imageProcessor(ImageProcessorType.EDITS, "", sessionId + ":" + message);
+                        return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
                     } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                        return this.imageProcessor(ImageProcessorType.VARIATIONS, "", sessionId + ":" + message);
+                        return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
                     }
 
                     return choiceText;
@@ -436,13 +445,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                 return "";
             case EDITS:
-                // TODO
                 payload = "{\n" +
-                        " \"image\": \"\"," +
-                        "  \"prompt\": \"\"," +
-                        "  \"n\":1," +
-                        "  \"response_format\":\"b64_json\"" +
+                        "\"image_strength\": 0.35,\n" +
+                        "\"init_image_mode\": \"IMAGE_STRENGTH\",\n" +
+                        "\"init_image\": \"<image binary>\",\n" +
+                        "\"text_prompts[0][text]\": \"A dog space commander\",\n" +
+                        "\"text_prompts[0][weight]\": 1,\n" +
+                        "\"cfg_scale\": 7,\n" +
+                        "\"clip_guidance_preset\": \"FAST_BLUE\",\n" +
+                        "\"height\": 512,\n" +
+                        "\"width\": 512,\n" +
+                        "\"sampler\": \"K_DPM_2_ANCESTRAL\",\n" +
+                        "\"samples\": 3,\n" +
+                        "\"steps\": 20\n" +
                         "}";
+
                 try {
                     _message.parse(payload);
                 } catch (ApplicationException e) {
@@ -451,20 +468,29 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
+                context.setAttribute("content-type", "multipart/form-data");
+                context.setAttribute("image", image);
                 context.setAttribute("payload", _message);
-                context.setAttribute("api", IMAGES_GENERATIONS);
+                context.setAttribute("api", "v1beta/generation/stable-diffusion-512-v2-1/image-to-image");
 
-                apiResponse = (Builder) ApplicationManager.call("openai", context);
-                break;
+                apiResponse = (Builder) ApplicationManager.call("stability", context);
+                if (apiResponse.size() > 0) {
+                    Builders artifacts = (Builders) apiResponse.get("artifacts");
+                    if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
+                        return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
+                    } else if (apiResponse.get("message") != null) {
+                        return apiResponse.get("message").toString();
+                    }
+                }
+
+                return "";
             case VARIATIONS:
                 // TODO
                 payload = "{\n" +
-                        " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
                         "  \"n\":1," +
                         "  \"response_format\":\"b64_json\"" +
                         "}";
-
                 try {
                     _message.parse(payload);
                 } catch (ApplicationException e) {
@@ -473,6 +499,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
+                context.setAttribute("content-type", "multipart/form-data");
+                context.setAttribute("image", image);
                 context.setAttribute("payload", _message);
                 context.setAttribute("api", IMAGES_VARIATIONS);
 
@@ -529,7 +557,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             case EDITS:
                 // TODO
                 payload = "{\n" +
-                        " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
                         "  \"n\":1," +
                         "  \"response_format\":\"b64_json\"" +
@@ -542,20 +569,20 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
+                context.setAttribute("content-type", "multipart/form-data");
+                context.setAttribute("image", image);
                 context.setAttribute("payload", _message);
-                context.setAttribute("api", IMAGES_GENERATIONS);
+                context.setAttribute("api", IMAGES_EDITS);
 
                 apiResponse = (Builder) ApplicationManager.call("openai", context);
                 break;
             case VARIATIONS:
                 // TODO
                 payload = "{\n" +
-                        " \"image\": \"\"," +
                         "  \"prompt\": \"\"," +
                         "  \"n\":1," +
                         "  \"response_format\":\"b64_json\"" +
                         "}";
-
                 try {
                     _message.parse(payload);
                 } catch (ApplicationException e) {
@@ -564,6 +591,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
+                context.setAttribute("image", image);
                 context.setAttribute("payload", _message);
                 context.setAttribute("api", IMAGES_VARIATIONS);
 
