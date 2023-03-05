@@ -37,8 +37,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     public static final String CHAT_GPT = "ChatGPT";
 
+
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
     private boolean cli_mode;
+    private boolean chatGPT;
 
     public void init() {
         super.init();
@@ -66,6 +68,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         ApplicationManager.install(new OpenAI());
         ApplicationManager.install(new StabilityAI());
+
+        if (this.config.get("default.chat.engine") != null) {
+            this.chatGPT = !this.config.get("default.chat.engine").equals("gpt-3");
+        } else {
+            this.chatGPT = false;
+        }
     }
 
     public smalltalk index() {
@@ -232,7 +240,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                                 data.put("user", CHAT_GPT);
                                 data.put("session_id", request.getSession().getId());
                                 try {
-                                    String filterMessage = filter(chat(sessionId, finalMessage, image));
+                                    String filterMessage = filter(chatGPT ? chatGPT(sessionId, finalMessage, image) : chat(sessionId, finalMessage, image));
 
                                     data.put("time", format.format(new Date()));
                                     data.put("message", filterMessage);
@@ -324,7 +332,74 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     private String chat(String sessionId, String message) throws ApplicationException {
+        if (this.chatGPT)
+            return this.chatGPT(sessionId, message, null);
+
         return this.chat(sessionId, message, null);
+    }
+
+    /**
+     * Call chat GPT API
+     *
+     * @return message from API
+     * @throws ApplicationException while the failure occurred due to an exception
+     */
+    private String chatGPT(String sessionId, String message, String image) throws ApplicationException {
+        // Replace YOUR_API_KEY with your actual API key
+        String API_URL = this.config.get("openai.api_endpoint") + "/v1/chat/completions";
+
+        if (!cli_mode)
+            message = message.replaceAll("<br>|<br />", "");
+
+        String payload = "{\n" +
+                "  \"model\": \"gpt-3.5-turbo\"," +
+                "  \"messages\":[\n" +
+                "    {\"role\": \"system\", \"content\": \"I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n\"},\n" +
+                "    {\"role\": \"user\", \"content\": \"Hello!\"}\n" +
+                "  ]" +
+                "}";
+
+        Builder payloadBuilder = new Builder();
+        payloadBuilder.parse(payload);
+
+        Builders tmpBuilders = (Builders) payloadBuilder.get("messages");
+        tmpBuilders.get(1).put("content", message);
+        payloadBuilder.put("user", sessionId);
+
+        Context context = new ApplicationContext();
+        context.setAttribute("payload", payloadBuilder);
+        context.setAttribute("api", API_URL);
+
+        Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
+        assert apiResponse != null;
+        Builders builders;
+        if (apiResponse.get("choices") != null) {
+            builders = (Builders) apiResponse.get("choices");
+
+            if (builders.get(0).size() > 0) {
+                Builder choice = builders.get(0);
+
+                if (choice.get("message") != null) {
+                    String choiceText = ((Builder) choice.get("message")).get("content").toString();
+                    if (choiceText.contains(IMAGES_GENERATIONS)) {
+                        return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
+                    } else if (choiceText.contains(IMAGES_EDITS)) {
+                        return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
+                    } else if (choiceText.contains(IMAGES_VARIATIONS)) {
+                        return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
+                    }
+
+                    return choiceText;
+                }
+            }
+        } else if (apiResponse.get("error") != null) {
+            Builder error = (Builder) apiResponse.get("error");
+            if (error.get("message") != null) {
+                throw new ApplicationException(error.get("message").toString());
+            }
+        }
+
+        return "";
     }
 
     /**
@@ -335,7 +410,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     private String chat(String sessionId, String message, String image) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
-        String API_URL = this.config.get("openai.api_endpoint");
+        String API_URL = this.config.get("openai.api_endpoint") + "/v1/completions";
 
         if (!cli_mode)
             message = message.replaceAll("<br>|<br />", "");
