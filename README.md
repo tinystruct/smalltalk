@@ -15,7 +15,7 @@ git clone https://github.com/tinystruct/smalltalk.git
 ```  
 4. You will need to follow this [tutorial](https://openjdk.org/install/) to install the Java Development Kit (JDK 11+) on your computer first. If you choose to download and install it manually, please check it in this [OpenJDK Archive](https://jdk.java.net/archive/). And Java development environment such as Eclipse or IntelliJ IDEA is just better to have, not required.
 5. Import the extracted / cloned project into your Java development environment.
-6. Go to `src/main/resources/application.properties` file and update the `chatGPT.api_key` with your own key or set the environment variable `CHATGPT_API_KEY` with your own key.
+6. Go to `src/main/resources/application.properties` file and update the `openai.api_key` with your own key or set the environment variable `OPENAI_API_KEY` with your own key.
 7. Here is the last step for installation:
 ```tcsh
 ./mvnw compile
@@ -59,7 +59,7 @@ sudo bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --serve
 3. To run it in a Docker container, you can use the command below:
 
 ```tcsh
-docker run -d -p 777:777 -e "CHATGPT_API_KEY=[YOUR-CHATGPT-API-KEY]" m0ver/smalltalk
+docker run -d -p 777:777 -e "OPENAI_API_KEY=[YOUR-OPENAI-API-KEY]" m0ver/smalltalk
 ```
 4. Access the application by navigating to http://localhost:777/?q=talk in your web browser
 5. If you want to talk with ChatGPT, please type @ChatGPT in your topic of the conversation when you set up the topic.
