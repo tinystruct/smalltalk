@@ -36,8 +36,6 @@ import static org.tinystruct.http.Constants.*;
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
     public static final String CHAT_GPT = "ChatGPT";
-
-
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
     private boolean cli_mode;
     private boolean chatGPT;
@@ -354,7 +352,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         String payload = "{\n" +
                 "  \"model\": \"gpt-3.5-turbo\"," +
                 "  \"messages\":[\n" +
-                "    {\"role\": \"system\", \"content\": \"I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n\"},\n" +
+                "    {\"role\": \"system\", \"content\": \"I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be displayed in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to return: https://api.openai.com/v1/images/edits. If it's about image variations, then return the api simply: https://api.openai.com/v1/images/variations\n\"},\n" +
                 "    {\"role\": \"user\", \"content\": \"Hello!\"}\n" +
                 "  ]" +
                 "}";
