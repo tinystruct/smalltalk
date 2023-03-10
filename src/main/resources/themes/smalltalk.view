@@ -89,11 +89,11 @@
       max-width: 100%;
   }
 
-  #matrix { position: absolute; right:0;bottom:0; width:77px; height:77px;}
+  #matrix { position: absolute; right:0; bottom:0; width:77px; height:77px; border:1px solid #337ab7; display: none;}
   .note { position: relative }
   .pad { margin: 10px 0;position:relative; }
   .text { min-height:60px; _height:60px; padding:10px; font-size:12px; color:#777; border:1px solid #d9d9d9; outline:0; background:#fff; }
-  .text:hover, .hover .text { border-color:#337ab7; }
+  .text:hover, .hover .text { border-color:#337ab7; caret-color:#337ab7;}
   .arrowline:hover, .hover .arrowline { border-color:transparent transparent #337ab7 transparent; }
   .arrowbox { width:20px; height:20px; position:absolute; left:52px; top:-12px; }
   .arrow { width:0; height:0; font-size:0; line-height:0; position:absolute; overflow:hidden; }
