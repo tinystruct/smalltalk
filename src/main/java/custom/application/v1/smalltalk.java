@@ -352,8 +352,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         String payload = "{\n" +
                 "  \"model\": \"gpt-3.5-turbo\"," +
                 "  \"messages\":[\n" +
-                "    {\"role\": \"system\", \"content\": \"I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be displayed in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to return: https://api.openai.com/v1/images/edits. If it's about image variations, then return the api simply: https://api.openai.com/v1/images/variations\n\"},\n" +
-                "    {\"role\": \"user\", \"content\": \"Hello!\"}\n" +
+                "    {\"role\": \"system\", \"content\": \"I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it and output the result that should be displayed in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image or picture creation, then you just need to return the OpenAI api simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to return: https://api.openai.com/v1/images/edits. and if it's about image variations, then return the api simply: https://api.openai.com/v1/images/variations\n\"},\n" +
+                "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! \"}\n" +
                 "  ]" +
                 "}";
 
@@ -361,7 +361,29 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         payloadBuilder.parse(payload);
 
         Builders tmpBuilders = (Builders) payloadBuilder.get("messages");
-        tmpBuilders.get(1).put("content", message);
+        Builder previousUser = new Builder();
+        if (this.getVariable("previous_user_message") != null) {
+            previousUser.put("role", "user");
+            previousUser.put("content", this.getVariable("previous_user_message").getValue());
+            tmpBuilders.add(previousUser);
+        }
+
+        Builder previousSystem = new Builder();
+        if (this.getVariable("previous_system_message") != null) {
+            previousSystem.put("role", "system");
+            previousSystem.put("content", this.getVariable("previous_system_message").getValue());
+            tmpBuilders.add(previousSystem);
+        }
+
+        if (tmpBuilders.size() > 2) {
+            Builder builder = new Builder();
+            builder.put("role", "user");
+            builder.put("content", message);
+            tmpBuilders.add(builder);
+        } else {
+            tmpBuilders.get(1).put("content", message);
+        }
+
         payloadBuilder.put("user", sessionId);
 
         Context context = new ApplicationContext();
@@ -379,6 +401,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                 if (choice.get("message") != null) {
                     String choiceText = ((Builder) choice.get("message")).get("content").toString();
+                    this.setVariable("previous_user_message", message);
+                    this.setVariable("previous_system_message", choiceText);
+
                     if (choiceText.contains(IMAGES_GENERATIONS)) {
                         return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
                     } else if (choiceText.contains(IMAGES_EDITS)) {
