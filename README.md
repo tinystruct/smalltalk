@@ -35,7 +35,7 @@ To see the available commands, run the following command:
 ```tcsh
 bin/dispatcher --help
 ```
-To interact with ChatGPT, use the say command, for example:
+To interact with ChatGPT, use the chat command, for example:
 ```tcsh
 bin/dispatcher chat
 ```
