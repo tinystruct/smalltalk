@@ -17,7 +17,7 @@ git clone https://github.com/tinystruct/smalltalk.git
 
 If your current envirionment is using JDK 8, you can execute the below command to upgrade it quickly.
 ```
-bin/installer
+bin/openjdk-upgrade
 ```
 5. Import the extracted / cloned project into your Java development environment.
 6. Go to `src/main/resources/application.properties` file and update the `openai.api_key` with your own key or set the environment variable `OPENAI_API_KEY` with your own key.
