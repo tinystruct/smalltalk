@@ -27,6 +27,7 @@
     background: #f5f5f5;
     border: 1px solid #f5f5f5;
     resize: vertical;
+    margin: 10px 0 10px 0;
   }
 
   #list.light-green {
