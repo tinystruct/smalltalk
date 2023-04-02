@@ -864,6 +864,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Override
     protected String filter(String text) {
         text = text.replaceAll("<script(.*)>(.*)<\\/script>", "");
+        text = text.replaceAll("\\\\\"", "\"");
         text = text.replaceAll("\\\\n\\\\n", "<br />");
         text = text.replaceAll("\\\\n", "<br />");
         return text;
