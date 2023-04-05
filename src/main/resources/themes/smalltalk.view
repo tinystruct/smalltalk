@@ -428,6 +428,14 @@
     word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
   }
 
+  .content ul {
+
+  }
+
+  .content ul li {
+
+  }
+
   p, pre {
     margin: 0;
   }
@@ -472,6 +480,7 @@
   function update($data) {
     if(typeof($data.message)!='undefined') {
       placeholder = document.createElement('li');
+      placeholder.setAttribute('class','content');
       placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
       $('#messages').append(placeholder);
 
