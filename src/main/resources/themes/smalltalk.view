@@ -419,7 +419,7 @@
     color: #00ff00;
   }
 
-  ul#messages > li {
+  ul#messages > li.pre-wrapper {
     overflow-x: auto !important;
     white-space: pre-wrap !important;       /* Since CSS 2.1 */
     white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
@@ -485,6 +485,7 @@
     if(typeof($data.message)!='undefined') {
       placeholder = document.createElement('li');
       placeholder.setAttribute('class','content');
+      placeholder.setAttribute('class','pre-wrapper');
       placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
       $('#messages').append(placeholder);
 
@@ -522,7 +523,9 @@
             }
             else this.complete();
           });
-          animation_timer.start().complete(function(){ this.stop(); placeholder.innerHTML += "</span>";$(placeholder).addClass('chat-gpt');
+          animation_timer.start().complete(function(){ this.stop(); placeholder.innerHTML += "</span>";
+          $(placeholder).removeClass('pre-wrapper');
+          $(placeholder).addClass('chat-gpt');
           placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
           });
         }
