@@ -15,10 +15,10 @@
     <!-- Custom styles for this template -->
     <style type="text/css">
   #list ::-moz-selection {
-    background: #0000ff;
+    background: #2583AD;
   }
   #list ::selection {
-    background: #0000ff;
+    background: #2583AD;
   }
   #list {
     overflow-x:hidden;
@@ -419,7 +419,7 @@
     color: #00ff00;
   }
 
-  #messages ul li {
+  ul#messages > li {
     overflow-x: auto !important;
     white-space: pre-wrap !important;       /* Since CSS 2.1 */
     white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
@@ -428,12 +428,16 @@
     word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
   }
 
-  #messages .content ul {
+  ul#messages .content ul {
 
   }
 
-  #messages .content ul li {
-
+  ul#messages .content ul li {
+    white-space: pre-wrap !important;       /* Since CSS 2.1 */
+    white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap !important;      /* Opera 4-6 */
+    white-space: -o-pre-wrap !important;    /* Opera 7 */
+    word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
   }
 
   p, pre {
@@ -875,6 +879,7 @@
   //]]>
 
 
+
     </script>
 </head>
 <body>
@@ -949,7 +954,7 @@
     <form id="sender">
         <div class="note">Share the link to invite others join this conversation: <a id="link"
                                                                                      href="javascript:void(0)">[%LINK:talk/join%]/{%meeting_code%}</a>
-            <div id="matrix"><img /><span>Click For QR Code</span></div>
+            <div id="matrix"><img/><span>Click For QR Code</span></div>
         </div>
         <div class="pad">
             <div class="text">
