@@ -15,7 +15,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -23,8 +22,6 @@ import java.util.regex.Pattern;
 
 public class SearchAI extends AbstractApplication implements Provider {
     private static final String SEARCH_URL = "https://lite.duckduckgo.com/lite/";
-    //    private static final String REGEX_PATTERN = "(?i)\\\\b((?:https?://|www\\\\d{0,3}[.]|[a-z0-9.\\\\-]+[.][a-z]{2,4}/)(?:[^\\\\s()<>]+|\\\\(([^\\\\s()<>]+|(\\\\([^\\\\s()<>]+\\\\)))*\\\\))*(?:\\\\(([^\\\\s()<>]+|(\\\\([^\\\\s()<>]+\\\\)))*\\\\)|[^\\\\s`!()\\\\[\\\\]{};:'\\\".,<>?«»“”‘’]))";
-//    private static final String REGEX_PATTERN = "(?i)\\\\b((?:https?://|www\\\\d{0,3}[.]|[a-z0-9.\\\\-]+[.][a-z]{2,4}/)(?:[^\\\\s()<>]+|\\\\(([^\\\\s()<>]+|(\\\\([^\\\\s()<>]+\\\\)))*\\\\))*(?:\\\\(([^\\\\s()<>]+|(\\\\([^\\\\s()<>]+\\\\)))*\\\\)|[^\\\\s`!()\\\\[\\\\]{};:'\\\\\".,<>?«»“”‘’]))";
     private static final String REGEX_PATTERN = "(?i)\\b((?:https?:\\/\\/|www\\d{0,3}[.]|[a-z0-9.\\-]+[.][a-z]{2,4}\\/)(?:[^\\s()<>]+|\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\))*(?:\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\)|[^\\s\\W`!()\\[\\]{};:'\\\".,<>?«»“”‘’]))";
 
     @Override
@@ -54,12 +51,9 @@ public class SearchAI extends AbstractApplication implements Provider {
             headers.add(Header.CONNECTION.set("keep-alive"));
 
             builder.setHeaders(headers).setMethod(Method.POST);
-            try {
-                builder.setParameter("q", URLEncoder.encode(query, "UTF-8"));
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+            builder.setParameter("q", query);
             builder.setParameter("kl", "us-en");
+            builder.setParameter("df", "m");
         }
 
         try {
@@ -73,10 +67,10 @@ public class SearchAI extends AbstractApplication implements Provider {
             ArrayList<String> list = new ArrayList<String>();
 
             HTMLEditorKit.ParserCallback cb = new HTMLEditorKit.ParserCallback() {
+                final StringBuffer buffer = new StringBuffer();
                 boolean ready = false;
                 boolean withDuckDuckGo = false;
                 int i = 0;
-                final StringBuffer buffer = new StringBuffer();
 
                 @Override
                 public void handleComment(char[] data, int pos) {
@@ -92,7 +86,7 @@ public class SearchAI extends AbstractApplication implements Provider {
                     } else {
                         if (t == HTML.Tag.HTML || t == HTML.Tag.TITLE || t == HTML.Tag.HEAD || t == HTML.Tag.META || t == HTML.Tag.BASE || t == HTML.Tag.LINK || t == HTML.Tag.SCRIPT || t == HTML.Tag.STYLE || t == HTML.Tag.MAP || t == HTML.Tag.FRAMESET) {
                             ready = false;
-                        } else if (t == HTML.Tag.BODY || t == HTML.Tag.DIV || t == HTML.Tag.SPAN || t == HTML.Tag.P || t == HTML.Tag.A || t == HTML.Tag.B || t == HTML.Tag.I || t == HTML.Tag.STRONG || t == HTML.Tag.TD || t == HTML.Tag.LI) {
+                        } else if (t == HTML.Tag.BODY || t == HTML.Tag.H1 || t == HTML.Tag.H2 || t == HTML.Tag.H3 || t == HTML.Tag.H4 || t == HTML.Tag.H5 || t == HTML.Tag.H6 || t == HTML.Tag.DIV || t == HTML.Tag.SPAN || t == HTML.Tag.P || t == HTML.Tag.A || t == HTML.Tag.B || t == HTML.Tag.I || t == HTML.Tag.STRONG || t == HTML.Tag.TD || t == HTML.Tag.LI) {
                             ready = true;
                         }
                     }
@@ -123,11 +117,11 @@ public class SearchAI extends AbstractApplication implements Provider {
                 public void handleText(char[] data, int pos) {
                     if (withDuckDuckGo && ready && list.size() < 3) {
                         buffer.append(data);
+                        buffer.append(" \n");
                     } else if (ready) {
                         buffer.append(data);
+                        buffer.append(" \n");
                     }
-
-                    buffer.append(" \n");
                 }
             };
 
