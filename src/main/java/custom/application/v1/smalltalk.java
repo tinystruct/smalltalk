@@ -361,7 +361,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (reference.size() == 0) {
             payload += "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! \"}\n";
         } else {
-            payload += "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! here is a reference for you to answer some questions: " + reference.get("data") + "\"}\n";
+            payload += "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! here is for your reference to answer some questions: " + reference.get("data") + "\"}\n";
         }
         payload += "   ]}";
 
