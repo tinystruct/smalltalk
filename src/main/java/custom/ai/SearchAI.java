@@ -15,6 +15,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -51,9 +52,8 @@ public class SearchAI extends AbstractApplication implements Provider {
             headers.add(Header.CONNECTION.set("keep-alive"));
 
             builder.setHeaders(headers).setMethod(Method.POST);
-            builder.setParameter("q", query);
-            builder.setParameter("kl", "us-en");
-            builder.setParameter("df", "m");
+            builder.setParameter("q", query + "" + LocalDateTime.now().getYear() + "-" + LocalDateTime.now().getMonthValue());
+            builder.setParameter("kl", "");
         }
 
         try {
@@ -95,7 +95,7 @@ public class SearchAI extends AbstractApplication implements Provider {
                 @Override
                 public void handleEndTag(HTML.Tag t, int pos) {
                     if (withDuckDuckGo && list.size() < 3 && t == HTML.Tag.TD) {
-                        if (buffer.length() > 0) {
+                        if (buffer.length() > 0 && buffer.indexOf("No results.") == -1){
                             if (i == 7) {
                                 i = 0;
                                 list.add(buffer.toString().replaceAll("\"", "\\\""));
