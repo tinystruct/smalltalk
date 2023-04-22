@@ -401,27 +401,23 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
         assert apiResponse != null;
         Builders builders;
-        if (apiResponse.get("choices") != null) {
-            builders = (Builders) apiResponse.get("choices");
+        if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
+            Builder choice = builders.get(0);
 
-            if (builders.get(0).size() > 0) {
-                Builder choice = builders.get(0);
+            if (choice.get("message") != null) {
+                String choiceText = ((Builder) choice.get("message")).get("content").toString();
+                this.setVariable("previous_user_message", message);
+                this.setVariable("previous_system_message", choiceText);
 
-                if (choice.get("message") != null) {
-                    String choiceText = ((Builder) choice.get("message")).get("content").toString();
-                    this.setVariable("previous_user_message", message);
-                    this.setVariable("previous_system_message", choiceText);
-
-                    if (choiceText.contains(IMAGES_GENERATIONS)) {
-                        return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
-                    } else if (choiceText.contains(IMAGES_EDITS)) {
-                        return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
-                    } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                        return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
-                    }
-
-                    return choiceText;
+                if (choiceText.contains(IMAGES_GENERATIONS)) {
+                    return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
+                } else if (choiceText.contains(IMAGES_EDITS)) {
+                    return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
+                } else if (choiceText.contains(IMAGES_VARIATIONS)) {
+                    return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
                 }
+
+                return choiceText;
             }
         } else if (apiResponse.get("error") != null) {
             Builder error = (Builder) apiResponse.get("error");
@@ -474,24 +470,19 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
         assert apiResponse != null;
         Builders builders;
-        if (apiResponse.get("choices") != null) {
-            builders = (Builders) apiResponse.get("choices");
-
-            if (builders.get(0).size() > 0) {
-                Builder choice = builders.get(0);
-
-                if (choice.get("text") != null) {
-                    String choiceText = choice.get("text").toString();
-                    if (choiceText.contains(IMAGES_GENERATIONS)) {
-                        return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
-                    } else if (choiceText.contains(IMAGES_EDITS)) {
-                        return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
-                    } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                        return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
-                    }
-
-                    return choiceText;
+        if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
+            Builder choice = builders.get(0);
+            if (choice.get("text") != null) {
+                String choiceText = choice.get("text").toString();
+                if (choiceText.contains(IMAGES_GENERATIONS)) {
+                    return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
+                } else if (choiceText.contains(IMAGES_EDITS)) {
+                    return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
+                } else if (choiceText.contains(IMAGES_VARIATIONS)) {
+                    return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
                 }
+
+                return choiceText;
             }
         } else if (apiResponse.get("error") != null) {
             Builder error = (Builder) apiResponse.get("error");
