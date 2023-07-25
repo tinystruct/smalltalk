@@ -8,7 +8,6 @@ import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
 import org.tinystruct.application.Context;
-import org.tinystruct.application.Variables;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
@@ -111,7 +110,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setVariable("session_id", request.getSession().getId());
 
         Variable<?> topic;
-        if ((topic = Variables.getInstance().get("{%" + meetingCode + "%}")) != null) {
+        if ((topic = this.getVariable("meeting_code")) != null) {
             this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
         } else {
             this.setVariable("topic", "");
