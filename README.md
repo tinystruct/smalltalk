@@ -3,7 +3,8 @@ smalltalk
 ==
 [![Build Status](https://travis-ci.org/tinystruct/smalltalk.svg?branch=master)](https://travis-ci.org/m0ver/tinystruct2.0)
 
-smalltalk is a tinystruct-based project that provides instant messaging functionality, It allows users to send text and share images, documents, and other content. also It allows you to interact with ChatGPT which is a language model developed by OpenAI, through a command-line interface (CLI) or a web interface.
+smalltalk is a tinystruct-based project that provides instant messaging functionality, It allows users to send text and share images, documents, and other content. 
+Also, It allows you to interact with ChatGPT which is a language model developed by OpenAI through a command-line interface (CLI) or a web interface.
 
 Installation
 ---
