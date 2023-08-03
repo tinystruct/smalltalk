@@ -813,6 +813,7 @@
         data: {meeting_code: "{%meeting_code%}"}
       }).done(function( msg ) {
         $("#matrix").css({"background":"url("+msg+") transparent center center"});
+        $("#matrix > span").hide();
         $("#matrix").show();
       });
     });
