@@ -1,10 +1,10 @@
 
 smalltalk
 ==
-[![Build Status](https://travis-ci.org/tinystruct/smalltalk.svg?branch=master)](https://travis-ci.org/m0ver/tinystruct2.0)
-
 smalltalk is a tinystruct-based project that provides instant messaging functionality, It allows users to send text and share images, documents, and other content. 
 Also, It allows you to interact with ChatGPT which is a language model developed by OpenAI through a command-line interface (CLI) or a web interface.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=tinystruct/smalltalk&type=Date)](https://star-history.com/#tinystruct/smalltalk&Date)
 
 Installation
 ---
@@ -45,7 +45,7 @@ To interact with ChatGPT, use the chat command, for example:
 ```tcsh
 bin/dispatcher chat
 ```
-![CLI](/screenshot.png)
+![CLI](https://github.com/tinystruct/smalltalk/assets/3631818/b49bab05-0135-4383-b252-0ca9c011f6e8)
 
 Web mode
 
@@ -70,7 +70,7 @@ docker run -d -p 777:777 -e "OPENAI_API_KEY=[YOUR-OPENAI-API-KEY]" m0ver/smallta
 4. Access the application by navigating to http://localhost:777/?q=talk in your web browser
 5. If you want to talk with ChatGPT, please type @ChatGPT in your topic of the conversation when you set up the topic.
 
-![Web](/screenshot-web.png)
+![Web](https://github.com/tinystruct/smalltalk/assets/3631818/32e50145-a5be-41d6-9cea-5b25e76e9f1b)
 
 Demonstration
 ---
