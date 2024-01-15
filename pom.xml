@@ -21,7 +21,7 @@
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>1.1.3</version>
+            <version>1.1.4</version>
             <classifier>jar-with-dependencies</classifier>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-simple -->
