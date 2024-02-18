@@ -4,8 +4,8 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.system.ApplicationManager;
-import org.tinystruct.system.Dispatcher;
 import org.tinystruct.system.Settings;
+import org.tinystruct.system.annotation.Action;
 
 import java.util.Date;
 
@@ -14,12 +14,6 @@ public class hello extends AbstractApplication {
     @Override
     public void init() {
         // TODO Auto-generated method stub
-        this.setAction("praise", "praise");
-        this.setAction("say", "say");
-        this.setAction("smile", "smile");
-        this.setAction("date", "currentDate");
-        this.setAction("setdate", "setCurrentDate");
-        this.setAction("stable", "stable");
     }
 
     @Override
@@ -27,29 +21,35 @@ public class hello extends AbstractApplication {
         return "1.0";
     }
 
+    @Action("praise")
     public String praise() {
         return "Praise to the Lord!";
     }
 
+    @Action("say")
     public String say() {
-        if(null != this.context.getAttribute("--words"))
+        if (null != this.context.getAttribute("--words"))
             return this.context.getAttribute("--words").toString();
 
         return "Invalid parameter(s).";
     }
 
+    @Action("setdate")
     public Date setCurrentDate(Date date) {
         return date;
     }
 
-    public Date currentDate(){
+    @Action("date")
+    public Date currentDate() {
         return new Date();
     }
 
+    @Action("stable")
     public boolean stable(boolean x) {
         return x;
     }
 
+    @Action("smile")
     public String smile() {
         return ":)";
     }

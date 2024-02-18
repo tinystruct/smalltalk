@@ -4,6 +4,7 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.http.*;
+import org.tinystruct.system.annotation.Action;
 
 import javax.swing.text.MutableAttributeSet;
 import javax.swing.text.html.HTML;
@@ -25,6 +26,7 @@ public class SearchAI extends AbstractApplication implements Provider {
     private static final String SEARCH_URL = "https://lite.duckduckgo.com/lite/";
     private static final String REGEX_PATTERN = "(?i)\\b((?:https?:\\/\\/|www\\d{0,3}[.]|[a-z0-9.\\-]+[.][a-z]{2,4}\\/)(?:[^\\s()<>]+|\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\))*(?:\\(([^\\s()<>]+|(\\([^\\s()<>]+\\)))*\\)|[^\\s\\W`!()\\[\\]{};:'\\\".,<>?«»“”‘’]))";
 
+    @Action("search")
     @Override
     public Builder call() throws ApplicationException {
         if (this.context.getAttribute("--query") == null) {
@@ -157,7 +159,7 @@ public class SearchAI extends AbstractApplication implements Provider {
      */
     @Override
     public void init() {
-        this.setAction("search", "call");
+
     }
 
     /**

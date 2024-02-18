@@ -4,6 +4,7 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.http.*;
+import org.tinystruct.system.annotation.Action;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
 import java.net.MalformedURLException;
@@ -12,6 +13,8 @@ import java.net.URL;
 import java.util.Base64;
 
 public class StabilityAI extends AbstractApplication implements Provider {
+
+    @Action("stability")
     public Builder call() throws ApplicationException {
         if (this.context.getAttribute("api") == null) {
             throw new ApplicationException("API is required");
@@ -82,7 +85,7 @@ public class StabilityAI extends AbstractApplication implements Provider {
      */
     @Override
     public void init() {
-        this.setAction("stability", "call");
+
     }
 
     /**

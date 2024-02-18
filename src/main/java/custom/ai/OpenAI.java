@@ -4,6 +4,7 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.http.*;
+import org.tinystruct.system.annotation.Action;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
 import java.net.MalformedURLException;
@@ -16,6 +17,7 @@ public class OpenAI extends AbstractApplication implements Provider {
     public static final String IMAGES_EDITS = "https://api.openai.com/v1/images/edits";
     public static final String IMAGES_VARIATIONS = "https://api.openai.com/v1/images/variations";
 
+    @Action("openai")
     public Builder call() throws ApplicationException {
         if (this.context.getAttribute("api") == null) {
             throw new ApplicationException("API is required");
@@ -92,7 +94,7 @@ public class OpenAI extends AbstractApplication implements Provider {
      */
     @Override
     public void init() {
-        this.setAction("openai", "call");
+
     }
 
     /**
