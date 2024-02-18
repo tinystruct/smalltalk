@@ -15,6 +15,7 @@ import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
+import org.tinystruct.system.annotation.Action;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
@@ -44,23 +45,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     public void init() {
         super.init();
 
-        this.setAction("talk", "index");
-        this.setAction("talk/join", "join");
-        this.setAction("talk/start", "start");
-        this.setAction("talk/save", "save");
-        this.setAction("talk/update", "update");
-        this.setAction("talk/upload", "upload");
-        this.setAction("talk/command", "command");
-        this.setAction("talk/topic", "topic");
-        this.setAction("talk/matrix", "matrix");
-        this.setAction("files", "download");
-        this.setAction("chat", "chat");
-        this.commandLines.get("chat").setDescription("Chat with ChatGPT in command-line.");
-
         this.setVariable("message", "");
         this.setVariable("topic", "");
 
-//      set env with LANG=en_US.UTF-8
+//      Set env with LANG=en_US.UTF-8
         System.setProperty("LANG", "en_US.UTF-8");
 
         SessionManager.getInstance().addListener(this);
@@ -76,6 +64,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
+    @Action("talk")
     public smalltalk index() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
@@ -122,10 +111,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return this;
     }
 
+    @Action("talk/update")
     public String update(String sessionId) throws ApplicationException {
         return this.take(sessionId);
     }
 
+    @Action("talk/matrix")
     public String matrix(String meetingCode) throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
@@ -140,6 +131,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "";
     }
 
+    @Action("talk/join")
     public Object join(String meetingCode) throws ApplicationException {
         if (groups.containsKey(meetingCode)) {
             final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
@@ -156,6 +148,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
+    @Action("talk/start")
     public Object start(String name) throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
@@ -173,6 +166,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return name;
     }
 
+    @Action("talk/command")
     public String command() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -195,6 +189,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
+    @Action("talk/save")
     public String save() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -264,6 +259,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
+    @Action("chat")
     public void chat() {
         this.cli_mode = true;
         if (this.config.get("openai.api_key") == null || this.config.get("openai.api_key").isEmpty()) {
@@ -755,6 +751,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{}";
     }
 
+    @Action("talk/upload")
     public String upload() throws ApplicationException {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -845,10 +842,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return arr;
     }
 
+    @Action("files")
     public byte[] download(String fileName) throws ApplicationException {
         return this.download(fileName, true);
     }
 
+    @Action("talk/topic")
     public boolean topic() {
         final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
