@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 ROOT="$(pwd)"
-VERSION="1.2.1"
+VERSION="1.2.2"
 cd "$(dirname "$0")" || exit
 cd "../"
 # Navigate to the root directory
@@ -15,7 +15,8 @@ args=""
 # Loop through each argument
 for arg; do
     # Extract the first two characters of the argument
-    str=${arg:0:2}
+    # str=${arg:0:2}
+    str=$(echo "$arg" | awk  '{ string=substr($0, 0, 2); print string; }' )
 
     # Check if it starts with '-D' or '-X'
     if [ "$str" = "-D" ] || [ "$str" = "-X" ]; then
