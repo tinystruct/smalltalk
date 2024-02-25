@@ -4,6 +4,7 @@ import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.http.*;
+import org.tinystruct.http.client.HttpRequestBuilder;
 import org.tinystruct.system.annotation.Action;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
