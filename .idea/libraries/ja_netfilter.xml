@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="ja-netfilter">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/ja-netfilter.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

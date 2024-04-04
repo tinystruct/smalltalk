@@ -353,7 +353,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 "  \"messages\":[\n" +
                 "    {\"role\": \"system\", \"content\": \"I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.\n\"},\n";
 
-        Builder reference = preprocess(message);
+        Builder reference = new Builder();//preprocess(message);
+        reference.put("data", message);
+
         if (reference.size() == 0) {
             payload += "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! \"}\n";
         } else {
@@ -820,7 +822,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // using Files.readAllBytes() method
         byte[] arr = new byte[0];
         try {
-            String mimeType = new MimetypesFileTypeMap().getContentType(path.toFile());
+            String mimeType = Files.probeContentType(path);
             if (mimeType != null)
                 response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
             else
