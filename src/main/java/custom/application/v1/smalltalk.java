@@ -21,6 +21,7 @@ import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
 import jakarta.activation.MimetypesFileTypeMap;
+
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -349,48 +350,41 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         // Try to get some information from internet
         String payload = "{\n" +
-                "  \"model\": \"gpt-3.5-turbo\"," +
-                "  \"messages\":[\n" +
-                "    {\"role\": \"system\", \"content\": \"I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.\n\"},\n";
+                "  \"model\": \"gpt-3.5-turbo\"}";
 
-        Builder reference = new Builder();//preprocess(message);
-        reference.put("data", message);
-
-        if (reference.size() == 0) {
-            payload += "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! \"}\n";
-        } else {
-            payload += "    {\"role\": \"user\", \"content\": \"Ok, Sounds great! here is for your reference to answer some questions: " + reference.get("data") + "\"}\n";
-        }
-        payload += "   ]}";
+//                "  \"messages\":[\n" +
+//                "    {\"role\": \"system\", \"content\": \"I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.\n\"},\n";
 
         Builder payloadBuilder = new Builder();
         payloadBuilder.parse(payload);
+        Builders messages = new Builders();
+        Builder messageBuilder = new Builder();
+        messageBuilder.put("role", "system");
+        messageBuilder.put("content", "I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.");
 
-        Builders tmpBuilders = (Builders) payloadBuilder.get("messages");
+        messages.add(messageBuilder);
+
         Builder previousUser = new Builder();
         if (this.getVariable("previous_user_message") != null) {
             previousUser.put("role", "user");
             previousUser.put("content", this.getVariable("previous_user_message").getValue());
-            tmpBuilders.add(previousUser);
+            messages.add(previousUser);
         }
 
         Builder previousSystem = new Builder();
         if (this.getVariable("previous_system_message") != null) {
             previousSystem.put("role", "system");
             previousSystem.put("content", this.getVariable("previous_system_message").getValue());
-            tmpBuilders.add(previousSystem);
+            messages.add(previousSystem);
         }
 
-        if (tmpBuilders.size() > 2) {
-            Builder builder = new Builder();
-            builder.put("role", "user");
-            builder.put("content", message);
-            tmpBuilders.add(builder);
-        } else {
-            tmpBuilders.get(1).put("content", message);
-        }
+        Builder builder = new Builder();
+        builder.put("role", "user");
+        builder.put("content", message);
+        messages.add(builder);
 
         payloadBuilder.put("user", sessionId);
+        payloadBuilder.put("messages", messages);
 
         Context context = new ApplicationContext();
         context.setAttribute("payload", payloadBuilder);
