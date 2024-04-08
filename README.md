@@ -65,7 +65,7 @@ sudo bin/dispatcher start --import org.tinystruct.system.NettyHttpServer --serve
 3. To run it in a Docker container, you can use the command below:
 
 ```tcsh
-docker run -d -p 777:777 -e "OPENAI_API_KEY=[YOUR-OPENAI-API-KEY]" m0ver/smalltalk
+docker run -d -p 777:777 -e "OPENAI_API_KEY=[YOUR-OPENAI-API-KEY]" -e "STABILITY_API_KEY=[YOUR-STABILITY-API-KEY]" m0ver/smalltalk
 ```
 4. Access the application by navigating to http://localhost:777/?q=talk in your web browser
 5. If you want to talk with ChatGPT, please type @ChatGPT in your topic of the conversation when you set up the topic.

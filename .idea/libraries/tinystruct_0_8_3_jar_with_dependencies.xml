@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="tinystruct-0.8.3-jar-with-dependencies">
-    <CLASSES>
-      <root url="jar://$PROJECT_DIR$/lib/tinystruct-0.8.3-jar-with-dependencies.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
