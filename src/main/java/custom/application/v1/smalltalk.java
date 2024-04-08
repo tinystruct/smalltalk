@@ -20,8 +20,6 @@ import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
-import jakarta.activation.MimetypesFileTypeMap;
-
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -40,7 +38,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     public static final String CHAT_GPT = "ChatGPT";
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-    private boolean cli_mode;
+    private boolean cliMode;
     private boolean chatGPT;
 
     public void init() {
@@ -49,7 +47,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setVariable("message", "");
         this.setVariable("topic", "");
 
-//      Set env with LANG=en_US.UTF-8
         System.setProperty("LANG", "en_US.UTF-8");
 
         SessionManager.getInstance().addListener(this);
@@ -262,7 +259,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("chat")
     public void chat() {
-        this.cli_mode = true;
+        this.cliMode = true;
         if (this.config.get("openai.api_key") == null || this.config.get("openai.api_key").isEmpty()) {
             String url = "https://platform.openai.com/account/api-keys";
 
@@ -294,12 +291,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             String input = scanner.nextLine();
 
             if (input.equals("exit")) {
-                System.out.println("Exiting...");
-                System.exit(-1);
+                System.out.println("Bye!");
                 break;
             } else {
                 try {
-                    if (input.trim().length() > 0) {
+                    if (!input.trim().isEmpty()) {
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
                         System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
                         message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
@@ -326,6 +322,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
 
         scanner.close();
+        System.exit(-1);
     }
 
     private String chat(String sessionId, String message) throws ApplicationException {
@@ -345,15 +342,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Replace YOUR_API_KEY with your actual API key
         String API_URL = this.config.get("openai.api_endpoint") + "/v1/chat/completions";
 
-        if (!cli_mode)
+        if (!cliMode)
             message = message.replaceAll("<br>|<br />", "");
 
         // Try to get some information from internet
         String payload = "{\n" +
                 "  \"model\": \"gpt-3.5-turbo\"}";
-
-//                "  \"messages\":[\n" +
-//                "    {\"role\": \"system\", \"content\": \"I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.\n\"},\n";
 
         Builder payloadBuilder = new Builder();
         payloadBuilder.parse(payload);
@@ -438,7 +432,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Replace YOUR_API_KEY with your actual API key
         String API_URL = this.config.get("openai.api_endpoint") + "/v1/completions";
 
-        if (!cli_mode)
+        if (!cliMode)
             message = message.replaceAll("<br>|<br />", "");
 
         String payload = "{\n" +
