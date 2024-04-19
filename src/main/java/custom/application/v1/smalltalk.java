@@ -767,15 +767,18 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                  final BufferedOutputStream bout = new BufferedOutputStream(out);
                  final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));
             ) {
-                byte[] keyBytes = keyBytes(meetingCode.toString()); // Generate key bytes
-                int bytesRead;
-                byte[] buffer = new byte[1024];
-                while ((bytesRead = bs.read(buffer)) != -1) {
-                    for (int i = 0; i < bytesRead; i++) {
-                        buffer[i] = (byte) (buffer[i] ^ keyBytes[i % keyBytes.length]); // XOR operation
+                final byte[] bytes = new byte[1024];
+                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
+                int read;
+                while ((read = bs.read(bytes)) != -1) {
+                    int min = Math.min(read, keys.length);
+                    for (int i = 0; i < min; i++) {
+                        bytes[i] = (byte) (bytes[i] ^ keys[i]);
                     }
-                    bout.write(buffer, 0, bytesRead);
+                    bout.write(bytes, 0, read);
                 }
+                bout.close();
+                bs.close();
 
                 builders.add(builder);
                 System.out.printf("File %s being uploaded to %s%n", file.getFilename(), path);
@@ -815,20 +818,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             arr = Files.readAllBytes(path);
             if (encoded) {
-                byte[] keyBytes = keyBytes(meetingCode.toString()); // Generate key bytes
-                for (int i = 0; i < arr.length; i++) {
-                    arr[i] = (byte) (arr[i] ^ keyBytes[i % keyBytes.length]);
-                }
+                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
+                int blocks = (arr.length - arr.length % 1024) / 1024;
+                int i = 0;
+                do {
+                    int min = Math.min(keys.length, arr.length);
+                    for (int j = 0; j < min; j++) {
+                        arr[i * 1024 + j] = (byte) (arr[i * 1024 + j] ^ keys[j]);
+                    }
+                } while (i++ < blocks);
             }
         } catch (IOException e) {
             throw new ApplicationException("Error reading the file: " + e.getMessage(), e);
         }
 
         return arr;
-    }
-
-    private byte[] keyBytes(String meetingCode) {
-        return meetingCode.getBytes(StandardCharsets.UTF_8);
     }
 
     @Action("files")
