@@ -767,25 +767,22 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                  final BufferedOutputStream bout = new BufferedOutputStream(out);
                  final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));
             ) {
-                final byte[] bytes = new byte[1024];
-                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-                int read;
-                while ((read = bs.read(bytes)) != -1) {
-                    for (int i = 0; i < keys.length; i++) {
-                        bytes[i] = (byte) (bytes[i] ^ keys[i]);
+                byte[] keyBytes = keyBytes(meetingCode.toString()); // Generate key bytes
+                int bytesRead;
+                byte[] buffer = new byte[1024];
+                while ((bytesRead = bs.read(buffer)) != -1) {
+                    for (int i = 0; i < bytesRead; i++) {
+                        buffer[i] = (byte) (buffer[i] ^ keyBytes[i % keyBytes.length]); // XOR operation
                     }
-                    bout.write(bytes, 0, read);
+                    bout.write(buffer, 0, bytesRead);
                 }
-
-                bout.close();
-                bs.close();
 
                 builders.add(builder);
                 System.out.printf("File %s being uploaded to %s%n", file.getFilename(), path);
             } catch (FileNotFoundException e) {
-                throw new ApplicationException(e.getMessage(), e);
+                throw new ApplicationException("File not found: " + e.getMessage(), e);
             } catch (IOException e) {
-                throw new ApplicationException(e.getMessage(), e);
+                throw new ApplicationException("Error uploading file: " + e.getMessage(), e);
             }
         }
 
@@ -818,18 +815,20 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             arr = Files.readAllBytes(path);
             if (encoded) {
-                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-                for (int i = 0; i < arr.length; i = i + 1024) {
-                    for (int j = 0; j < keys.length; j++) {
-                        arr[i + j] = (byte) (arr[i + j] ^ keys[j]);
-                    }
+                byte[] keyBytes = keyBytes(meetingCode.toString()); // Generate key bytes
+                for (int i = 0; i < arr.length; i++) {
+                    arr[i] = (byte) (arr[i] ^ keyBytes[i % keyBytes.length]);
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new ApplicationException("Error reading the file: " + e.getMessage(), e);
         }
 
         return arr;
+    }
+
+    private byte[] keyBytes(String meetingCode) {
+        return meetingCode.getBytes(StandardCharsets.UTF_8);
     }
 
     @Action("files")
