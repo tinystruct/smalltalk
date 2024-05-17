@@ -382,8 +382,8 @@
     width: intrinsic;           /* Safari/WebKit uses a non-standard name */
     width: -moz-max-content;    /* Firefox/Gecko */
     width: -webkit-max-content; /* Chrome */
-    width: max-content;
-    display: inline;
+    width: auto;
+    /* display: inline; */
     font-style: Consolas;
     font-family: monospace;
     --caret-color: transparent;
@@ -964,7 +964,6 @@
         <div class="pad">
             <div class="text">
                 <div contenteditable="true" id="text"></div>
-                <div id="cursor">I</div>
             </div>
             <span class="arrowbox">
             <b class="arrow arrowline"></b>
