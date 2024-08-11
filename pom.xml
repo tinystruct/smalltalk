@@ -23,7 +23,7 @@
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>1.3.0</version>
+            <version>1.3.2</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.groovy/groovy -->
         <dependency>
