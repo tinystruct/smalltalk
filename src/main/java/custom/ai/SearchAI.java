@@ -30,10 +30,10 @@ public class SearchAI extends AbstractApplication implements Provider {
     @Action("search")
     @Override
     public Builder call() throws ApplicationException {
-        if (this.context.getAttribute("--query") == null) {
+        if (getContext().getAttribute("--query") == null) {
             throw new ApplicationException("query is required");
         }
-        String query = this.context.getAttribute("--query").toString().trim();
+        String query = getContext().getAttribute("--query").toString().trim();
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         Headers headers = new Headers();

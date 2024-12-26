@@ -4,6 +4,7 @@ import custom.ai.ImageProcessorType;
 import custom.ai.OpenAI;
 import custom.ai.SearchAI;
 import custom.ai.StabilityAI;
+import org.apache.logging.log4j.EventLogger;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
@@ -15,6 +16,8 @@ import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
+import org.tinystruct.system.Event;
+import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
@@ -40,6 +43,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
     private boolean cliMode;
     private boolean chatGPT;
+    private static final EventDispatcher dispatcher = EventDispatcher.getInstance();
 
     public void init() {
         super.init();
@@ -50,6 +54,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         System.setProperty("LANG", "en_US.UTF-8");
 
         SessionManager.getInstance().addListener(this);
+
+        dispatcher.registerHandler(SessionCreated.class, event -> System.out.println(event.getPayload()));
 
         ApplicationManager.install(new OpenAI());
         ApplicationManager.install(new StabilityAI());
@@ -64,8 +70,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk")
     public smalltalk index() {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
 
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
@@ -73,7 +79,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             meetingCode = java.util.UUID.randomUUID().toString();
             request.getSession().setAttribute("meeting_code", meetingCode);
 
-            System.out.println("New meeting generated:" + meetingCode);
+            dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
         }
 
         List<String> session_ids;
@@ -116,8 +122,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/matrix")
     public String matrix(String meetingCode) throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
 
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
@@ -132,15 +138,15 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Action("talk/join")
     public Object join(String meetingCode) throws ApplicationException {
         if (groups.containsKey(meetingCode)) {
-            final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-            final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+            final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+            final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
             request.getSession().setAttribute("meeting_code", meetingCode);
 
             Reforward reforward = new Reforward(request, response);
             reforward.setDefault("/?q=talk");
             return reforward.forward();
         } else {
-            final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+            final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
             response.setStatus(ResponseStatus.NOT_FOUND);
             return "Invalid meeting code.";
         }
@@ -148,8 +154,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/start")
     public Object start(String name) throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
         request.getSession().setAttribute("user", name);
 
         Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -166,10 +172,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/command")
     public String command() {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
 
         if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
             if (request.getSession().getAttribute("user") == null) {
@@ -189,7 +195,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/save")
     public String save() {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (this.groups.containsKey(meetingCode)) {
             final String sessionId = request.getSession().getId();
@@ -252,7 +258,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             }
         }
 
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
         response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
         return "{ \"error\": \"expired\" }";
     }
@@ -639,10 +645,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
-                context.setAttribute("payload", _message);
-                context.setAttribute("api", IMAGES_GENERATIONS);
+                getContext().setAttribute("payload", _message);
+                getContext().setAttribute("api", IMAGES_GENERATIONS);
 
-                apiResponse = (Builder) ApplicationManager.call("openai", context);
+                apiResponse = (Builder) ApplicationManager.call("openai", getContext());
                 break;
             case EDITS:
                 // TODO
@@ -659,12 +665,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
-                context.setAttribute("content-type", "multipart/form-data");
-                context.setAttribute("image", image);
-                context.setAttribute("payload", _message);
-                context.setAttribute("api", IMAGES_EDITS);
+                getContext().setAttribute("content-type", "multipart/form-data");
+                getContext().setAttribute("image", image);
+                getContext().setAttribute("payload", _message);
+                getContext().setAttribute("api", IMAGES_EDITS);
 
-                apiResponse = (Builder) ApplicationManager.call("openai", context);
+                apiResponse = (Builder) ApplicationManager.call("openai", getContext());
                 break;
             case VARIATIONS:
                 // TODO
@@ -681,11 +687,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("prompt", prompt[1]);
                 _message.put("user", prompt[0]);
 
-                context.setAttribute("image", image);
-                context.setAttribute("payload", _message);
-                context.setAttribute("api", IMAGES_VARIATIONS);
+                getContext().setAttribute("image", image);
+                getContext().setAttribute("payload", _message);
+                getContext().setAttribute("api", IMAGES_VARIATIONS);
 
-                apiResponse = (Builder) ApplicationManager.call("openai", context);
+                apiResponse = (Builder) ApplicationManager.call("openai", getContext());
             default:
                 break;
         }
@@ -707,21 +713,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     public String update() throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
         if (meetingCode != null) {
             return this.update(meetingCode.toString(), sessionId);
         }
 
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
         response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
 
         return "{ \"error\": \"expired\" }";
     }
 
     public String update(String meetingCode, String sessionId) throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
             String error = "{ \"error\": \"expired\" }";
             if (this.groups.containsKey(meetingCode)) {
@@ -733,7 +739,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 error = "{ \"error\": \"session-timeout\" }";
             }
 
-            final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+            final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
             response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
             return error;
         }
@@ -743,7 +749,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/upload")
     public String upload() throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
 
@@ -755,7 +761,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         for (FileEntity file : list) {
             final Builder builder = new Builder();
             builder.put("type", file.getContentType());
-            builder.put("file", new StringBuilder().append(this.context.getAttribute(HTTP_HOST)).append("files/").append(file.getFilename()));
+            builder.put("file", new StringBuilder().append(getContext().getAttribute(HTTP_HOST)).append("files/").append(file.getFilename()));
             final File f = new File(path + File.separator + file.getFilename());
             if (!f.exists()) {
                 if (!f.getParentFile().exists()) {
@@ -793,8 +799,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     public byte[] download(String fileName, boolean encoded) throws ApplicationException {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
-        final Response response = (Response) this.context.getAttribute(HTTP_RESPONSE);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
 
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (encoded && meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
@@ -842,7 +848,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/topic")
     public boolean topic() {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
 
         if (meeting_code != null && request.getParameter("topic") != null) {
@@ -854,7 +860,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     protected smalltalk exit() {
-        final Request request = (Request) this.context.getAttribute(HTTP_REQUEST);
+        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
         request.getSession().removeAttribute("meeting_code");
         return this;
     }
@@ -876,7 +882,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 meetingCode = java.util.UUID.randomUUID().toString();
                 arg0.getSession().setAttribute("meeting_code", meetingCode);
 
-                System.out.println("New meeting generated by HttpSessionListener:" + meetingCode);
+                dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
             }
 
             final String sessionId = arg0.getSession().getId();

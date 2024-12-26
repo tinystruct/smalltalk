@@ -20,27 +20,27 @@ public class OpenAI extends AbstractApplication implements Provider {
 
     @Action("openai")
     public Builder call() throws ApplicationException {
-        if (this.context.getAttribute("api") == null) {
+        if (getContext().getAttribute("api") == null) {
             throw new ApplicationException("API is required");
         }
         Builder payload = null;
         String contentType = "application/json";
         Object image = null, mask = null;
-        if (this.context.getAttribute("content-type") != null && this.context.getAttribute("content-type").toString().equalsIgnoreCase("multipart/form-data")) {
+        if (getContext().getAttribute("content-type") != null && getContext().getAttribute("content-type").toString().equalsIgnoreCase("multipart/form-data")) {
             contentType = "multipart/form-data";
 
-            if ((image = this.context.getAttribute("image")) != null && image.toString().startsWith("data:image/png;base64,")) {
+            if ((image = getContext().getAttribute("image")) != null && image.toString().startsWith("data:image/png;base64,")) {
                 image = image.toString().substring("data:image/png;base64,".length());
             }
 
-            if ((mask = this.context.getAttribute("mask")) != null && mask.toString().startsWith("data:image/png;base64,")) {
+            if ((mask = getContext().getAttribute("mask")) != null && mask.toString().startsWith("data:image/png;base64,")) {
                 mask = mask.toString().substring("data:image/png;base64,".length());
             }
-        } else if (this.context.getAttribute("payload") == null) {
+        } else if (getContext().getAttribute("payload") == null) {
             throw new ApplicationException("Payload is required");
         }
 
-        String api = this.context.getAttribute("api").toString();
+        String api = getContext().getAttribute("api").toString();
 
         // Replace YOUR_API_KEY with your actual API key
         String API_KEY = this.config.get("openai.api_key");
@@ -52,8 +52,8 @@ public class OpenAI extends AbstractApplication implements Provider {
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers).setMethod(Method.POST);
 
-        if (this.context.getAttribute("payload") != null) {
-            payload = (Builder) this.context.getAttribute("payload");
+        if (getContext().getAttribute("payload") != null) {
+            payload = (Builder) getContext().getAttribute("payload");
             if (contentType.equalsIgnoreCase("multipart/form-data")) {
                 builder.setParameter("prompt", payload.get("prompt").toString());
                 builder.setParameter("user", payload.get("user").toString());

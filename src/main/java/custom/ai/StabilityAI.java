@@ -17,23 +17,23 @@ public class StabilityAI extends AbstractApplication implements Provider {
 
     @Action("stability")
     public Builder call() throws ApplicationException {
-        if (this.context.getAttribute("api") == null) {
+        if (getContext().getAttribute("api") == null) {
             throw new ApplicationException("API is required");
         }
         Builder payload = null;
         String contentType = "application/json";
         Object image = null;
-        if (this.context.getAttribute("content-type") != null && this.context.getAttribute("content-type").toString().equalsIgnoreCase("multipart/form-data")) {
+        if (getContext().getAttribute("content-type") != null && getContext().getAttribute("content-type").toString().equalsIgnoreCase("multipart/form-data")) {
             contentType = "multipart/form-data";
 
-            if ((image = this.context.getAttribute("image")) != null && image.toString().startsWith("data:image/png;base64,")) {
+            if ((image = getContext().getAttribute("image")) != null && image.toString().startsWith("data:image/png;base64,")) {
                 image = image.toString().substring("data:image/png;base64,".length());
             }
-        } else if (this.context.getAttribute("payload") == null) {
+        } else if (getContext().getAttribute("payload") == null) {
             throw new ApplicationException("Payload is required");
         }
 
-        String api = this.context.getAttribute("api").toString();
+        String api = getContext().getAttribute("api").toString();
 
         // Replace YOUR_API_KEY with your actual API key
         String API_KEY = this.config.get("stability.api_key");
@@ -47,8 +47,8 @@ public class StabilityAI extends AbstractApplication implements Provider {
         builder.setVersion(Version.HTTP1_1);
         builder.setHeaders(headers).setMethod(Method.POST);
 
-        if (this.context.getAttribute("payload") != null) {
-            payload = (Builder) this.context.getAttribute("payload");
+        if (getContext().getAttribute("payload") != null) {
+            payload = (Builder) getContext().getAttribute("payload");
             if (contentType.equalsIgnoreCase("multipart/form-data")) {
                 builder.setParameter("text_prompts[0][text]", payload.get("text_prompts[0][text]").toString());
                 builder.setParameter("cfg_scale", Float.parseFloat(payload.get("cfg_scale").toString()));
