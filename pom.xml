@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.apache.tomcat.embed</groupId>
             <artifactId>tomcat-embed-core</artifactId>
-            <version>10.1.31</version>
+            <version>10.1.34</version>
         </dependency>
         <dependency>
             <groupId>org.tinystruct</groupId>
