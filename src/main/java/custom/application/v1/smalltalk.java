@@ -4,7 +4,6 @@ import custom.ai.ImageProcessorType;
 import custom.ai.OpenAI;
 import custom.ai.SearchAI;
 import custom.ai.StabilityAI;
-import org.apache.logging.log4j.EventLogger;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
@@ -16,7 +15,6 @@ import org.tinystruct.data.component.Builders;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
-import org.tinystruct.system.Event;
 import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
 import org.tinystruct.system.template.variable.Variable;
@@ -69,10 +67,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk")
-    public smalltalk index() {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
-
+    public smalltalk index(Request request, Response response) {
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
         if (meetingCode == null) {
@@ -93,8 +88,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             this.sessions.put(meetingCode.toString(), session_ids = new ArrayList<String>());
         }
 
-        if (!session_ids.contains(sessionId))
-            session_ids.add(sessionId);
+        if (!session_ids.contains(sessionId)) session_ids.add(sessionId);
 
         if (!this.list.containsKey(sessionId)) {
             this.list.put(sessionId, new ArrayDeque<Builder>());
@@ -121,10 +115,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/matrix")
-    public String matrix(String meetingCode) throws ApplicationException {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
-
+    public String matrix(String meetingCode, Request request, Response response) throws ApplicationException {
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         if (meetingCode != null && meetingCode.length() > 32) {
@@ -136,26 +127,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/join")
-    public Object join(String meetingCode) throws ApplicationException {
+    public Object join(String meetingCode, Request request, Response response) throws ApplicationException {
         if (groups.containsKey(meetingCode)) {
-            final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
-            final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
             request.getSession().setAttribute("meeting_code", meetingCode);
 
             Reforward reforward = new Reforward(request, response);
             reforward.setDefault("/?q=talk");
             return reforward.forward();
         } else {
-            final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
             response.setStatus(ResponseStatus.NOT_FOUND);
             return "Invalid meeting code.";
         }
     }
 
     @Action("talk/start")
-    public Object start(String name) throws ApplicationException {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
+    public Object start(String name, Request request, Response response) throws ApplicationException {
         request.getSession().setAttribute("user", name);
 
         Object meetingCode = request.getSession().getAttribute("meeting_code");
@@ -171,11 +157,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/command")
-    public String command() {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    public String command(Request request, Response response) {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
 
         if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
             if (request.getSession().getAttribute("user") == null) {
@@ -194,8 +178,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/save")
-    public String save() {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    public String save(Request request, Response response) {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (this.groups.containsKey(meetingCode)) {
             final String sessionId = request.getSession().getId();
@@ -258,7 +241,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             }
         }
 
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
         response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
         return "{ \"error\": \"expired\" }";
     }
@@ -332,8 +314,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     private String chat(String sessionId, String message) throws ApplicationException {
-        if (this.chatGPT)
-            return this.chatGPT(sessionId, message, null);
+        if (this.chatGPT) return this.chatGPT(sessionId, message, null);
 
         return this.chat(sessionId, message, null);
     }
@@ -348,12 +329,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Replace YOUR_API_KEY with your actual API key
         String API_URL = this.config.get("openai.api_endpoint") + "/v1/chat/completions";
 
-        if (!cliMode)
-            message = message.replaceAll("<br>|<br />", "");
+        if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
         // Try to get some information from internet
-        String payload = "{\n" +
-                "  \"model\": \"gpt-3.5-turbo\"}";
+        String payload = "{\n" + "  \"model\": \"gpt-3.5-turbo\"}";
 
         Builder payloadBuilder = new Builder();
         payloadBuilder.parse(payload);
@@ -438,21 +417,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Replace YOUR_API_KEY with your actual API key
         String API_URL = this.config.get("openai.api_endpoint") + "/v1/completions";
 
-        if (!cliMode)
-            message = message.replaceAll("<br>|<br />", "");
+        if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
-        String payload = "{\n" +
-                "  \"model\": \"text-davinci-003\"," +
-                "  \"prompt\": \"\"," +
-                "  \"max_tokens\": 2500," +
-                "  \"temperature\": 0.8," +
-                "  \"n\":1" +
-                "}";
+        String payload = "{\n" + "  \"model\": \"text-davinci-003\"," + "  \"prompt\": \"\"," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
 
         Builder _message = new Builder();
         _message.parse(payload);
-        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n" +
-                "\n" + message + "\n");
+        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n" + "\n" + message + "\n");
         _message.put("user", sessionId);
 
         Context context = new ApplicationContext();
@@ -503,18 +474,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Context context = new ApplicationContext();
         switch (imageProcessorType) {
             case GENERATIONS:
-                payload = "{\"text_prompts\": [\n" +
-                        "      {\n" +
-                        "        \"text\": \"A lighthouse on a cliff\"\n" +
-                        "      }\n" +
-                        "    ],\n" +
-                        "    \"cfg_scale\": 7,\n" +
-                        "    \"clip_guidance_preset\": \"FAST_BLUE\",\n" +
-                        "    \"height\": 512,\n" +
-                        "    \"width\": 512,\n" +
-                        "    \"samples\": 1,\n" +
-                        "    \"steps\": 50" +
-                        "}";
+                payload = "{\"text_prompts\": [\n" + "      {\n" + "        \"text\": \"A lighthouse on a cliff\"\n" + "      }\n" + "    ],\n" + "    \"cfg_scale\": 7,\n" + "    \"clip_guidance_preset\": \"FAST_BLUE\",\n" + "    \"height\": 512,\n" + "    \"width\": 512,\n" + "    \"samples\": 1,\n" + "    \"steps\": 50" + "}";
 
                 try {
                     _message.parse(payload);
@@ -532,7 +492,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 context.setAttribute("api", "v1beta/generation/stable-diffusion-512-v2-1/text-to-image");
 
                 apiResponse = (Builder) ApplicationManager.call("stability", context);
-                if (apiResponse.size() > 0) {
+                if (!apiResponse.isEmpty()) {
                     Builders artifacts = (Builders) apiResponse.get("artifacts");
                     if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
                         return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
@@ -541,20 +501,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                 return "";
             case EDITS:
-                payload = "{\n" +
-                        "\"image_strength\": 0.35,\n" +
-                        "\"init_image_mode\": \"IMAGE_STRENGTH\",\n" +
-                        "\"init_image\": \"<image binary>\",\n" +
-                        "\"text_prompts[0][text]\": \"A dog space commander\",\n" +
-                        "\"text_prompts[0][weight]\": 1,\n" +
-                        "\"cfg_scale\": 7,\n" +
-                        "\"clip_guidance_preset\": \"FAST_BLUE\",\n" +
-                        "\"height\": 512,\n" +
-                        "\"width\": 512,\n" +
-                        "\"sampler\": \"K_DPM_2_ANCESTRAL\",\n" +
-                        "\"samples\": 3,\n" +
-                        "\"steps\": 20\n" +
-                        "}";
+                payload = "{\n" + "\"image_strength\": 0.35,\n" + "\"init_image_mode\": \"IMAGE_STRENGTH\",\n" + "\"init_image\": \"<image binary>\",\n" + "\"text_prompts[0][text]\": \"A dog space commander\",\n" + "\"text_prompts[0][weight]\": 1,\n" + "\"cfg_scale\": 7,\n" + "\"clip_guidance_preset\": \"FAST_BLUE\",\n" + "\"height\": 512,\n" + "\"width\": 512,\n" + "\"sampler\": \"K_DPM_2_ANCESTRAL\",\n" + "\"samples\": 3,\n" + "\"steps\": 20\n" + "}";
 
                 try {
                     _message.parse(payload);
@@ -582,11 +529,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 return "";
             case VARIATIONS:
                 // TODO
-                payload = "{\n" +
-                        "  \"prompt\": \"\"," +
-                        "  \"n\":1," +
-                        "  \"response_format\":\"b64_json\"" +
-                        "}";
+                payload = "{\n" + "  \"prompt\": \"\"," + "  \"n\":1," + "  \"response_format\":\"b64_json\"" + "}";
                 try {
                     _message.parse(payload);
                 } catch (ApplicationException e) {
@@ -608,7 +551,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (apiResponse != null) {
             if (apiResponse.get("data") != null) {
                 builders = (Builders) apiResponse.get("data");
-                if (builders.size() > 0 && builders.get(0) != null) {
+                if (!builders.isEmpty() && builders.get(0) != null) {
                     return "data:image/png;base64," + builders.get(0).get("b64_json").toString();
                 }
             } else if (apiResponse.get("error") != null) {
@@ -630,11 +573,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         String payload;
         switch (imageProcessorType) {
             case GENERATIONS:
-                payload = "{\n" +
-                        "  \"prompt\": \"\"," +
-                        "  \"n\":1," +
-                        "  \"response_format\":\"b64_json\"" +
-                        "}";
+                payload = "{\n" + "  \"prompt\": \"\"," + "  \"n\":1," + "  \"response_format\":\"b64_json\"" + "}";
 
                 try {
                     _message.parse(payload);
@@ -652,11 +591,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 break;
             case EDITS:
                 // TODO
-                payload = "{\n" +
-                        "  \"prompt\": \"\"," +
-                        "  \"n\":1," +
-                        "  \"response_format\":\"b64_json\"" +
-                        "}";
+                payload = "{\n" + "  \"prompt\": \"\"," + "  \"n\":1," + "  \"response_format\":\"b64_json\"" + "}";
                 try {
                     _message.parse(payload);
                 } catch (ApplicationException e) {
@@ -674,11 +609,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 break;
             case VARIATIONS:
                 // TODO
-                payload = "{\n" +
-                        "  \"prompt\": \"\"," +
-                        "  \"n\":1," +
-                        "  \"response_format\":\"b64_json\"" +
-                        "}";
+                payload = "{\n" + "  \"prompt\": \"\"," + "  \"n\":1," + "  \"response_format\":\"b64_json\"" + "}";
                 try {
                     _message.parse(payload);
                 } catch (ApplicationException e) {
@@ -712,22 +643,19 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "";
     }
 
-    public String update() throws ApplicationException {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    public String update(Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
         if (meetingCode != null) {
-            return this.update(meetingCode.toString(), sessionId);
+            return this.update(meetingCode.toString(), sessionId, request, response);
         }
 
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
         response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
 
         return "{ \"error\": \"expired\" }";
     }
 
-    public String update(String meetingCode, String sessionId) throws ApplicationException {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    public String update(String meetingCode, String sessionId, Request request, Response response) throws ApplicationException {
         if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
             String error = "{ \"error\": \"expired\" }";
             if (this.groups.containsKey(meetingCode)) {
@@ -739,7 +667,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 error = "{ \"error\": \"session-timeout\" }";
             }
 
-            final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
             response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
             return error;
         }
@@ -748,8 +675,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/upload")
-    public String upload() throws ApplicationException {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    public String upload(Request request) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
 
@@ -769,10 +695,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 }
             }
 
-            try (final OutputStream out = new FileOutputStream(f);
-                 final BufferedOutputStream bout = new BufferedOutputStream(out);
-                 final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));
-            ) {
+            try (final OutputStream out = new FileOutputStream(f); final BufferedOutputStream bout = new BufferedOutputStream(out); final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));) {
                 final byte[] bytes = new byte[1024];
                 byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
                 int read;
@@ -798,10 +721,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return builders.toString();
     }
 
-    public byte[] download(String fileName, boolean encoded) throws ApplicationException {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
-        final Response response = (Response) getContext().getAttribute(HTTP_RESPONSE);
-
+    public byte[] download(String fileName, boolean encoded, Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         if (encoded && meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
 
@@ -817,10 +737,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         byte[] arr = new byte[0];
         try {
             String mimeType = Files.probeContentType(path);
-            if (mimeType != null)
+            if (mimeType != null) {
                 response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
-            else
+            }
+            else {
                 response.addHeader(Header.CONTENT_DISPOSITION.name(), "application/octet-stream;filename=\"" + fileName + "\"");
+            }
 
             arr = Files.readAllBytes(path);
             if (encoded) {
@@ -842,13 +764,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("files")
-    public byte[] download(String fileName) throws ApplicationException {
-        return this.download(fileName, true);
+    public byte[] download(String fileName, Request request, Response response) throws ApplicationException {
+        return this.download(fileName, true, request, response);
     }
 
     @Action("talk/topic")
-    public boolean topic() {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    public boolean topic(Request request) {
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
 
         if (meeting_code != null && request.getParameter("topic") != null) {
@@ -859,8 +780,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return false;
     }
 
-    protected smalltalk exit() {
-        final Request request = (Request) getContext().getAttribute(HTTP_REQUEST);
+    protected smalltalk exit(Request request) {
         request.getSession().removeAttribute("meeting_code");
         return this;
     }
