@@ -622,7 +622,7 @@
               if (user) {
                 $.ajax({
                   type: "POST",
-                  url: "[%LINK:talk/start%]/"+ user
+                  url: "{%start_url%}/"+ user
                 }).done(function( msg ) {});
               }
               else {
@@ -666,7 +666,7 @@
   function autoupdate() {
     if(!is_running) {
       is_running = true;
-      $.getJSON( "[%LINK:talk/update%]/{%meeting_code%}/{%session_id%}", function(data) {
+      $.getJSON( "{%meeting_update_url%}", function(data) {
         update(data);
         is_running = false;
       }).done(function( msg ) {
@@ -777,7 +777,7 @@
     $("#dialog_submit").click(function(){
       $.ajax({
         type: "POST",
-        url: "[%LINK:talk/start%]/"+ $("#nickname").val()
+        url: "{%start_url%}/"+ $("#nickname").val()
       }).done(function( msg ) {
         $("#modal").modal('hide');
         user = $("#nickname").val();
@@ -789,7 +789,7 @@
     $("#topic_submit").click(function(){
       $.ajax({
         type: "POST",
-        url: "[%LINK:talk/topic%]/",
+        url: "[%LINK:talk/topic%]",
         data: {topic: $("#brief").val()}
       }).done(function( msg ) {
         $("#topic_modal").modal('hide');
@@ -808,9 +808,16 @@
     }
 
     $("#link").click(function(){
+      navigator.clipboard.writeText(this.innerText)
+                  .then(() => {
+                      console.log('Copied.');
+                  })
+                  .catch(err => {
+                      console.error('Failed to copy url:', err);
+                  });
       $.ajax({
         type: "POST",
-        url: "[%LINK:talk/matrix%]/{%meeting_code%}",
+        url: "{%meeting_qr_code_url%}",
         data: {meeting_code: "{%meeting_code%}"}
       }).done(function( msg ) {
         $("#matrix").css({"background":"url("+msg+") transparent center center"});
@@ -958,7 +965,7 @@
     </div>
     <form id="sender">
         <div class="note">Share the link to invite others join this conversation: <a id="link"
-                                                                                     href="javascript:void(0)">[%LINK:talk/join%]/{%meeting_code%}</a>
+                                                                                     href="javascript:void(0)">{%meeting_url%}</a>
             <div id="matrix"><img/><span>Click For QR Code</span></div>
         </div>
         <div class="pad">
