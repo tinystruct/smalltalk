@@ -43,7 +43,7 @@ public class OpenAI extends AbstractApplication implements Provider {
         String api = getContext().getAttribute("api").toString();
 
         // Replace YOUR_API_KEY with your actual API key
-        String API_KEY = this.config.get("openai.api_key");
+        String API_KEY = getConfiguration().get("openai.api_key");
 
         Headers headers = new Headers();
         headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));

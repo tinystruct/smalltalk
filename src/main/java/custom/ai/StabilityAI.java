@@ -36,7 +36,7 @@ public class StabilityAI extends AbstractApplication implements Provider {
         String api = getContext().getAttribute("api").toString();
 
         // Replace YOUR_API_KEY with your actual API key
-        String API_KEY = this.config.get("stability.api_key");
+        String API_KEY = getConfiguration().get("stability.api_key");
 
         Headers headers = new Headers();
         headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
@@ -68,7 +68,7 @@ public class StabilityAI extends AbstractApplication implements Provider {
         }
 
         try {
-            URLRequest request = new URLRequest(new URL(this.config.get("stability.host") + "/" + api));
+            URLRequest request = new URLRequest(new URL(getConfiguration().get("stability.host") + "/" + api));
             byte[] bytes = request.send(builder);
             String response = new String(bytes);
             Builder apiResponse = new Builder();

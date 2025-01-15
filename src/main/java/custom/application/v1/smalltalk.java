@@ -17,6 +17,7 @@ import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
+import org.tinystruct.system.template.variable.StringVariable;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
@@ -59,8 +60,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         ApplicationManager.install(new StabilityAI());
         ApplicationManager.install(new SearchAI());
 
-        if (this.config.get("default.chat.engine") != null) {
-            this.chatGPT = !this.config.get("default.chat.engine").equals("gpt-3");
+        if (getConfiguration().get("default.chat.engine") != null) {
+            this.chatGPT = !getConfiguration().get("default.chat.engine").equals("gpt-3");
         } else {
             this.chatGPT = false;
         }
@@ -95,10 +96,15 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
 
         this.setVariable("meeting_code", meetingCode.toString());
+        this.setVariable("meeting_url", this.getLink("talk/join", null) + "/" + meetingCode + "&lang=" + this.getLocale().toLanguageTag());
         this.setVariable("session_id", request.getSession().getId());
+        this.setVariable("start_url", this.getLink("talk/start", null));
+        this.setVariable("meeting_update_url", this.getLink("talk/update", null) + "/" + meetingCode + "/" + request.getSession().getId());
+        this.setVariable("meeting_qr_code_url", this.getLink("talk/matrix", null) + "/" + meetingCode);
 
         Variable<?> topic;
-        if ((topic = SharedVariables.getInstance().getVariable(meetingCode.toString())) != null) {
+        SharedVariables sharedVariables = SharedVariables.getInstance(meetingCode.toString());
+        if ((topic = sharedVariables.getVariable(meetingCode.toString())) != null) {
             this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
         } else {
             this.setVariable("topic", "");
@@ -151,6 +157,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             return reforward.forward();
         } else {
             this.setVariable("meeting_code", meetingCode.toString());
+            this.setVariable("meeting_url", this.getLink("talk/join", null) + "/" + meetingCode + "&lang=" + this.getLocale().toLanguageTag());
         }
 
         return name;
@@ -248,7 +255,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Action("chat")
     public void chat() {
         this.cliMode = true;
-        if (this.config.get("openai.api_key") == null || this.config.get("openai.api_key").isEmpty()) {
+        if (getConfiguration().get("openai.api_key") == null || getConfiguration().get("openai.api_key").isEmpty()) {
             String url = "https://platform.openai.com/account/api-keys";
 
             Context ctx = new ApplicationContext();
@@ -265,7 +272,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (console != null) {
                 char[] chars;
                 while ((chars = console.readPassword(prompt)) == null || chars.length == 0) ;
-                this.config.set("openai.api_key", new String(chars));
+                getConfiguration().set("openai.api_key", new String(chars));
             } else {
                 throw new ApplicationRuntimeException("openai.api_key is required.");
             }
@@ -327,7 +334,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     private String chatGPT(String sessionId, String message, String image) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
-        String API_URL = this.config.get("openai.api_endpoint") + "/v1/chat/completions";
+        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/chat/completions";
 
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
@@ -415,7 +422,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     private String chat(String sessionId, String message, String image) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
-        String API_URL = this.config.get("openai.api_endpoint") + "/v1/completions";
+        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/completions";
 
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
@@ -680,7 +687,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
 
         // Create path components to save the file
-        final String path = this.config.get("system.directory") != null ? this.config.get("system.directory").toString() + "/files" : "files";
+        final String path = getConfiguration().get("system.directory") != null ? getConfiguration().get("system.directory").toString() + "/files" : "files";
 
         final Builders builders = new Builders();
         List<FileEntity> list = request.getAttachments();
@@ -726,7 +733,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (encoded && meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
 
         // Create path to download the file
-        final String fileDir = this.config.get("system.directory") != null ? this.config.get("system.directory") + "/files" : "files";
+        final String fileDir = getConfiguration().get("system.directory") != null ? getConfiguration().get("system.directory") + "/files" : "files";
 
         // Creating an object of Path class and
         // assigning local directory path of file to it
@@ -739,8 +746,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             String mimeType = Files.probeContentType(path);
             if (mimeType != null) {
                 response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
-            }
-            else {
+            } else {
                 response.addHeader(Header.CONTENT_DISPOSITION.name(), "application/octet-stream;filename=\"" + fileName + "\"");
             }
 
@@ -771,9 +777,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Action("talk/topic")
     public boolean topic(Request request) {
         final Object meeting_code = request.getSession().getAttribute("meeting_code");
-
         if (meeting_code != null && request.getParameter("topic") != null) {
-            this.setSharedVariable(meeting_code.toString(), filter(request.getParameter("topic")));
+            SharedVariables sharedVariables = SharedVariables.getInstance(meeting_code.toString());
+            StringVariable variable = new StringVariable(meeting_code.toString(), filter(request.getParameter("topic")));
+            sharedVariables.setVariable(variable, true);
             return true;
         }
 
