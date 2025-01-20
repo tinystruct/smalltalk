@@ -72,6 +72,8 @@ docker run -d -p 777:777 -e "OPENAI_API_KEY=[YOUR-OPENAI-API-KEY]" -e "STABILITY
 
 ![Web](https://github.com/tinystruct/smalltalk/assets/3631818/32e50145-a5be-41d6-9cea-5b25e76e9f1b)
 
+<img src="https://github.com/user-attachments/assets/32721443-b680-481b-b5ed-ae3c7e4c6908" width=500 />
+
 Demonstration
 ---
 A demonstration for the comet technology, without any websocket and support any web browser:
