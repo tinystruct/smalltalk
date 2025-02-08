@@ -14,9 +14,9 @@ import java.net.URL;
 import java.util.Base64;
 
 public class OpenAI extends AbstractApplication implements Provider {
-    public static final String IMAGES_GENERATIONS = "https://api.openai.com/v1/images/generations";
-    public static final String IMAGES_EDITS = "https://api.openai.com/v1/images/edits";
-    public static final String IMAGES_VARIATIONS = "https://api.openai.com/v1/images/variations";
+    public static final String IMAGES_GENERATIONS = "/v1/images/generations";
+    public static final String IMAGES_EDITS = "/v1/images/edits";
+    public static final String IMAGES_VARIATIONS = "/v1/images/variations";
 
     @Action("openai")
     public Builder call() throws ApplicationException {
