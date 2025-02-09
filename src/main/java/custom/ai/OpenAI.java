@@ -14,6 +14,8 @@ import java.net.URL;
 import java.util.Base64;
 
 public class OpenAI extends AbstractApplication implements Provider {
+    public static final String API_ENDPOINT = "https://openrouter.ai/api";
+    public static final String CHAT_COMPLETIONS = "/v1/chat/completions";
     public static final String IMAGES_GENERATIONS = "/v1/images/generations";
     public static final String IMAGES_EDITS = "/v1/images/edits";
     public static final String IMAGES_VARIATIONS = "/v1/images/variations";
@@ -48,6 +50,10 @@ public class OpenAI extends AbstractApplication implements Provider {
         Headers headers = new Headers();
         headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
         headers.add(Header.CONTENT_TYPE.set(contentType));
+        headers.add(Header.ACCEPT.set("application/json"));
+        // Add OpenRouter specific headers
+        headers.add(Header.REFERER.set("https://github.com/tinystruct/smalltalk"));
+        headers.add(Header.USER_AGENT.set("Smalltalk/1.0.0"));
 
         HttpRequestBuilder builder = new HttpRequestBuilder();
         builder.setHeaders(headers).setMethod(Method.POST);
@@ -77,16 +83,20 @@ public class OpenAI extends AbstractApplication implements Provider {
             URLRequest request = new URLRequest(new URL(api));
             byte[] bytes = request.send(builder);
             String response = new String(bytes);
+            
+            // Check if response looks like HTML
+            if (response.trim().startsWith("<!DOCTYPE html>") || response.trim().startsWith("<html>")) {
+                throw new ApplicationException("Received HTML response instead of JSON. API endpoint may be incorrect or returning an error page.");
+            }
+            
             Builder apiResponse = new Builder();
             apiResponse.parse(response);
 
             return apiResponse;
-        } catch (MalformedURLException e) {
+        } catch (MalformedURLException | URISyntaxException e) {
             throw new ApplicationException(e.getMessage(), e.getCause());
         } catch (ApplicationException e) {
             throw e;
-        } catch (URISyntaxException e) {
-            throw new ApplicationException(e.getMessage(), e.getCause());
         }
     }
 

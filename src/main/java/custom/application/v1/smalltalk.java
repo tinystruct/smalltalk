@@ -51,6 +51,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setVariable("topic", "");
 
         System.setProperty("LANG", "en_US.UTF-8");
+        
+        // Configure TLS settings
+        System.setProperty("https.protocols", "TLSv1.2,TLSv1.3");
+        System.setProperty("jdk.tls.client.protocols", "TLSv1.2,TLSv1.3");
+        System.setProperty("https.cipherSuites", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384");
 
         SessionManager.getInstance().addListener(this);
 
@@ -339,7 +344,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
         // Try to get some information from internet
-        String payload = "{\n" + "  \"model\": \"gpt-3.5-turbo\"}";
+        String payload = "{\n" + "  \"model\": \"openai/gpt-3.5-turbo\"}";
 
         Builder payloadBuilder = new Builder();
         payloadBuilder.parse(payload);
@@ -379,7 +384,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
         assert apiResponse != null;
         Builders builders;
-        if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
+        if ((builders = (Builders) apiResponse.get("choices")) != null && !builders.get(0).isEmpty()) {
             Builder choice = builders.get(0);
 
             if (choice.get("message") != null) {
@@ -410,8 +415,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private Builder preprocess(String message) throws ApplicationException {
         Context context = new ApplicationContext();
         context.setAttribute("--query", message);
-        Builder builder = (Builder) ApplicationManager.call("search", context);
-        return builder;
+        return (Builder) ApplicationManager.call("search", context);
     }
 
     /**
@@ -422,11 +426,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     private String chat(String sessionId, String message, String image) throws ApplicationException {
         // Replace YOUR_API_KEY with your actual API key
-        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/completions";
+        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/chat/completions";
 
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
-        String payload = "{\n" + "  \"model\": \"text-davinci-003\"," + "  \"prompt\": \"\"," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
+        String payload = "{\n" + "  \"model\": \"openai/gpt-3.5-turbo\"," + "  \"messages\": [{\"role\": \"user\", \"content\": \"\"}]," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
 
         Builder _message = new Builder();
         _message.parse(payload);
@@ -442,8 +446,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builders builders;
         if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
             Builder choice = builders.get(0);
-            if (choice.get("text") != null) {
-                String choiceText = choice.get("text").toString();
+            if (choice.get("message") != null) {
+                String choiceText = ((Builder) choice.get("message")).get("content").toString();
                 if (choiceText.contains(IMAGES_GENERATIONS)) {
                     return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
                 } else if (choiceText.contains(IMAGES_EDITS)) {
@@ -592,7 +596,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("user", prompt[0]);
 
                 getContext().setAttribute("payload", _message);
-                getContext().setAttribute("api", IMAGES_GENERATIONS);
+                getContext().setAttribute("api", getConfiguration().get("openai.api_endpoint") + IMAGES_GENERATIONS);
 
                 apiResponse = (Builder) ApplicationManager.call("openai", getContext());
                 break;
