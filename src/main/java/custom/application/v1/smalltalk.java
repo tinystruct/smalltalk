@@ -78,7 +78,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
         }
 
-        List<String> session_ids;
+        Set<String> session_ids;
         final String sessionId = request.getSession().getId();
         if (this.groups.get(meetingCode) == null) {
             this.groups.put(meetingCode.toString(), new ArrayBlockingQueue<Builder>(DEFAULT_MESSAGE_POOL_SIZE));
@@ -86,10 +86,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         // If the current user is not in the list of the sessions, we create a default session list for the meeting generated.
         if ((session_ids = this.sessions.get(meetingCode)) == null) {
-            this.sessions.put(meetingCode.toString(), session_ids = new ArrayList<String>());
+            this.sessions.put(meetingCode.toString(), session_ids = new HashSet<>());
         }
 
-        if (!session_ids.contains(sessionId)) session_ids.add(sessionId);
+        session_ids.add(sessionId);
 
         if (!this.list.containsKey(sessionId)) {
             this.list.put(sessionId, new ArrayDeque<Builder>());
@@ -666,7 +666,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
             String error = "{ \"error\": \"expired\" }";
             if (this.groups.containsKey(meetingCode)) {
-                List<String> list;
+                Set<String> list;
                 if ((list = sessions.get(meetingCode)) != null && list.contains(sessionId)) {
                     return this.take(sessionId);
                 }
@@ -826,7 +826,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 this.save(meetingCode, builder);
 
                 Queue<Builder> messages;
-                List<String> session_ids;
+                Set<String> session_ids;
                 if ((session_ids = this.sessions.get(meetingCode)) != null) {
                     session_ids.remove(arg0.getSession().getId());
                 }
