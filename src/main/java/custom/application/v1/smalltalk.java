@@ -34,12 +34,13 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static custom.ai.OpenAI.*;
-import static org.tinystruct.http.Constants.*;
+import static org.tinystruct.http.Constants.HTTP_HOST;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
     public static final String CHAT_GPT = "ChatGPT";
     private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+    protected static final String MODEL = "deepseek/deepseek-r1:free";
     private boolean cliMode;
     private boolean chatGPT;
     private static final EventDispatcher dispatcher = EventDispatcher.getInstance();
@@ -83,7 +84,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
         }
 
-        List<String> session_ids;
+        Set<String> session_ids;
         final String sessionId = request.getSession().getId();
         if (this.groups.get(meetingCode) == null) {
             this.groups.put(meetingCode.toString(), new ArrayBlockingQueue<Builder>(DEFAULT_MESSAGE_POOL_SIZE));
@@ -91,7 +92,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         // If the current user is not in the list of the sessions, we create a default session list for the meeting generated.
         if ((session_ids = this.sessions.get(meetingCode)) == null) {
-            this.sessions.put(meetingCode.toString(), session_ids = new ArrayList<String>());
+            this.sessions.put(meetingCode.toString(), session_ids = new HashSet<String>());
         }
 
         if (!session_ids.contains(sessionId)) session_ids.add(sessionId);
@@ -344,7 +345,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
         // Try to get some information from internet
-        String payload = "{\n" + "  \"model\": \"openai/gpt-3.5-turbo\"}";
+        String payload = "{\n" + "  \"model\": \"" + MODEL + "\"}";
 
         Builder payloadBuilder = new Builder();
         payloadBuilder.parse(payload);
@@ -430,7 +431,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
-        String payload = "{\n" + "  \"model\": \"openai/gpt-3.5-turbo\"," + "  \"messages\": [{\"role\": \"user\", \"content\": \"\"}]," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
+        String payload = "{\n" + "  \"model\": \"" + MODEL + "\"," + "  \"messages\": [{\"role\": \"user\", \"content\": \"\"}]," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
 
         Builder _message = new Builder();
         _message.parse(payload);
@@ -670,7 +671,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
             String error = "{ \"error\": \"expired\" }";
             if (this.groups.containsKey(meetingCode)) {
-                List<String> list;
+                Set<String> list;
                 if ((list = sessions.get(meetingCode)) != null && list.contains(sessionId)) {
                     return this.take(sessionId);
                 }
@@ -830,7 +831,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 this.save(meetingCode, builder);
 
                 Queue<Builder> messages;
-                List<String> session_ids;
+                Set<String> session_ids;
                 if ((session_ids = this.sessions.get(meetingCode)) != null) {
                     session_ids.remove(arg0.getSession().getId());
                 }
