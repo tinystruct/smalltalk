@@ -443,7 +443,6 @@
   p, pre {
     margin: 0;
   }
-
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -490,25 +489,48 @@
       $('#messages').append(placeholder);
 
       $text = $data.message;
-      if($text.indexOf("data:image/png;base64,") == 0) {
+      
+      if($data.user == 'ChatGPT') {
         placeholder.innerHTML += "<span class='content'>";
-        placeholder.innerHTML += "<img src='"+$text+"' />"
-        placeholder.innerHTML += "</span>";
-        $(placeholder).addClass('chat-gpt');
-      }
-      else {
-        $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
-        if($data.user == 'ChatGPT') {
-          placeholder.innerHTML += "<span class='content'>";
+        
+        // Check if the message contains PlantUML images
+        if($text.indexOf("<placeholder-image>") >= 0) {
+          // Process the message with PlantUML images
+          
+          // Extract all PlantUML images
+          var imgRegex = /<placeholder-image>(data:image\/png;base64,[^<]+)<\/placeholder-image>/g;
+          var matches = [];
+          var match;
+          
+          // Find all image placeholders
+          while ((match = imgRegex.exec($text)) !== null) {
+            matches.push({
+              fullMatch: match[0],
+              imgData: match[1],
+              index: match.index
+            });
+          }
+          
+          // Sort matches by their index in the original text to maintain order
+          matches.sort(function(a, b) {
+            return a.index - b.index;
+          });
+          
+          // Create a copy of the text without the placeholder-image elements
+          var cleanText = $text;
+          for (var i = 0; i < matches.length; i++) {
+            cleanText = cleanText.replace(matches[i].fullMatch, '');
+          }
+          
+          // Use animation timer for the clean text
+          $tmp = cleanText.replace(/<br\s*[\/]?>/gi, '\n');
           k = 0;
           animation_timer = new Timer(.01, function(){});
           animation_timer.setAction(function(){
             if(k < $tmp.length) {
                 c = $tmp.charAt(k++);
-                 if(c=='\n')
+                if(c=='\n')
                   placeholder.innerHTML += "  \n";
-                /* else if(c==' ')
-                  placeholder.textContent += "&nbsp;";*/
                 else
                   placeholder.innerHTML += c;
 
@@ -523,15 +545,140 @@
             }
             else this.complete();
           });
-          animation_timer.start().complete(function(){ this.stop(); placeholder.innerHTML += "</span>";
-          $(placeholder).removeClass('pre-wrapper');
-          $(placeholder).addClass('chat-gpt');
-          placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
+          
+          animation_timer.start().complete(function(){ 
+            this.stop(); 
+            placeholder.innerHTML += "</span>";
+            $(placeholder).removeClass('pre-wrapper');
+            $(placeholder).addClass('chat-gpt');
+            
+            // Parse the markdown content
+            var content = placeholder.textContent;
+            var parsedContent = marked.parse(content, markedOptions);
+            
+            // Create a temporary div to hold the parsed content
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = parsedContent;
+            
+            // Find all pre code blocks with language-plantuml class
+            var codeBlocks = tempDiv.querySelectorAll('pre code.language-plantuml');
+            
+            // Log for debugging
+            console.log("Found " + codeBlocks.length + " PlantUML code blocks and " + matches.length + " images");
+            
+            // Process each code block and add the corresponding image
+            for (var i = 0; i < Math.min(codeBlocks.length, matches.length); i++) {
+              console.log("Processing PlantUML block " + (i+1) + " of " + Math.min(codeBlocks.length, matches.length));
+              // Create a container for the image and loading indicator
+              var imgContainer = document.createElement('div');
+              imgContainer.style.position = 'relative';
+              imgContainer.style.marginTop = '10px';
+              imgContainer.style.marginBottom = '10px';
+              imgContainer.setAttribute('data-plantuml-index', i);
+              
+              // Add a loading indicator
+              var loadingIndicator = document.createElement('div');
+              loadingIndicator.className = 'loading-indicator';
+              loadingIndicator.innerHTML = '<div class="spinner"></div><div class="loading-text">Loading diagram...</div>';
+              loadingIndicator.style.textAlign = 'center';
+              loadingIndicator.style.padding = '20px';
+              loadingIndicator.style.backgroundColor = '#f5f5f5';
+              loadingIndicator.style.borderRadius = '4px';
+              loadingIndicator.style.marginBottom = '10px';
+              imgContainer.appendChild(loadingIndicator);
+              
+              // Create the image element with a specific index to maintain order
+              var img = document.createElement('img');
+              img.style.display = 'none'; // Hide initially
+              img.src = matches[i].imgData;
+              img.setAttribute('data-plantuml-index', i);
+              
+              // When the image loads, show it and hide the loading indicator
+              img.onload = function() {
+                this.style.display = 'block';
+                this.previousSibling.style.display = 'none';
+              };
+              
+              // If there's an error loading the image, show an error message
+              img.onerror = function() {
+                this.previousSibling.innerHTML = 'Error loading diagram';
+                this.previousSibling.style.color = 'red';
+              };
+              
+              imgContainer.appendChild(img);
+              
+              // Insert the image container after the code block's parent (the pre element)
+              codeBlocks[i].parentNode.insertAdjacentElement('afterend', imgContainer);
+            }
+            
+            // Set the updated content back to the placeholder
+            placeholder.innerHTML = tempDiv.innerHTML;
+            
+            // Add CSS for the spinner
+            if (!document.getElementById('spinner-style')) {
+              var style = document.createElement('style');
+              style.id = 'spinner-style';
+              style.innerHTML = `
+                .spinner {
+                  border: 4px solid #f3f3f3;
+                  border-top: 4px solid #3498db;
+                  border-radius: 50%;
+                  width: 30px;
+                  height: 30px;
+                  animation: spin 2s linear infinite;
+                  margin: 0 auto 10px auto;
+                }
+                
+                @keyframes spin {
+                  0% { transform: rotate(0deg); }
+                  100% { transform: rotate(360deg); }
+                }
+                
+                .loading-text {
+                  color: #666;
+                  font-size: 14px;
+                }
+              `;
+              document.head.appendChild(style);
+            }
           });
+        } else {
+            // For regular messages without PlantUML, use the existing animation
+            $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
+            k = 0;
+            animation_timer = new Timer(.01, function(){});
+            animation_timer.setAction(function(){
+              if(k < $tmp.length) {
+                  c = $tmp.charAt(k++);
+                  if(c=='\n')
+                    placeholder.innerHTML += "  \n";
+                  else
+                    placeholder.innerHTML += c;
+
+                  if(c == ',') {
+                      this.setInterval(0.1);
+                  }
+                  else {
+                      this.setInterval(0.01);
+                  }
+
+                  this.start();
+              }
+              else {
+                  this.complete();
+              }
+            });
+            animation_timer.start().complete(function(){ 
+              this.stop(); 
+              placeholder.innerHTML += "</span>";
+              $(placeholder).removeClass('pre-wrapper');
+              $(placeholder).addClass('chat-gpt');
+              placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
+            });
         }
-        else {
-          placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
-        }
+      }
+      else {
+        placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
       }
       $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
       
@@ -889,9 +1036,6 @@
     });
   });
   //]]>
-
-
-
     </script>
 </head>
 <body>
