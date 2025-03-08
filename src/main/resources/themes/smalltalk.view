@@ -14,435 +14,500 @@
 
     <!-- Custom styles for this template -->
     <style type="text/css">
-  #list ::-moz-selection {
-    background: #2583AD;
-  }
-  #list ::selection {
-    background: #2583AD;
-  }
-  #list {
-    overflow-x:hidden;
-    max-height:350px;
-    padding:10px;
-    background: #f5f5f5;
-    border: 1px solid #f5f5f5;
-    resize: vertical;
-    margin: 10px 0 10px 0;
-  }
+        #list ::-moz-selection {
+            background: #2583AD;
+        }
 
-  #list.light-green {
-    background: #000;
-    color: #00ff00;
-  }
+        #list ::selection {
+            background: #2583AD;
+        }
 
-  #list.light-green ul {
+        #list {
+            overflow-x: hidden;
+            max-height: 350px;
+            padding: 10px;
+            background: #f5f5f5;
+            border: 1px solid #f5f5f5;
+            resize: vertical;
+            margin: 10px 0 10px 0;
+        }
 
-  }
+        #list.light-green {
+            background: #000;
+            color: #00ff00;
+        }
 
-  #list.light-green ul li {
+        #list.light-green ul {
 
-  }
+        }
 
-  #list.light-green ul li span.content {
-    color: #fff;
-  }
+        #list.light-green ul li {
 
-  #list.dark-green {
-    background: #000;
-    color: #a4dba8;
-  }
+        }
 
-  #list.dark-green ul {
+        #list.light-green ul li span.content {
+            color: #fff;
+        }
 
-  }
+        #list.dark-green {
+            background: #000;
+            color: #a4dba8;
+        }
 
-  #list.dark-green ul li {
+        #list.dark-green ul {
 
-  }
+        }
 
-  #list.dark-green ul li span.content {
-    color: #fff;
-  }
+        #list.dark-green ul li {
 
-  #list ul {
-    list-style: none;
-    padding-left: 0;
-    margin-bottom: 0;
-  }
-  #list ul li {
-    padding: 4px 5px;
-  }
+        }
 
-  #list ul li pre {
-    color: #ffffff;
-    background-color: #22272e;
-  }
+        #list.dark-green ul li span.content {
+            color: #fff;
+        }
 
-  #list ul li.even, #list ul li.chat-gpt {
-    background: #e7e7e7;
-  }
+        #list ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
 
-  #list.dark-green ul li.even, #list.light-green ul li.even, #list.dark-green ul li.chat-gpt, #list.light-green ul li.chat-gpt {
-    background: #033300;
-  }
+        #list ul li {
+            padding: 4px 5px;
+        }
 
-  #list ul li span.time {
-  }
+        #list ul li pre {
+            color: #ffffff;
+            background-color: #22272e;
+        }
 
-  #list ul li span.name {
-  }
+        #list ul li.even, #list ul li.chat-gpt {
+            background: #e7e7e7;
+        }
 
-  #list ul li span.content {
-  }
+        #list.dark-green ul li.even, #list.light-green ul li.even, #list.dark-green ul li.chat-gpt, #list.light-green ul li.chat-gpt {
+            background: #033300;
+        }
 
-  ul.nav li a.theme svg {
-    width: 1em;
-    height: 1em;
-    display: inline-block;
-   }
-  
-  #sender {
-      border-color: #ddd;
-      border-radius: 4px 4px 0 0;
-      border-width: 1px;
-      box-shadow: none;
-      margin-left: 0;
-      margin-right: 0;
-  }
+        #list ul li span.time {
+        }
 
-  body > .container {
-    padding-top: 75px;
-  }
+        #list ul li span.name {
+        }
 
-  body > .container img {
-      width: 100%;
-      max-width: 100%;
-  }
+        #list ul li span.content {
+        }
 
-  #matrix { position: absolute; right:0; bottom:0; width:77px; height:77px; border:1px solid #337ab7; display: none; text-align:center; color: #337ab7; background:#fff;}
-  .note { position: relative }
-  .pad { margin: 10px 0;position:relative; }
-  .text { min-height:60px; _height:60px; padding:10px; font-size:12px; color:#777; border:1px solid #d9d9d9; outline:0; background:#fff; }
-  .text:hover, .hover .text { border-color:#337ab7; caret-color:#337ab7;}
-  .arrowline:hover, .hover .arrowline { border-color:transparent transparent #337ab7 transparent; }
-  .arrowbox { width:20px; height:20px; position:absolute; left:52px; top:-12px; }
-  .arrow { width:0; height:0; font-size:0; line-height:0; position:absolute; overflow:hidden; }
-  .arrowline { top:-1px; border-style:solid solid solid; border-width:7px; border-color:transparent transparent #d9d9d9 transparent; }
-  .arrowbg { top:0.35px; border-style:solid solid solid; border-width:7px; border-color:transparent transparent #fff transparent; }
+        ul.nav li a.theme svg {
+            width: 1em;
+            height: 1em;
+            display: inline-block;
+        }
 
-  .file-loading {
-      top: 0;
-      right: 0;
-      width: 25px;
-      height: 25px;
-      font-size: 999px;
-      text-align: right;
-      color: #fff;
-      background: transparent url('/scripts/bootstrap/fileinput/loading.gif') top left no-repeat;
-      border: none;
-  }
-  
-  .file-object {
-      margin: 0 0 -5px 0;
-      padding: 0;
-  }
-  
-  .btn-file {
-      position: relative;
-      overflow: hidden;
-      background: #fff none repeat scroll 0 0;
-      border: 0 solid;
-      color: #000;
-      position: relative;
-  }
-  
-  .btn-file input[type=file] {
-      position: absolute;
-      top: 0;
-      right: 0;
-      min-width: 100%;
-      min-height: 100%;
-      text-align: right;
-      opacity: 0;
-      background: none repeat scroll 0 0 transparent;
-      cursor: inherit;
-      display: block;
-  }
-  
-  .file-caption-name {
-      display: inline-block;
-      overflow: hidden;
-      height: 20px;
-      word-break: break-all;
-  }
-  
-  .input-group-lg .file-caption-name {
-      height: 25px;
-  }
-  
-  .file-preview-detail-modal {
-      text-align: left;
-  }
-  
-  .file-error-message {
-      color: #a94442;
-      background-color: #f2dede;
-      margin: 5px;
-      border: 1px solid #ebccd1;
-      border-radius: 4px;
-      padding: 15px;
-  }
-  
-  .file-error-message pre, .file-error-message ul {
-      margin: 0;
-      text-align: left;
-  }
-  
-  .file-error-message pre {
-      margin: 5px 0;
-  }
-  
-  .file-caption-disabled {
-      background-color: #EEEEEE;
-      cursor: not-allowed;
-      opacity: 1;
-  }
-  
-  .file-preview {
-      border-radius: 5px;
-      border: 1px solid #ddd;
-      padding: 5px;
-      width: 100%;
-      margin-bottom: 5px;
-  }
-  
-  .file-preview-frame {
-      display: table;
-      margin: 8px;
-      height: 160px;
-      border: 1px solid #ddd;
-      box-shadow: 1px 1px 5px 0 #a2958a;
-      padding: 6px;
-      float: left;
-      text-align: center;
-      vertical-align: middle;
-  }
-  
-  .file-preview-frame:not(.file-preview-error):hover {
-      box-shadow: 3px 3px 5px 0 #333;
-  }
-  
-  .file-preview-image {
-      height: 160px;
-      vertical-align: middle;
-  }
-  
-  .file-preview-text {
-      text-align: left;
-      width: 160px;
-      margin-bottom: 2px;
-      color: #428bca;
-      background: #fff;
-      overflow-x: hidden;
-  }
-  
-  .file-preview-other {
-      display: table-cell;
-      text-align: center;
-      vertical-align: middle;
-      width: 160px;
-      height: 160px;
-      border: 2px solid #999;
-      border-radius: 30px;
-  }
-  
-  .file-preview-other:hover {
-      opacity: 0.8;
-  }
-  
-  .file-actions, .file-other-error {
-      text-align: left;
-  }
-  
-  .file-icon-lg {
-      font-size: 1.2em;
-  }
-  
-  .file-icon-2x {
-      font-size: 2.4em;
-  }
-  
-  .file-icon-4x {
-      font-size: 4.8em;
-  }
-  
-  .file-input-new .file-preview, .file-input-new .close, .file-input-new .glyphicon-file,
-  .file-input-new .fileinput-remove-button, .file-input-new .fileinput-upload-button,
-  .file-input-ajax-new .fileinput-remove-button, .file-input-ajax-new .fileinput-upload-button {
-      display: none;
-  }
-  
-  .file-thumb-loading {
-      background: transparent url('../img/loading.gif') no-repeat scroll center center content-box !important;
-  }
-  
-  .file-actions {
-      margin-top: 15px;
-  }
-  
-  .file-footer-buttons {
-      float: right;
-  }
-  
-  .file-upload-indicator {
-      padding-top: 2px;
-      cursor: default;
-      opacity: 0.8;
-      width: 60%;
-  }
-  
-  .file-upload-indicator:hover {
-      font-weight: bold;
-      opacity: 1;
-  }
-  
-  .file-footer-caption {
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      width: 160px;
-      text-align: center;
-      padding-top: 4px;
-      font-size: 11px;
-      color: #777;
-      margin: 5px auto 10px auto;
-  }
-  
-  .file-preview-error {
-      opacity: 0.65;
-      box-shadow: none;
-  }
-  
-  .file-preview-frame:not(.file-preview-error) .file-footer-caption:hover {
-      color: #000;
-  }
-  
-  .file-drop-zone {
-      border: 1px dashed #aaa;
-      border-radius: 4px;
-      height: 100%;
-      text-align: center;
-      vertical-align: middle;
-      margin: 12px 15px 12px 12px;
-      padding: 5px;
-  }
-  
-  .file-drop-zone-title {
-      color: #aaa;
-      font-size: 40px;
-      padding: 85px 10px;
-  }
-  
-  .file-highlighted {
-      border: 2px dashed #999 !important;
-      background-color: #f0f0f0;
-  }
-  
-  .file-uploading {
-      background: url('../img/loading-sm.gif') no-repeat center bottom 10px;
-      opacity: 0.65;
-  }
-  
-  .file-thumb-progress .progress, .file-thumb-progress .progress-bar {
-      height: 10px;
-      font-size: 9px;
-      line-height: 10px;
-  }
-  
-  .file-thumbnail-footer {
-      position: relative;
-  }
-  
-  .file-thumb-progress {
-      position: absolute;
-      top: 22px;
-      left: 0;
-      right: 0;
-  }
-  
-  /* IE 10 fix */
-  .btn-file ::-ms-browse {
-      width:100%;
-      height:100%;
-  }
+        #sender {
+            border-color: #ddd;
+            border-radius: 4px 4px 0 0;
+            border-width: 1px;
+            box-shadow: none;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        body > .container {
+            padding-top: 75px;
+        }
+
+        body > .container img {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        #matrix {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 77px;
+            height: 77px;
+            border: 1px solid #337ab7;
+            display: none;
+            text-align: center;
+            color: #337ab7;
+            background: #fff;
+        }
+
+        .note {
+            position: relative
+        }
+
+        .pad {
+            margin: 10px 0;
+            position: relative;
+        }
+
+        .text {
+            min-height: 60px;
+            _height: 60px;
+            padding: 10px;
+            font-size: 12px;
+            color: #777;
+            border: 1px solid #d9d9d9;
+            outline: 0;
+            background: #fff;
+        }
+
+        .text:hover, .hover .text {
+            border-color: #337ab7;
+            caret-color: #337ab7;
+        }
+
+        .arrowline:hover, .hover .arrowline {
+            border-color: transparent transparent #337ab7 transparent;
+        }
+
+        .arrowbox {
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            left: 52px;
+            top: -12px;
+        }
+
+        .arrow {
+            width: 0;
+            height: 0;
+            font-size: 0;
+            line-height: 0;
+            position: absolute;
+            overflow: hidden;
+        }
+
+        .arrowline {
+            top: -1px;
+            border-style: solid solid solid;
+            border-width: 7px;
+            border-color: transparent transparent #d9d9d9 transparent;
+        }
+
+        .arrowbg {
+            top: 0.35px;
+            border-style: solid solid solid;
+            border-width: 7px;
+            border-color: transparent transparent #fff transparent;
+        }
+
+        .file-loading {
+            top: 0;
+            right: 0;
+            width: 25px;
+            height: 25px;
+            font-size: 999px;
+            text-align: right;
+            color: #fff;
+            background: transparent url('/scripts/bootstrap/fileinput/loading.gif') top left no-repeat;
+            border: none;
+        }
+
+        .file-object {
+            margin: 0 0 -5px 0;
+            padding: 0;
+        }
+
+        .btn-file {
+            position: relative;
+            overflow: hidden;
+            background: #fff none repeat scroll 0 0;
+            border: 0 solid;
+            color: #000;
+            position: relative;
+        }
+
+        .btn-file input[type=file] {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 100%;
+            min-height: 100%;
+            text-align: right;
+            opacity: 0;
+            background: none repeat scroll 0 0 transparent;
+            cursor: inherit;
+            display: block;
+        }
+
+        .file-caption-name {
+            display: inline-block;
+            overflow: hidden;
+            height: 20px;
+            word-break: break-all;
+        }
+
+        .input-group-lg .file-caption-name {
+            height: 25px;
+        }
+
+        .file-preview-detail-modal {
+            text-align: left;
+        }
+
+        .file-error-message {
+            color: #a94442;
+            background-color: #f2dede;
+            margin: 5px;
+            border: 1px solid #ebccd1;
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .file-error-message pre, .file-error-message ul {
+            margin: 0;
+            text-align: left;
+        }
+
+        .file-error-message pre {
+            margin: 5px 0;
+        }
+
+        .file-caption-disabled {
+            background-color: #EEEEEE;
+            cursor: not-allowed;
+            opacity: 1;
+        }
+
+        .file-preview {
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .file-preview-frame {
+            display: table;
+            margin: 8px;
+            height: 160px;
+            border: 1px solid #ddd;
+            box-shadow: 1px 1px 5px 0 #a2958a;
+            padding: 6px;
+            float: left;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .file-preview-frame:not(.file-preview-error):hover {
+            box-shadow: 3px 3px 5px 0 #333;
+        }
+
+        .file-preview-image {
+            height: 160px;
+            vertical-align: middle;
+        }
+
+        .file-preview-text {
+            text-align: left;
+            width: 160px;
+            margin-bottom: 2px;
+            color: #428bca;
+            background: #fff;
+            overflow-x: hidden;
+        }
+
+        .file-preview-other {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+            width: 160px;
+            height: 160px;
+            border: 2px solid #999;
+            border-radius: 30px;
+        }
+
+        .file-preview-other:hover {
+            opacity: 0.8;
+        }
+
+        .file-actions, .file-other-error {
+            text-align: left;
+        }
+
+        .file-icon-lg {
+            font-size: 1.2em;
+        }
+
+        .file-icon-2x {
+            font-size: 2.4em;
+        }
+
+        .file-icon-4x {
+            font-size: 4.8em;
+        }
+
+        .file-input-new .file-preview, .file-input-new .close, .file-input-new .glyphicon-file,
+        .file-input-new .fileinput-remove-button, .file-input-new .fileinput-upload-button,
+        .file-input-ajax-new .fileinput-remove-button, .file-input-ajax-new .fileinput-upload-button {
+            display: none;
+        }
+
+        .file-thumb-loading {
+            background: transparent url('../img/loading.gif') no-repeat scroll center center content-box !important;
+        }
+
+        .file-actions {
+            margin-top: 15px;
+        }
+
+        .file-footer-buttons {
+            float: right;
+        }
+
+        .file-upload-indicator {
+            padding-top: 2px;
+            cursor: default;
+            opacity: 0.8;
+            width: 60%;
+        }
+
+        .file-upload-indicator:hover {
+            font-weight: bold;
+            opacity: 1;
+        }
+
+        .file-footer-caption {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 160px;
+            text-align: center;
+            padding-top: 4px;
+            font-size: 11px;
+            color: #777;
+            margin: 5px auto 10px auto;
+        }
+
+        .file-preview-error {
+            opacity: 0.65;
+            box-shadow: none;
+        }
+
+        .file-preview-frame:not(.file-preview-error) .file-footer-caption:hover {
+            color: #000;
+        }
+
+        .file-drop-zone {
+            border: 1px dashed #aaa;
+            border-radius: 4px;
+            height: 100%;
+            text-align: center;
+            vertical-align: middle;
+            margin: 12px 15px 12px 12px;
+            padding: 5px;
+        }
+
+        .file-drop-zone-title {
+            color: #aaa;
+            font-size: 40px;
+            padding: 85px 10px;
+        }
+
+        .file-highlighted {
+            border: 2px dashed #999 !important;
+            background-color: #f0f0f0;
+        }
+
+        .file-uploading {
+            background: url('../img/loading-sm.gif') no-repeat center bottom 10px;
+            opacity: 0.65;
+        }
+
+        .file-thumb-progress .progress, .file-thumb-progress .progress-bar {
+            height: 10px;
+            font-size: 9px;
+            line-height: 10px;
+        }
+
+        .file-thumbnail-footer {
+            position: relative;
+        }
+
+        .file-thumb-progress {
+            position: absolute;
+            top: 22px;
+            left: 0;
+            right: 0;
+        }
+
+        /* IE 10 fix */
+        .btn-file ::-ms-browse {
+            width: 100%;
+            height: 100%;
+        }
 
 
-  #text {
-    width: intrinsic;           /* Safari/WebKit uses a non-standard name */
-    width: -moz-max-content;    /* Firefox/Gecko */
-    width: -webkit-max-content; /* Chrome */
-    width: auto;
-    /* display: inline; */
-    font-style: Consolas;
-    font-family: monospace;
-    --caret-color: transparent;
-  }
+        #text {
+            width: intrinsic; /* Safari/WebKit uses a non-standard name */
+            width: -moz-max-content; /* Firefox/Gecko */
+            width: -webkit-max-content; /* Chrome */
+            width: auto;
+            /* display: inline; */
+            font-style: Consolas;
+            font-family: monospace;
+            --caret-color: transparent;
+        }
 
-  #text:focus {
-    outline: none;
-  }
+        #text:focus {
+            outline: none;
+        }
 
-  #cursor {
-    width: intrinsic;           /* Safari/WebKit uses a non-standard name */
-    width: -moz-max-content;    /* Firefox/Gecko */
-    width: -webkit-max-content; /* Chrome */
-    width: max-content;
-    font-family: monospace;
+        #cursor {
+            width: intrinsic; /* Safari/WebKit uses a non-standard name */
+            width: -moz-max-content; /* Firefox/Gecko */
+            width: -webkit-max-content; /* Chrome */
+            width: max-content;
+            font-family: monospace;
 
-    border: 1px solid #00ff00;
-    background-color: none;
+            border: 1px solid #00ff00;
+            background-color: none;
 
-    height: 17px;
-    float: left;
-    color: #fff;
-    position: absolute;
-    left: 0;
-    top: 0;
-    margin: 10px;
-    display: none;
-  }
+            height: 17px;
+            float: left;
+            color: #fff;
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 10px;
+            display: none;
+        }
 
-  #cursor.focus {
-    border: 1px solid #00ff00;
-    background-color: #00ff00;
-    color: #00ff00;
-  }
+        #cursor.focus {
+            border: 1px solid #00ff00;
+            background-color: #00ff00;
+            color: #00ff00;
+        }
 
-  ul#messages > li.pre-wrapper {
-    overflow-x: auto !important;
-    white-space: pre-wrap !important;       /* Since CSS 2.1 */
-    white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
-    white-space: -pre-wrap !important;      /* Opera 4-6 */
-    white-space: -o-pre-wrap !important;    /* Opera 7 */
-    word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
-  }
+        ul#messages > li.pre-wrapper {
+            overflow-x: auto !important;
+            white-space: pre-wrap !important; /* Since CSS 2.1 */
+            white-space: -moz-pre-wrap !important; /* Mozilla, since 1999 */
+            white-space: -pre-wrap !important; /* Opera 4-6 */
+            white-space: -o-pre-wrap !important; /* Opera 7 */
+            word-wrap: break-word !important; /* Internet Explorer 5.5+ */
+        }
 
-  ul#messages .content ul {
+        ul#messages .content ul {
 
-  }
+        }
 
-  ul#messages .content ul li {
-    white-space: pre-wrap !important;       /* Since CSS 2.1 */
-    white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
-    white-space: -pre-wrap !important;      /* Opera 4-6 */
-    white-space: -o-pre-wrap !important;    /* Opera 7 */
-    word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
-  }
+        ul#messages .content ul li {
+            white-space: pre-wrap !important; /* Since CSS 2.1 */
+            white-space: -moz-pre-wrap !important; /* Mozilla, since 1999 */
+            white-space: -pre-wrap !important; /* Opera 4-6 */
+            white-space: -o-pre-wrap !important; /* Opera 7 */
+            word-wrap: break-word !important; /* Internet Explorer 5.5+ */
+        }
 
-  p, pre {
-    margin: 0;
-  }
+        p, pre {
+            margin: 0;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -461,164 +526,130 @@
     <script type="text/javascript" src="/scripts/highlight/highlight.min.js"></script>
 
     <script type="text/javascript">
-  //<![CDATA[
-  var timer = new Timer(.5,function(){});
-  var old_title = document.title;
-  var dotted = '', user = struct.get("user")? struct.get("user"): false;
-  var markedOptions= {
-      renderer: new marked.Renderer(),
-      highlight: function(code, lang) {
-        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-        return hljs.highlight(code, { language }).value;
-      },
-      langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
-      pedantic: false,
-      gfm: true,
-      breaks: false,
-      sanitize: false,
-      smartypants: false,
-      xhtml: false
-  };
+        //<![CDATA[
+        var timer = new Timer(.5, function () {
+        });
+        var old_title = document.title;
+        var dotted = '', user = struct.get("user") ? struct.get("user") : false;
+        var markedOptions = {
+            renderer: new marked.Renderer(),
+            highlight: function (code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, {language}).value;
+            },
+            langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
+            pedantic: false,
+            gfm: true,
+            breaks: false,
+            sanitize: false,
+            smartypants: false,
+            xhtml: false
+        };
 
-  function update($data) {
-    if(typeof($data.message)!='undefined') {
-      placeholder = document.createElement('li');
-      placeholder.setAttribute('class','content');
-      placeholder.setAttribute('class','pre-wrapper');
-      placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
-      $('#messages').append(placeholder);
+        function update($data) {
+            if (typeof ($data.message) != 'undefined') {
+                placeholder = document.createElement('li');
+                placeholder.setAttribute('class', 'content');
+                placeholder.setAttribute('class', 'pre-wrapper');
+                placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
+                $('#messages').append(placeholder);
 
-      $text = $data.message;
-      
-      if($data.user == 'ChatGPT') {
-        placeholder.innerHTML += "<span class='content'>";
-        
-        // Check if the message contains PlantUML images
-        if($text.indexOf("<placeholder-image>") >= 0) {
-          // Process the message with PlantUML images
-          
-          // Extract all PlantUML images
-          var imgRegex = /<placeholder-image>(data:image\/png;base64,[^<]+)<\/placeholder-image>/g;
-          var matches = [];
-          var match;
-          
-          // Find all image placeholders
-          while ((match = imgRegex.exec($text)) !== null) {
-            matches.push({
-              fullMatch: match[0],
-              imgData: match[1],
-              index: match.index
-            });
-          }
-          
-          // Sort matches by their index in the original text to maintain order
-          matches.sort(function(a, b) {
-            return a.index - b.index;
-          });
-          
-          // Create a copy of the text without the placeholder-image elements
-          var cleanText = $text;
-          for (var i = 0; i < matches.length; i++) {
-            cleanText = cleanText.replace(matches[i].fullMatch, '');
-          }
-          
-          // Use animation timer for the clean text
-          $tmp = cleanText.replace(/<br\s*[\/]?>/gi, '\n');
-          k = 0;
-          animation_timer = new Timer(.01, function(){});
-          animation_timer.setAction(function(){
-            if(k < $tmp.length) {
-                c = $tmp.charAt(k++);
-                if(c=='\n')
-                  placeholder.innerHTML += "  \n";
-                else
-                  placeholder.innerHTML += c;
+                $text = $data.message;
 
-                if(c == ',') {
-                    this.setInterval(0.1);
-                }
-                else {
-                    this.setInterval(0.01);
-                }
+                if ($data.user == 'ChatGPT') {
+                    placeholder.innerHTML += "<span class='content'>";
 
-                this.start();
-            }
-            else this.complete();
-          });
-          
-          animation_timer.start().complete(function(){ 
-            this.stop(); 
-            placeholder.innerHTML += "</span>";
-            $(placeholder).removeClass('pre-wrapper');
-            $(placeholder).addClass('chat-gpt');
-            
-            // Parse the markdown content
-            var content = placeholder.textContent;
-            var parsedContent = marked.parse(content, markedOptions);
-            
-            // Create a temporary div to hold the parsed content
-            var tempDiv = document.createElement('div');
-            tempDiv.innerHTML = parsedContent;
-            
-            // Find all pre code blocks with language-plantuml class
-            var codeBlocks = tempDiv.querySelectorAll('pre code.language-plantuml');
-            
-            // Log for debugging
-            console.log("Found " + codeBlocks.length + " PlantUML code blocks and " + matches.length + " images");
-            
-            // Process each code block and add the corresponding image
-            for (var i = 0; i < Math.min(codeBlocks.length, matches.length); i++) {
-              console.log("Processing PlantUML block " + (i+1) + " of " + Math.min(codeBlocks.length, matches.length));
-              // Create a container for the image and loading indicator
-              var imgContainer = document.createElement('div');
-              imgContainer.style.position = 'relative';
-              imgContainer.style.marginTop = '10px';
-              imgContainer.style.marginBottom = '10px';
-              imgContainer.setAttribute('data-plantuml-index', i);
-              
-              // Add a loading indicator
-              var loadingIndicator = document.createElement('div');
-              loadingIndicator.className = 'loading-indicator';
-              loadingIndicator.innerHTML = '<div class="spinner"></div><div class="loading-text">Loading diagram...</div>';
-              loadingIndicator.style.textAlign = 'center';
-              loadingIndicator.style.padding = '20px';
-              loadingIndicator.style.backgroundColor = '#f5f5f5';
-              loadingIndicator.style.borderRadius = '4px';
-              loadingIndicator.style.marginBottom = '10px';
-              imgContainer.appendChild(loadingIndicator);
-              
-              // Create the image element with a specific index to maintain order
-              var img = document.createElement('img');
-              img.style.display = 'none'; // Hide initially
-              img.src = matches[i].imgData;
-              img.setAttribute('data-plantuml-index', i);
-              
-              // When the image loads, show it and hide the loading indicator
-              img.onload = function() {
-                this.style.display = 'block';
-                this.previousSibling.style.display = 'none';
-              };
-              
-              // If there's an error loading the image, show an error message
-              img.onerror = function() {
-                this.previousSibling.innerHTML = 'Error loading diagram';
-                this.previousSibling.style.color = 'red';
-              };
-              
-              imgContainer.appendChild(img);
-              
-              // Insert the image container after the code block's parent (the pre element)
-              codeBlocks[i].parentNode.insertAdjacentElement('afterend', imgContainer);
-            }
-            
-            // Set the updated content back to the placeholder
-            placeholder.innerHTML = tempDiv.innerHTML;
-            
-            // Add CSS for the spinner
-            if (!document.getElementById('spinner-style')) {
-              var style = document.createElement('style');
-              style.id = 'spinner-style';
-              style.innerHTML = `
+                    // Check if the message contains PlantUML images
+                    if ($text.indexOf("<placeholder-image>") >= 0) {
+                        // Process the message with PlantUML images
+
+                        // Extract all PlantUML images
+                        var imgRegex = /<placeholder-image>(data:image\/png;base64,[^<]+)<\/placeholder-image>/g;
+                        var matches = [];
+                        var match;
+
+                        // Find all image placeholders
+                        while ((match = imgRegex.exec($text)) !== null) {
+                            matches.push({
+                                fullMatch: match[0],
+                                imgData: match[1],
+                                index: match.index
+                            });
+                        }
+
+                        // Sort matches by their index in the original text to maintain order
+                        matches.sort(function (a, b) {
+                            return a.index - b.index;
+                        });
+
+                        console.log("Found " + matches.length + " PlantUML images");
+
+                        // Create a copy of the text without the placeholder-image elements
+                        var cleanText = $text;
+                        for (var i = 0; i < matches.length; i++) {
+                            cleanText = cleanText.replace(matches[i].fullMatch, '');
+                        }
+
+                        // Use animation timer for the clean text
+                        $tmp = cleanText.replace(/<br\s*[\/]?>/gi, '\n');
+                        k = 0;
+                        animation_timer = new Timer(.01, function () {
+                        });
+                        animation_timer.setAction(function () {
+                            if (k < $tmp.length) {
+                                c = $tmp.charAt(k++);
+                                if (c == '\n')
+                                    placeholder.innerHTML += "  \n";
+                                else
+                                    placeholder.innerHTML += c;
+
+                                if (c == ',') {
+                                    this.setInterval(0.1);
+                                } else {
+                                    this.setInterval(0.01);
+                                }
+
+                                this.start();
+                            } else this.complete();
+                        });
+
+                        animation_timer.start().complete(function () {
+                            this.stop();
+                            placeholder.innerHTML += "</span>";
+                            $(placeholder).removeClass('pre-wrapper');
+                            $(placeholder).addClass('chat-gpt');
+
+                            // Parse the markdown content
+                            var content = placeholder.textContent;
+                            var parsedContent = marked.parse(content, markedOptions);
+
+                            // Set the parsed content
+                            placeholder.innerHTML = parsedContent;
+
+                            // Find all pre code blocks with language-plantuml class
+                            var codeBlocks = placeholder.querySelectorAll('pre code.language-plantuml');
+                            console.log("Found " + codeBlocks.length + " PlantUML code blocks");
+
+                            // Process each code block and add the corresponding image
+                            for (var i = 0; i < Math.min(codeBlocks.length, matches.length); i++) {
+                                console.log("Processing PlantUML block " + (i + 1));
+
+                                // Create a simple image element after each code block
+                                var img = document.createElement('img');
+                                img.src = matches[i].imgData;
+                                img.style.maxWidth = '100%';
+                                img.style.marginTop = '10px';
+                                img.style.marginBottom = '20px';
+
+                                // Insert the image after the code block's parent (the pre element)
+                                codeBlocks[i].parentNode.insertAdjacentElement('afterend', img);
+                            }
+
+                            // Add CSS for the spinner
+                            if (!document.getElementById('spinner-style')) {
+                                var style = document.createElement('style');
+                                style.id = 'spinner-style';
+                                style.innerHTML = `
                 .spinner {
                   border: 4px solid #f3f3f3;
                   border-top: 4px solid #3498db;
@@ -628,414 +659,415 @@
                   animation: spin 2s linear infinite;
                   margin: 0 auto 10px auto;
                 }
-                
+
                 @keyframes spin {
                   0% { transform: rotate(0deg); }
                   100% { transform: rotate(360deg); }
                 }
-                
+
                 .loading-text {
                   color: #666;
                   font-size: 14px;
                 }
               `;
-              document.head.appendChild(style);
+                                document.head.appendChild(style);
+                            }
+                        });
+                    } else {
+                        // For regular messages without PlantUML, use the existing animation
+                        $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
+                        k = 0;
+                        animation_timer = new Timer(.01, function () {
+                        });
+                        animation_timer.setAction(function () {
+                            if (k < $tmp.length) {
+                                c = $tmp.charAt(k++);
+                                if (c == '\n')
+                                    placeholder.innerHTML += "  \n";
+                                else
+                                    placeholder.innerHTML += c;
+
+                                if (c == ',') {
+                                    this.setInterval(0.1);
+                                } else {
+                                    this.setInterval(0.01);
+                                }
+
+                                this.start();
+                            } else {
+                                this.complete();
+                            }
+                        });
+                        animation_timer.start().complete(function () {
+                            this.stop();
+                            placeholder.innerHTML += "</span>";
+                            $(placeholder).removeClass('pre-wrapper');
+                            $(placeholder).addClass('chat-gpt');
+                            placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
+                        });
+                    }
+                } else {
+                    placeholder.innerHTML += "<span class='content'>" + $data.message + "</span>";
+                }
+                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+
+                if (document.title == old_title) {
+                    document.title = 'New Message(s) Received!';
+                } else {
+                    document.title = old_title;
+                }
+            } else {
+                if (typeof ($data.cmd) != 'undefined') {
+                    if (!user) {
+                        $("#modal").modal();
+                        return false;
+                    }
+
+                    $_user = $data.user;
+                    if ($_user) {
+                        switch ($data.cmd) {
+                            case 'onblur':
+                                document.title = old_title;
+                                timer.stop();
+                                break;
+                            case 'greeting':
+                                $li = $("<li />");
+                                $li.html("System Notification: " + $data.user + " joined this conversation.");
+                                $('#messages').append($li);
+                                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                                break;
+                            case 'session-timeout':
+                                $li = $("<li />");
+                                $li.html("System Notification: " + $data.user + " left from this conversation.");
+                                $('#messages').append($li);
+                                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                                break;
+                            case 'expired':
+                                $li = $("<li />");
+                                $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                                $('#messages').append($li);
+                                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                                break;
+                            default:
+                                timer.setAction(function () {
+                                    document.title = $_user + " is typing" + dotted;
+                                    dotted += '.';
+                                    if (dotted.length > 3) this.complete();
+                                    this.start();
+                                });
+                                timer.start().complete(function () {
+                                    dotted = '';
+                                });//.stop(4);
+                        }
+                    }
+                }
             }
-          });
-        } else {
-            // For regular messages without PlantUML, use the existing animation
-            $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
-            k = 0;
-            animation_timer = new Timer(.01, function(){});
-            animation_timer.setAction(function(){
-              if(k < $tmp.length) {
-                  c = $tmp.charAt(k++);
-                  if(c=='\n')
-                    placeholder.innerHTML += "  \n";
-                  else
-                    placeholder.innerHTML += c;
-
-                  if(c == ',') {
-                      this.setInterval(0.1);
-                  }
-                  else {
-                      this.setInterval(0.01);
-                  }
-
-                  this.start();
-              }
-              else {
-                  this.complete();
-              }
-            });
-            animation_timer.start().complete(function(){ 
-              this.stop(); 
-              placeholder.innerHTML += "</span>";
-              $(placeholder).removeClass('pre-wrapper');
-              $(placeholder).addClass('chat-gpt');
-              placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
-            });
-        }
-      }
-      else {
-        placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
-      }
-      $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-      
-      if(document.title == old_title) {
-        document.title = 'New Message(s) Received!';
-      }
-      else {
-        document.title = old_title;
-      }
-    }
-    else {
-      if(typeof($data.cmd) != 'undefined') {
-        if(!user) {
-          $("#modal").modal();
-          return false;
         }
 
-        $_user = $data.user;
-        if($_user) {
-          switch($data.cmd) 
-          {
-            case 'onblur':          
-              document.title = old_title;
-              timer.stop();
-              break;
-            case 'greeting':
-              $li = $("<li />");
-              $li.html("System Notification: " + $data.user + " joined this conversation.");
-              $('#messages').append($li);
-              $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-              break;
-            case 'session-timeout':
-                $li = $("<li />");
-                $li.html("System Notification: " + $data.user + " left from this conversation.");
-                $('#messages').append($li);
-                $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-                break;
-            case 'expired':
-                $li = $("<li />");
-                $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
-                $('#messages').append($li);
-                $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-                break;
-            default:
-              timer.setAction(function(){
-                document.title = $_user + " is typing" + dotted;
-                dotted += '.';
-                if(dotted.length>3) this.complete();
+        function command(cmd) {
+            $.ajax({
+                type: "POST",
+                url: "[%LINK:talk/command%]",
+                dataType: "json",
+                data: {cmd: cmd}
+            }).done(function (msg) {
+
+            }).fail(function (msg) {
+                switch (msg.responseJSON.error) {
+                    case 'session-timeout':
+                        $li = $("<li />");
+                        $li.html("System Notification:\t" + $data.user + " left from this conversation.");
+                        $('#messages').append($li);
+                        $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+
+                        if (confirm("Your session is timed out, Do you want to reload the conversation?")) {
+                            $.ajax({
+                                type: "POST",
+                                url: $('#link').text()
+                            }).done(function (msg) {
+                            });
+                        }
+                        break;
+                    case 'expired':
+                        $li = $("<li />");
+                        $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                        $('#messages').append($li);
+                        $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                        break;
+                    case 'missing user':
+                        if (user) {
+                            $.ajax({
+                                type: "POST",
+                                url: "{%start_url%}/" + user
+                            }).done(function (msg) {
+                            });
+                        } else {
+                            $("#modal").modal();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                console.log('Fail.');
+                console.log(msg);
+            });
+        }
+
+        function save() {
+            $message = $("#text").html();
+            image = "";
+            if ($("#topic").text().toLowerCase().indexOf("@chatgpt") != -1) {
+                $message = "@ChatGPT " + $("#text").text() + "\n";
+
+                $("#text").find("img").each(function () {
+                    image = $(this).attr("src");
+                });
+            }
+
+            $.ajax({
+                type: "POST",
+                url: "[%LINK:talk/save%]",
+                dataType: "json",
+                data: {text: $message, time: new Date().getTime(), image: image}
+            }).done(function (msg) {
+                $("#text").html('');
+            });
+
+            // $("li").even().addClass("even);
+        }
+
+        var is_running = false;
+        var connection_timer = new Timer(5, function () {
+            autoupdate()
+        });
+        var blur_timer = new Timer(5);
+
+        function autoupdate() {
+            if (!is_running) {
+                is_running = true;
+                $.getJSON("{%meeting_update_url%}", function (data) {
+                    update(data);
+                    is_running = false;
+                }).done(function (msg) {
+                    autoupdate();
+                    is_running = false;
+                }).fail(function (err) {
+                    if (typeof (err.responseJSON) != 'undefined') {
+                        $msg = err.responseJSON;
+                        if ($msg.error == "expired") {
+                            command("expired");
+                        } else if ($msg.error == "session-timeout") {
+                            command("session-timeout");
+                        } else {
+                            connection_timer.start();
+                            is_running = false;
+                            console.log("The message has not been sent successfully.error:" + $msg.error);
+                            console.log($msg);
+                        }
+                    } else {
+                        connection_timer.start();
+                        is_running = false;
+                        console.log("The message has not been sent successfully.");
+                        console.log(err);
+                    }
+                });
+            }
+        }
+
+        var n = 0;
+        var current_position = 0;
+        window.key = [];
+
+        function currentX(_, s, current_position) {
+            len = 0;
+            window.key = [];
+            for (var i = 0; i < s.length; i++) {
+                _.html(s.charAt(i));
+                window.key[i] = _.width() > 0 ? _.width() : 7;
+                len += window.key[i];
+                if (i == current_position) break;
+            }
+
+            return len;
+        }
+
+        $(function () {
+            $("#button").click(function () {
+                save();
+                timer.stop();
+            });
+
+            //Start here.
+            $("#text").keypress(function (event) {
+                if (event.which == 13) {
+                    save();
+                    timer.stop();
+                }
+            });
+
+            $("#text").focus(function (event) {
+                command("onfocus");
+                document.title = old_title;
+            });
+
+            $("#text").blur(function (event) {
+                blur_timer.setAction(function () {
+                    command("onblur");
+                    document.title = old_title;
+                });
+                blur_timer.start();
+            });
+
+            $("#sender").submit(function (event) {
+                event.preventDefault();
+                save();
+            });
+
+            var post_timer = new Timer(.2, function () {
+                if (n++ < 200) {
+                    $("#text").text(user + ' posts ' + n);
+                    $("#sender").submit();
+                } else this.complete();
                 this.start();
-              });
-              timer.start().complete(function(){ dotted = ''; });//.stop(4);
-          }
-        }
-      }
-    }
-  }
+            });
 
-  function command(cmd) {
-    $.ajax({
-      type: "POST",
-      url: "[%LINK:talk/command%]",
-      dataType: "json",
-      data: { cmd: cmd }
-    }).done(function( msg ) {
+            $("#test").click(function (event) {
+                event.preventDefault();
+                post_timer.start().complete(function () {
+                    this.stop();
+                });
+            });
 
-    }).fail(function( msg ) {
-      switch(msg.responseJSON.error) {
-        case 'session-timeout':
-            $li = $("<li />");
-            $li.html("System Notification:\t" + $data.user + " left from this conversation.");
-            $('#messages').append($li);
-            $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-            
-            if(confirm("Your session is timed out, Do you want to reload the conversation?")) {
-               $.ajax({
-                 type: "POST",
-                 url: $('#link').text()
-               }).done(function( msg ) {});
-            }
-            break;
-          case 'expired':
-            $li = $("<li />");
-            $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
-            $('#messages').append($li);
-            $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-            break;
-          case 'missing user':
-              if (user) {
+            autoupdate();
+
+            $(".pad").hover(function () {
+                $(this).addClass("hover");
+                $("#text").focus();
+            }, function () {
+                $(this).removeClass("hover");
+            });
+
+            $(".text").click(function () {
+                $("#text").focus();
+            });
+
+            $("#dialog_submit").click(function () {
                 $.ajax({
-                  type: "POST",
-                  url: "{%start_url%}/"+ user
-                }).done(function( msg ) {});
-              }
-              else {
-                $("#modal").modal();
-              }
-           break;
-          default:break;
-      }
-      
-      console.log('Fail.');
-      console.log(msg);
-    });
-  }
+                    type: "POST",
+                    url: "{%start_url%}/" + $("#nickname").val()
+                }).done(function (msg) {
+                    $("#modal").modal('hide');
+                    user = $("#nickname").val();
+                    struct.save("user", user);
+                    command("greeting");
+                });
+            });
 
-  function save() {
-    $message = $("#text").html();
-    image = "";
-    if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1) {
-      $message = "@ChatGPT " + $("#text").text() + "\n";
+            $("#topic_submit").click(function () {
+                $.ajax({
+                    type: "POST",
+                    url: "[%LINK:talk/topic%]",
+                    data: {topic: $("#brief").val()}
+                }).done(function (msg) {
+                    $("#topic_modal").modal('hide');
+                    $("#topic").html($("#brief").val());
+                });
+            });
 
-      $("#text").find("img").each(function() {
-          image = $(this).attr("src");
-      });
-    }
+            $("#nickname").keyup(function (event) {
+                if (event.which == 13) {
+                    $("#dialog_submit").click();
+                }
+            });
 
-    $.ajax({
-      type: "POST",
-      url: "[%LINK:talk/save%]",
-      dataType: "json",
-      data: { text: $message, time: new Date().getTime(), image: image }
-    }).done(function( msg ) {
-        $("#text").html('');
-    });
-
-    // $("li").even().addClass("even);
-  }
-
-  var is_running = false;
-  var connection_timer = new Timer(5, function(){ autoupdate()});
-  var blur_timer = new Timer(5);
-  function autoupdate() {
-    if(!is_running) {
-      is_running = true;
-      $.getJSON( "{%meeting_update_url%}", function(data) {
-        update(data);
-        is_running = false;
-      }).done(function( msg ) {
-        autoupdate();
-        is_running = false;
-      }).fail(function( err ) {
-        if(typeof(err.responseJSON) != 'undefined') {
-          $msg = err.responseJSON;
-          if($msg.error == "expired") {
-            command("expired");
-          }
-          else if($msg.error == "session-timeout") {
-            command("session-timeout");
-          }
-          else {
-            connection_timer.start();
-            is_running = false;
-            console.log("The message has not been sent successfully.error:" + $msg.error);
-            console.log($msg);
-          }
-        }
-        else {
-          connection_timer.start();
-          is_running = false;
-          console.log("The message has not been sent successfully.");
-          console.log(err);
-        }
-      });
-    }
-  }
-
-  var n=0;
-  var current_position = 0;
-  window.key = [];
-
-  function currentX(_, s, current_position) {
-      len = 0;
-      window.key = [];
-      for(var i=0;i<s.length;i++) {
-          _.html(s.charAt(i));
-          window.key[i] = _.width()>0?_.width():7;
-          len += window.key[i];
-          if(i==current_position) break;
-      }
-
-      return len;
-  }
-
-  $(function(){
-    $("#button").click(function(){
-      save();
-      timer.stop();
-    });
-
-    //Start here.
-    $("#text").keypress(function(event){
-      if(event.which == 13) {
-        save();
-        timer.stop();
-      }
-    });
-
-    $("#text").focus(function(event){
-      command("onfocus");
-      document.title = old_title;
-    });
-
-    $("#text").blur(function(event){
-      blur_timer.setAction(function(){
-        command("onblur");
-        document.title = old_title;
-      });
-      blur_timer.start();
-    });
-
-    $("#sender").submit(function(event){
-      event.preventDefault();
-      save();
-    });
-
-    var post_timer = new Timer(.2, function(){
-      if(n++<200){
-        $("#text").text(user+' posts '+n);
-        $("#sender").submit();
-      }
-      else this.complete();
-      this.start();
-    });
-
-    $("#test").click(function(event){
-      event.preventDefault();
-      post_timer.start().complete(function(){ this.stop(); });
-    });
-
-    autoupdate();
-
-    $(".pad").hover(function(){
-      $(this).addClass("hover");
-      $("#text").focus();
-    },function(){
-      $(this).removeClass("hover"); 
-    });
-
-    $(".text").click(function(){
-      $("#text").focus();
-    });
-
-    $("#dialog_submit").click(function(){
-      $.ajax({
-        type: "POST",
-        url: "{%start_url%}/"+ $("#nickname").val()
-      }).done(function( msg ) {
-        $("#modal").modal('hide');
-        user = $("#nickname").val();
-        struct.save("user", user);
-        command("greeting");
-      });
-    });
-
-    $("#topic_submit").click(function(){
-      $.ajax({
-        type: "POST",
-        url: "[%LINK:talk/topic%]",
-        data: {topic: $("#brief").val()}
-      }).done(function( msg ) {
-        $("#topic_modal").modal('hide');
-        $("#topic").html($("#brief").val());
-      });
-    });
-
-    $("#nickname").keyup(function(event){
-      if(event.which == 13) {
-        $("#dialog_submit").click();
-      }
-    });
-
-    if(!$("#topic").text()) {
-        $("#topic_modal").modal();
-    }
-
-    $("#link").click(function(){
-      navigator.clipboard.writeText(this.innerText)
-                  .then(() => {
-                      console.log('Copied.');
-                  })
-                  .catch(err => {
-                      console.error('Failed to copy url:', err);
-                  });
-      $.ajax({
-        type: "POST",
-        url: "{%meeting_qr_code_url%}",
-        data: {meeting_code: "{%meeting_code%}"}
-      }).done(function( msg ) {
-        $("#matrix").css({"background":"url("+msg+") transparent center center"});
-        $("#matrix > span").hide();
-        $("#matrix").show();
-      });
-    });
-
-    $("#link").mouseover(function(){
-      $("#matrix").show();
-    });
-
-    $("#link").mouseout(function(){
-      $("#matrix").hide();
-    });
-
-    $("#text").on('paste', function (e) {
-      if(e.originalEvent) {
-        var original = e.originalEvent;
-        for (var i = 0; i < original.clipboardData.items.length; i++) {
-          if (original.clipboardData.items[i].kind == "file" && original.clipboardData.items[i].type == "image/png") {
-            var file = original.clipboardData.items[i].getAsFile();
-            var reader = new FileReader();
-            reader.onloadend = function () {
-              var img = $("<img />");
-              img.attr('src', this.result);
-              $('#text').append(img);
+            if (!$("#topic").text()) {
+                $("#topic_modal").modal();
             }
-            reader.readAsDataURL(file);
-            break;
-          }
-        }
-      }
-    });
 
-    $("#attachment").fileinput({
-      uploadAsync: false,
-      showPreview: false,
-      showCaption: false, 
-      maxFileCount: 2,
-      uploadUrl: "/?q=talk/upload", // server upload action
-    });
+            $("#link").click(function () {
+                navigator.clipboard.writeText(this.innerText)
+                    .then(() => {
+                        console.log('Copied.');
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy url:', err);
+                    });
+                $.ajax({
+                    type: "POST",
+                    url: "{%meeting_qr_code_url%}",
+                    data: {meeting_code: "{%meeting_code%}"}
+                }).done(function (msg) {
+                    $("#matrix").css({"background": "url(" + msg + ") transparent center center"});
+                    $("#matrix > span").hide();
+                    $("#matrix").show();
+                });
+            });
 
-    $("#attachment").on('filebatchuploadsuccess', function(event, data, previewId, index) {
-      var form = data.form, files = data.files, extra = data.extra,
-          response = data.response, reader = data.reader;
+            $("#link").mouseover(function () {
+                $("#matrix").show();
+            });
 
-      $ul = $("<ul />");
-      for(var i = 0; i < response.length; i++) {
-        if(response[i].type.indexOf("image/")!=-1) {
-            e = $("<img />");e.attr("src", response[i].file);
-        }
-        else {
-          e = $("<a target='_blank' >" + response[i].file + "</a>");e.attr("href", response[i].file);
-        }
+            $("#link").mouseout(function () {
+                $("#matrix").hide();
+            });
 
-        $li = $("<li />");
-        $li.append(e);
-        $ul.append($li);
-      }
+            $("#text").on('paste', function (e) {
+                if (e.originalEvent) {
+                    var original = e.originalEvent;
+                    for (var i = 0; i < original.clipboardData.items.length; i++) {
+                        if (original.clipboardData.items[i].kind == "file" && original.clipboardData.items[i].type == "image/png") {
+                            var file = original.clipboardData.items[i].getAsFile();
+                            var reader = new FileReader();
+                            reader.onloadend = function () {
+                                var img = $("<img />");
+                                img.attr('src', this.result);
+                                $('#text').append(img);
+                            }
+                            reader.readAsDataURL(file);
+                            break;
+                        }
+                    }
+                }
+            });
 
-      $("#text").append($ul);
-    });
+            $("#attachment").fileinput({
+                uploadAsync: false,
+                showPreview: false,
+                showCaption: false,
+                maxFileCount: 2,
+                uploadUrl: "/?q=talk/upload", // server upload action
+            });
 
-    $('a.theme').click(function(){
-        $('#list').removeClass().toggleClass($(this).text().toLowerCase().replace(/\s/, "-"));
-        $('a.theme').find('svg').attr('class','bi bi-check hidden');
-        $(this).find('svg').attr('class','bi bi-check');
-    });
-  });
-  //]]>
+            $("#attachment").on('filebatchuploadsuccess', function (event, data, previewId, index) {
+                var form = data.form, files = data.files, extra = data.extra,
+                    response = data.response, reader = data.reader;
+
+                $ul = $("<ul />");
+                for (var i = 0; i < response.length; i++) {
+                    if (response[i].type.indexOf("image/") != -1) {
+                        e = $("<img />");
+                        e.attr("src", response[i].file);
+                    } else {
+                        e = $("<a target='_blank' >" + response[i].file + "</a>");
+                        e.attr("href", response[i].file);
+                    }
+
+                    $li = $("<li />");
+                    $li.append(e);
+                    $ul.append($li);
+                }
+
+                $("#text").append($ul);
+            });
+
+            $('a.theme').click(function () {
+                $('#list').removeClass().toggleClass($(this).text().toLowerCase().replace(/\s/, "-"));
+                $('a.theme').find('svg').attr('class', 'bi bi-check hidden');
+                $(this).find('svg').attr('class', 'bi bi-check');
+            });
+        });
+        //]]>
     </script>
 </head>
 <body>
