@@ -8,6 +8,8 @@
     <meta name="description" content=""/>
     <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
     <title>Small Talk</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
     <!-- Bootstrap core CSS -->
     <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
     <link href="/scripts/highlight/github-dark-dimmed.css" rel="stylesheet"/>
@@ -147,12 +149,13 @@
         .text {
             min-height: 60px;
             _height: 60px;
-            padding: 10px;
+            padding: 10px 45px;  /* Add padding for the buttons */
             font-size: 12px;
             color: #777;
             border: 1px solid #d9d9d9;
             outline: 0;
             background: #fff;
+            position: relative;  /* For absolute positioning of buttons */
         }
 
         .text:hover, .hover .text {
@@ -213,12 +216,23 @@
         }
 
         .btn-file {
-            position: relative;
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
             overflow: hidden;
-            background: #fff none repeat scroll 0 0;
-            border: 0 solid;
-            color: #000;
-            position: relative;
+            background: transparent;
+            border: none;
+            color: #337ab7;
+            padding: 5px;
+            margin: 0;
+            transition: color 0.3s ease;
+            z-index: 1;
+            cursor: pointer;
+        }
+
+        .btn-file:hover {
+            color: #23527c;
         }
 
         .btn-file input[type=file] {
@@ -229,9 +243,45 @@
             min-height: 100%;
             text-align: right;
             opacity: 0;
-            background: none repeat scroll 0 0 transparent;
-            cursor: inherit;
+            background: none;
+            cursor: pointer;
             display: block;
+            font-size: 0;
+            width: 1px;  /* Make the input smaller but still accessible */
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0,0,0,0);
+            border: 0;
+        }
+
+        /* Add focus styles for accessibility */
+        .btn-file:focus {
+            outline: 2px solid #337ab7;
+            outline-offset: 2px;
+        }
+
+        .btn-file:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        /* Make sure the icon is properly centered */
+        .btn-file i {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        #button {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .attachment-label {
+            display: none;
         }
 
         .file-caption-name {
@@ -507,6 +557,207 @@
 
         p, pre {
             margin: 0;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: -250px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background: #2c3e50;
+            transition: all 0.3s ease;
+            z-index: 1040;
+            padding-top: 60px;
+            box-shadow: 3px 0 6px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            left: 15px;
+            top: 15px;
+            padding: 0 5px;
+            z-index: 1051;
+            cursor: pointer;
+            border-radius: 5px;
+            background: transparent;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar-toggle span {
+            display: block;
+            width: 20px;
+            height: 2px;
+
+            background: #5e5e5e;
+            margin: 4px 0;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle.active span {
+            background: #fff;
+        }
+
+        .sidebar-toggle.active span:nth-child(1) {
+
+        }
+
+        .sidebar-toggle.active span:nth-child(2) {
+
+        }
+
+        .sidebar-toggle.active span:nth-child(3) {
+
+        }
+
+        .sidebar-header {
+            padding: 0 20px;
+            color: #ecf0f1;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 15px 20px;
+            color: #ecf0f1;
+            border-bottom: 1px solid #34495e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-menu li:hover {
+            background: #34495e;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 10px;
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            color: #ecf0f1;
+        }
+
+        .sidebar-section h3 {
+            margin-top: 0;
+            color: #3498db;
+            font-size: 16px;
+        }
+
+        .online-users {
+            list-style: none;
+            padding: 0;
+        }
+
+        .online-users li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .user-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-online {
+            background: #2ecc71;
+        }
+
+        .status-offline {
+            background: #95a5a6;
+        }
+
+        /* Adjust main content when sidebar is active */
+        .content-wrapper {
+            transition: all 0.3s ease;
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .content-wrapper.shifted {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+
+        /* Navbar adjustments */
+        .navbar-default {
+            transition: all 0.3s ease;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            right: 0;
+        }
+
+        .navbar-default.shifted {
+            width: calc(100% - 250px);
+            margin-left: 250px;
+        }
+
+        /* Container adjustments */
+        .container {
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 1170px;
+            padding-right: 15px;
+            padding-left: 15px;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        .container.shifted {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+            max-width: calc(1170px - 250px);
+        }
+
+        /* List adjustments */
+        #list {
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                left: -100%;
+                width: 100%;
+                z-index: 1050;
+            }
+            
+            .sidebar.active {
+                left: 0;
+            }
+
+            .content-wrapper.shifted,
+            .navbar-default.shifted,
+            .container.shifted {
+                margin-left: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            #list {
+                width: 100% !important;
+            }
+        }
+
+        .glyphicon {
+            display: none !important;
         }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
@@ -1066,71 +1317,246 @@
                 $('a.theme').find('svg').attr('class', 'bi bi-check hidden');
                 $(this).find('svg').attr('class', 'bi bi-check');
             });
+
+            // Add Sidebar functionality
+            class Sidebar {
+                constructor() {
+                    this.sidebar = null;
+                    this.toggle = null;
+                    this.contentWrapper = null;
+                    this.isActive = false;
+                    this.init();
+                }
+
+                init() {
+                    this.createSidebar();
+                    this.setupEventListeners();
+                    this.updateOnlineUsers();
+                }
+
+                createSidebar() {
+                    // Create sidebar HTML
+                    const sidebarHTML = `
+                        <div class="sidebar">
+                            <div class="sidebar-header">
+                                <h3>Small Talk</h3>
+                            </div>
+                            <ul class="sidebar-menu">
+                                <li><i class="fas fa-home"></i> Home</li>
+                                <li><i class="fas fa-cog"></i> Settings</li>
+                                <li><i class="fas fa-users"></i> Participants</li>
+                                <li><i class="fas fa-history"></i> Chat History</li>
+                            </ul>
+                            <div class="sidebar-section">
+                                <h3>Online Users</h3>
+                                <ul class="online-users">
+                                    <!-- Dynamically populated -->
+                                </ul>
+                            </div>
+                            <div class="sidebar-section">
+                                <h3>Room Info</h3>
+                                <p>Topic: <span id="sidebar-topic"></span></p>
+                                <p>Active Since: <span id="sidebar-active-time"></span></p>
+                            </div>
+                        </div>
+                        <div class="sidebar-toggle">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    `;
+
+                    // Insert sidebar into DOM
+                    document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
+
+                    // Store references
+                    this.sidebar = document.querySelector('.sidebar');
+                    this.toggle = document.querySelector('.sidebar-toggle');
+                    this.contentWrapper = document.querySelector('.container');
+                    this.contentWrapper.classList.add('content-wrapper');
+                }
+
+                setupEventListeners() {
+                    this.toggle.addEventListener('click', () => this.toggleSidebar());
+
+                    // Add click handler for paperclip icon
+                    document.querySelector('.btn-file').addEventListener('click', function(e) {
+                        // Prevent the default button behavior
+                        e.preventDefault();
+                        // Find the file input and trigger click
+                        this.querySelector('input[type="file"]').click();
+                    });
+
+                    // Handle window resize
+                    window.addEventListener('resize', () => {
+                        if (window.innerWidth <= 768) {
+                            this.contentWrapper.classList.remove('shifted');
+                            document.querySelectorAll('.container').forEach(container => {
+                                container.classList.remove('shifted');
+                            });
+                        } else if (this.isActive) {
+                            this.contentWrapper.classList.add('shifted');
+                            document.querySelectorAll('.container').forEach(container => {
+                                container.classList.add('shifted');
+                            });
+                        }
+                        
+                        // Adjust list width after resize
+                        this.adjustListWidth();
+                    });
+
+                    // Setup menu item clicks
+                    document.querySelectorAll('.sidebar-menu li').forEach(item => {
+                        item.addEventListener('click', (e) => this.handleMenuClick(e));
+                    });
+                }
+
+                toggleSidebar() {
+                    this.isActive = !this.isActive;
+                    this.sidebar.classList.toggle('active');
+                    this.toggle.classList.toggle('active');
+                    this.contentWrapper.classList.toggle('shifted');
+                    // Toggle shifted class on all elements
+                }
+
+                handleMenuClick(e) {
+                    const action = e.target.textContent.trim().toLowerCase();
+                    switch(action) {
+                        case 'home':
+                            // Handle home action
+                            break;
+                        case 'settings':
+                            // Show settings modal
+                            break;
+                        case 'participants':
+                            // Show participants list
+                            break;
+                        case 'chat history':
+                            // Show chat history
+                            break;
+                    }
+                }
+
+                adjustListWidth() {
+                    // Remove the width adjustment logic
+                }
+
+                updateOnlineUsers() {
+                    const onlineUsersList = this.sidebar.querySelector('.online-users');
+                    // Example of updating online users
+                    const updateUsers = () => {
+                        if (user) {
+                            const userHTML = `
+                                <li>
+                                    <span class="user-status status-online"></span>
+                                    ${user}
+                                </li>
+                            `;
+                            onlineUsersList.innerHTML = userHTML;
+                        }
+                    };
+
+                    // Update initially
+                    updateUsers();
+
+                    // Update periodically
+                    setInterval(updateUsers, 30000);
+                }
+            }
+
+            // Initialize sidebar after DOM is loaded
+            const sidebar = new Sidebar();
+            
+            // Update sidebar topic when topic changes
+            const updateSidebarTopic = () => {
+                const topicElement = document.querySelector('#sidebar-topic');
+                if (topicElement) {
+                    topicElement.textContent = $("#topic").text() || 'No topic set';
+                }
+            };
+            
+            // Update topic when it changes
+            const originalTopicSubmit = $("#topic_submit").click;
+            $("#topic_submit").click(function() {
+                originalTopicSubmit.apply(this, arguments);
+                updateSidebarTopic();
+            });
+            
+            // Initial topic update
+            updateSidebarTopic();
+            
+            // Set initial active time
+            const activeTimeElement = document.querySelector('#sidebar-active-time');
+            if (activeTimeElement) {
+                const now = new Date();
+                activeTimeElement.textContent = now.toLocaleTimeString();
+            }
         });
         //]]>
     </script>
 </head>
 <body>
-<!-- Fixed navbar -->
-<nav class="navbar navbar-default navbar-fixed-top">
-    <div class="container">
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
-                    aria-expanded="false" aria-controls="navbar">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="#">Small Talk</a>
-        </div>
-        <div id="navbar" class="collapse navbar-collapse">
-            <ul class="nav navbar-nav">
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                       aria-expanded="false">Settings <span class="caret"></span></a>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a class="btn disabled" href="#" role="button" data-toggle="dropdown" aria-expanded="false">Appearance
-                                <span class="caret"></span></a>
-                        </li>
-                        <li role="separator" class="divider"></li>
-                        <li><a class="dropdown-item theme" href="#">Default
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                 class="bi bi-check" viewBox="0 0 16 16">
-                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                            </svg>
-                        </a></li>
-                        <li><a class="dropdown-item theme" href="#">Dark Green
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                 class="bi bi-check hidden" viewBox="0 0 16 16">
-                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                            </svg>
-                        </a></li>
-                        <li><a class="dropdown-item theme" href="#">Light Green
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                 class="bi bi-check hidden" viewBox="0 0 16 16">
-                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                            </svg>
-                        </a></li>
-                    </ul>
-                </li>
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                       aria-expanded="false">Help <span class="caret"></span></a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#">Manual</a></li>
-                        <li role="separator" class="divider"></li>
-                        <li><a href="#">About</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div><!--/.nav-collapse -->
-    </div>
-</nav>
+
 
 <!-- Begin page content -->
 <div class="container">
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                        aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#">Small Talk</a>
+            </div>
+            <div id="navbar" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+                           aria-expanded="false">Settings <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="btn disabled" href="#" role="button" data-toggle="dropdown" aria-expanded="false">Appearance
+                                    <span class="caret"></span></a>
+                            </li>
+                            <li role="separator" class="divider"></li>
+                            <li><a class="dropdown-item theme" href="#">Default
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                     class="bi bi-check" viewBox="0 0 16 16">
+                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                                </svg>
+                            </a></li>
+                            <li><a class="dropdown-item theme" href="#">Dark Green
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                     class="bi bi-check hidden" viewBox="0 0 16 16">
+                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                                </svg>
+                            </a></li>
+                            <li><a class="dropdown-item theme" href="#">Light Green
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                     class="bi bi-check hidden" viewBox="0 0 16 16">
+                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                                </svg>
+                            </a></li>
+                        </ul>
+                    </li>
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+                           aria-expanded="false">Help <span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="#">Manual</a></li>
+                            <li role="separator" class="divider"></li>
+                            <li><a href="#">About</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div><!--/.nav-collapse -->
+        </div>
+    </nav>
     <div class="pageheader"></div>
     <p>Welcome to use smalltalk application!</p>
     <p id="topic">{%topic%}</p>
@@ -1146,18 +1572,18 @@
         </div>
         <div class="pad">
             <div class="text">
+                <span class="btn btn-file">
+                    <i class="fas fa-paperclip"></i>
+                    <input id="attachment" name="attachment" type="file" class="file-loading" multiple="true"/>
+                </span>
                 <div contenteditable="true" id="text"></div>
+                <input type="button" id="button" value="Send" class="btn btn-primary btn-sm"/>
             </div>
             <span class="arrowbox">
-            <b class="arrow arrowline"></b>
-            <b class="arrow arrowbg"></b>
-        </span>
+                <b class="arrow arrowline"></b>
+                <b class="arrow arrowbg"></b>
+            </span>
         </div>
-        <label class="control-label" for="attachment">Select File(s)</label>
-        <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true"/>
-        <br/>
-        <input type="button" id="button" value="Send" class="btn btn-primary"/>
-        <!--        <input type="button" id="test" value="Test" class="btn btn-secondary"/>-->
     </form>
 </div>
 
