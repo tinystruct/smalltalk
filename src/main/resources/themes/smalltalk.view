@@ -149,13 +149,13 @@
         .text {
             min-height: 60px;
             _height: 60px;
-            padding: 10px 45px;  /* Add padding for the buttons */
+            padding: 10px;  /* Remove left/right padding */
             font-size: 12px;
             color: #777;
             border: 1px solid #d9d9d9;
             outline: 0;
             background: #fff;
-            position: relative;  /* For absolute positioning of buttons */
+            position: relative;
         }
 
         .text:hover, .hover .text {
@@ -218,45 +218,37 @@
         .btn-file {
             position: absolute;
             left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+            bottom: 10px;
             overflow: hidden;
             background: transparent;
             border: none;
             color: #337ab7;
             padding: 5px;
             margin: 0;
-            transition: color 0.3s ease;
+            transition: all 0.3s ease;
             z-index: 1;
             cursor: pointer;
-        }
-
-        .btn-file:hover {
-            color: #23527c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn-file input[type=file] {
             position: absolute;
             top: 0;
-            right: 0;
-            min-width: 100%;
-            min-height: 100%;
-            text-align: right;
+            left: 0;
+            width: 100%;
+            height: 100%;
             opacity: 0;
-            background: none;
             cursor: pointer;
-            display: block;
-            font-size: 0;
-            width: 1px;  /* Make the input smaller but still accessible */
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0,0,0,0);
-            border: 0;
+            z-index: 2;
         }
 
-        /* Add focus styles for accessibility */
+        .btn-file:hover {
+            color: #23527c;
+            transform: scale(1.1);  /* Only scale, no vertical translation */
+        }
+
         .btn-file:focus {
             outline: 2px solid #337ab7;
             outline-offset: 2px;
@@ -275,8 +267,8 @@
         #button {
             position: absolute;
             right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+            bottom: 10px;  /* Change from top: 50% to bottom: 10px */
+            transform: none;  /* Remove vertical centering transform */
             z-index: 1;
         }
 
@@ -494,11 +486,9 @@
 
 
         #text {
-            width: intrinsic; /* Safari/WebKit uses a non-standard name */
-            width: -moz-max-content; /* Firefox/Gecko */
-            width: -webkit-max-content; /* Chrome */
-            width: auto;
-            /* display: inline; */
+            min-height: 40px;
+            padding: 0 45px;  /* Add padding for the buttons */
+            width: 100%;
             font-style: Consolas;
             font-family: monospace;
             --caret-color: transparent;
@@ -581,11 +571,12 @@
             position: fixed;
             left: 15px;
             top: 15px;
-            padding: 0 5px;
+            padding: 5px;
             z-index: 1051;
             cursor: pointer;
-            border-radius: 5px;
-            background: transparent;
+            border-radius: 30px;
+            width: 30px;
+            height: 30px;
         }
 
         .sidebar-toggle:hover {
@@ -754,9 +745,118 @@
             #list {
                 width: 100% !important;
             }
+
+            .sidebar-toggle {
+                top: 10px;
+                left: 10px;
+                width: 35px;
+                height: 35px;
+                padding: 8px;
+            }
+
+            .navbar-default {
+                padding-left: 50px;
+            }
         }
 
         .glyphicon {
+            display: none !important;
+        }
+
+        /* File upload styles */
+        .upload-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-preview-container {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 300px;
+            z-index: 1000;
+        }
+
+        .file-preview-container.active {
+            display: block;
+        }
+
+        .file-preview-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 5px;
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+
+        .file-preview-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .file-preview-name {
+            flex-grow: 1;
+            margin-right: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-preview-remove {
+            color: #dc3545;
+            cursor: pointer;
+            padding: 2px 5px;
+        }
+
+        .file-preview-remove:hover {
+            color: #bd2130;
+        }
+
+        .upload-progress {
+            height: 3px;
+            width: 0;
+            background-color: #007bff;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            transition: width 0.3s ease;
+        }
+
+        .upload-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            background: #28a745;
+            color: white;
+            display: none;
+            z-index: 1050;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Remove unnecessary file input styles */
+        .file-loading,
+        .file-caption-name,
+        .file-preview-detail-modal,
+        .file-preview-frame,
+        .file-preview-other,
+        .file-actions,
+        .file-upload-indicator,
+        .file-footer-caption,
+        .file-drop-zone {
             display: none !important;
         }
     </style>
@@ -772,7 +872,6 @@
     <script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
-    <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/marked.min.js"></script>
     <script type="text/javascript" src="/scripts/highlight/highlight.min.js"></script>
 
@@ -1282,15 +1381,15 @@
                 }
             });
 
-            $("#attachment").fileinput({
+/*            $("#attachment").fileinput({
                 uploadAsync: false,
                 showPreview: false,
                 showCaption: false,
                 maxFileCount: 2,
                 uploadUrl: "/?q=talk/upload", // server upload action
-            });
+            });*/
 
-            $("#attachment").on('filebatchuploadsuccess', function (event, data, previewId, index) {
+            /*$("#attachment").on('filebatchuploadsuccess', function (event, data, previewId, index) {
                 var form = data.form, files = data.files, extra = data.extra,
                     response = data.response, reader = data.reader;
 
@@ -1310,7 +1409,7 @@
                 }
 
                 $("#text").append($ul);
-            });
+            });*/
 
             $('a.theme').click(function () {
                 $('#list').removeClass().toggleClass($(this).text().toLowerCase().replace(/\s/, "-"));
@@ -1378,14 +1477,6 @@
 
                 setupEventListeners() {
                     this.toggle.addEventListener('click', () => this.toggleSidebar());
-
-                    // Add click handler for paperclip icon
-                    document.querySelector('.btn-file').addEventListener('click', function(e) {
-                        // Prevent the default button behavior
-                        e.preventDefault();
-                        // Find the file input and trigger click
-                        this.querySelector('input[type="file"]').click();
-                    });
 
                     // Handle window resize
                     window.addEventListener('resize', () => {
@@ -1491,6 +1582,165 @@
                 const now = new Date();
                 activeTimeElement.textContent = now.toLocaleTimeString();
             }
+
+            // File Upload Handling
+            const fileInput = document.getElementById('attachment');
+            const previewContainer = document.querySelector('.file-preview-container');
+            const previewList = document.querySelector('.file-preview-list');
+            const uploadProgress = document.querySelector('.upload-progress');
+            let selectedFiles = [];
+
+            // Remove the click handler that was preventing the default behavior
+            document.querySelector('.btn-file').removeEventListener('click', function(e) {
+                e.preventDefault();
+                this.querySelector('input[type="file"]').click();
+            });
+
+            // Show preview container when hovering over the upload wrapper
+            document.querySelector('.upload-wrapper').addEventListener('mouseenter', function() {
+                if (selectedFiles.length > 0) {
+                    previewContainer.style.display = 'block';
+                }
+            });
+
+            document.querySelector('.upload-wrapper').addEventListener('mouseleave', function(e) {
+                if (!e.relatedTarget || !e.relatedTarget.closest('.file-preview-container')) {
+                    previewContainer.style.display = 'none';
+                }
+            });
+
+            // Handle file selection
+            fileInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                selectedFiles = files;
+                
+                // Clear previous preview
+                previewList.innerHTML = '';
+                
+                // Add new previews
+                files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-preview-item';
+                    
+                    const name = document.createElement('div');
+                    name.className = 'file-preview-name';
+                    name.textContent = file.name;
+                    
+                    const remove = document.createElement('div');
+                    remove.className = 'file-preview-remove';
+                    remove.innerHTML = '×';
+                    remove.onclick = (e) => {
+                        e.stopPropagation();
+                        selectedFiles = selectedFiles.filter(f => f !== file);
+                        item.remove();
+                        if (selectedFiles.length === 0) {
+                            previewContainer.style.display = 'none';
+                            fileInput.value = '';
+                        }
+                    };
+                    
+                    item.appendChild(name);
+                    item.appendChild(remove);
+                    previewList.appendChild(item);
+                });
+                
+                if (files.length > 0) {
+                    previewContainer.style.display = 'block';
+                }
+            });
+
+            // Handle file upload
+            function uploadFiles(files) {
+                if (files.length === 0) return;
+
+                const formData = new FormData();
+                files.forEach(file => {
+                    formData.append('attachment', file);
+                });
+
+                // Show progress bar
+                uploadProgress.style.display = 'block';
+                
+                $.ajax({
+                    url: '/?q=talk/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    xhr: function() {
+                        const xhr = new XMLHttpRequest();
+                        xhr.upload.addEventListener('progress', function(e) {
+                            if (e.lengthComputable) {
+                                const percent = (e.loaded / e.total) * 100;
+                                uploadProgress.style.width = percent + '%';
+                            }
+                        });
+                        return xhr;
+                    }
+                }).done(function(response) {
+                    // Handle successful upload
+                    uploadProgress.style.width = '100%';
+                    
+                    // Parse response and add files to message
+                    const files = JSON.parse(response);
+                    files.forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                            const img = $('<img />');
+                            img.attr('src', file.file);
+                            $('#text').append(img);
+                        } else {
+                            const link = $('<a target="_blank"></a>');
+                            link.attr('href', file.file);
+                            link.text(file.originalName || 'Download File');
+                            $('#text').append(link);
+                        }
+                    });
+
+                    // Show success message
+                    showUploadStatus('Files uploaded successfully!');
+                    
+                    // Reset upload state
+                    setTimeout(() => {
+                        uploadProgress.style.width = '0';
+                        uploadProgress.style.display = 'none';
+                        previewContainer.style.display = 'none';
+                        selectedFiles = [];
+                        fileInput.value = '';
+                    }, 1000);
+                }).fail(function(err) {
+                    // Handle upload error
+                    uploadProgress.style.backgroundColor = '#dc3545';
+                    showUploadStatus('Upload failed. Please try again.', 'error');
+                    console.error('Upload failed:', err);
+                });
+            }
+
+            // Show upload status message
+            function showUploadStatus(message, type = 'success') {
+                const status = document.createElement('div');
+                status.className = 'upload-status';
+                status.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
+                status.textContent = message;
+                document.body.appendChild(status);
+                
+                // Show status
+                status.style.display = 'block';
+                
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                    setTimeout(() => status.remove(), 300);
+                }, 3000);
+            }
+
+            // Modify the existing save function to handle file uploads
+            const originalSave = save;
+            save = function() {
+                if (selectedFiles.length > 0) {
+                    uploadFiles(selectedFiles);
+                }
+                originalSave();
+            };
         });
         //]]>
     </script>
@@ -1572,12 +1822,18 @@
         </div>
         <div class="pad">
             <div class="text">
-                <span class="btn btn-file">
-                    <i class="fas fa-paperclip"></i>
-                    <input id="attachment" name="attachment" type="file" class="file-loading" multiple="true"/>
-                </span>
                 <div contenteditable="true" id="text"></div>
                 <input type="button" id="button" value="Send" class="btn btn-primary btn-sm"/>
+                <div class="upload-wrapper">
+                    <span class="btn btn-file">
+                        <i class="fas fa-paperclip"></i>
+                        <input id="attachment" name="attachment" type="file" multiple="true"/>
+                    </span>
+                    <div class="file-preview-container">
+                        <div class="file-preview-list"></div>
+                    </div>
+                    <div class="upload-progress"></div>
+                </div>
             </div>
             <span class="arrowbox">
                 <b class="arrow arrowline"></b>

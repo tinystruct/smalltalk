@@ -24,6 +24,8 @@ import org.tinystruct.transfer.DistributedMessageQueue;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,39 +42,67 @@ import static org.tinystruct.http.Constants.HTTP_HOST;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
+    // Constants
     public static final String CHAT_GPT = "ChatGPT";
-    private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-    protected static final String MODEL = "deepseek/deepseek-r1:free";
+    private static final String DEFAULT_MODEL = "deepseek/deepseek-r1:free";
+    private static final int DEFAULT_MESSAGE_POOL_SIZE = 100;
+    private static final int DEFAULT_MAX_TOKENS = 3000;
+    private static final double DEFAULT_TEMPERATURE = 0.8;
+    private static final String DATE_FORMAT_PATTERN = "yyyy-M-d h:m:s";
+    private static final String FILE_UPLOAD_DIR = "files";
+    
+    // Configuration keys
+    private static final String CONFIG_OPENAI_API_KEY = "openai.api_key";
+    private static final String CONFIG_OPENAI_API_ENDPOINT = "openai.api_endpoint";
+    private static final String CONFIG_DEFAULT_CHAT_ENGINE = "default.chat.engine";
+    private static final String CONFIG_SYSTEM_DIRECTORY = "system.directory";
+
+    private static final SimpleDateFormat format = new SimpleDateFormat(DATE_FORMAT_PATTERN);
+    protected static final String MODEL = DEFAULT_MODEL;
     private boolean cliMode;
     private boolean chatGPT;
     private static final EventDispatcher dispatcher = EventDispatcher.getInstance();
 
     public void init() {
-        super.init();
+        try {
+            super.init();
+            initializeBasicSettings();
+            configureSecurity();
+            initializeAIServices();
+            setupEventHandling();
+        } catch (Exception e) {
+            throw new ApplicationRuntimeException("Failed to initialize smalltalk: " + e.getMessage(), e);
+        }
+    }
 
+    private void initializeBasicSettings() {
         this.setVariable("message", "");
         this.setVariable("topic", "");
-
         System.setProperty("LANG", "en_US.UTF-8");
-        
+    }
+
+    private void configureSecurity() {
         // Configure TLS settings
         System.setProperty("https.protocols", "TLSv1.2,TLSv1.3");
         System.setProperty("jdk.tls.client.protocols", "TLSv1.2,TLSv1.3");
-        System.setProperty("https.cipherSuites", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384");
+        System.setProperty("https.cipherSuites", 
+            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384");
+    }
 
-        SessionManager.getInstance().addListener(this);
-
-        dispatcher.registerHandler(SessionCreated.class, event -> System.out.println(event.getPayload()));
-
+    private void initializeAIServices() {
         ApplicationManager.install(new OpenAI());
         ApplicationManager.install(new StabilityAI());
         ApplicationManager.install(new SearchAI());
 
-        if (getConfiguration().get("default.chat.engine") != null) {
-            this.chatGPT = !getConfiguration().get("default.chat.engine").equals("gpt-3");
-        } else {
-            this.chatGPT = false;
-        }
+        this.chatGPT = getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE) != null 
+            ? !getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE).equals("gpt-3")
+            : false;
+    }
+
+    private void setupEventHandling() {
+        SessionManager.getInstance().addListener(this);
+        dispatcher.registerHandler(SessionCreated.class, event -> 
+            System.out.println(event.getPayload()));
     }
 
     @Action("talk")
@@ -142,15 +172,31 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/join")
     public Object join(String meetingCode, Request request, Response response) throws ApplicationException {
-        if (groups.containsKey(meetingCode)) {
-            request.getSession().setAttribute("meeting_code", meetingCode);
+        if (!isValidMeetingCode(meetingCode)) {
+            response.setStatus(ResponseStatus.NOT_FOUND);
+            return "Invalid meeting code.";
+        }
 
+        request.getSession().setAttribute("meeting_code", meetingCode);
+        try {
+            return redirectToTalk(request, response);
+        } catch (ApplicationException e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "Error redirecting to talk page: " + e.getMessage();
+        }
+    }
+
+    private boolean isValidMeetingCode(String meetingCode) {
+        return groups.containsKey(meetingCode);
+    }
+
+    private Object redirectToTalk(Request request, Response response) throws ApplicationException {
+        try {
             Reforward reforward = new Reforward(request, response);
             reforward.setDefault("/?q=talk");
             return reforward.forward();
-        } else {
-            response.setStatus(ResponseStatus.NOT_FOUND);
-            return "Invalid meeting code.";
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to redirect: " + e.getMessage(), e);
         }
     }
 
@@ -194,70 +240,95 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/save")
     public String save(Request request, Response response) {
-        final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (this.groups.containsKey(meetingCode)) {
-            final String sessionId = request.getSession().getId();
-            if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
-                String message;
-                if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
-                    if (request.headers().get(Header.USER_AGENT) != null) {
-                        String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
-                        this.setVariable("browser", agent[agent.length - 1]);
-                    }
-
-                    final Builder builder = new Builder();
-                    builder.put("user", request.getSession().getAttribute("user"));
-                    builder.put("time", format.format(new Date()));
-                    builder.put("session_id", sessionId);
-                    String image;
-                    if ((image = request.getParameter("image")) != null && !image.isEmpty()) {
-                        builder.put("message", filter(message) + "<img src=\"" + image + "\" />");
-                    } else {
-                        builder.put("message", filter(message));
-                    }
-
-                    if (message.contains("@" + CHAT_GPT)) {
-                        final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
-                        return this.save(meetingCode, builder, new Runnable() {
-                            /**
-                             * When an object implementing interface {@code Runnable} is used
-                             * to create a thread, starting the thread causes the object's
-                             * {@code run} method to be called in that separately executing
-                             * thread.
-                             * <p>
-                             * The general contract of the method {@code run} is that it may
-                             * take any action whatsoever.
-                             *
-                             * @see Thread#run()
-                             */
-                            @Override
-                            public void run() {
-                                final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-                                final Builder data = new Builder();
-                                data.put("user", CHAT_GPT);
-                                data.put("session_id", request.getSession().getId());
-                                try {
-                                    String filterMessage = filter(chatGPT ? chatGPT(sessionId, finalMessage, image) : chat(sessionId, finalMessage, image));
-
-                                    data.put("time", format.format(new Date()));
-                                    data.put("message", filterMessage);
-                                    save(meetingCode, data);
-                                } catch (ApplicationException e) {
-                                    data.put("time", format.format(new Date()));
-                                    data.put("message", e.getMessage());
-                                    save(meetingCode, data);
-                                }
-                            }
-                        });
-                    }
-
-                    return this.save(meetingCode, builder);
-                }
+        try {
+            final Object meetingCode = request.getSession().getAttribute("meeting_code");
+            if (meetingCode == null) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"missing_meeting_code\" }";
             }
-        }
 
-        response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
-        return "{ \"error\": \"expired\" }";
+            if (!this.groups.containsKey(meetingCode)) {
+                response.setStatus(ResponseStatus.NOT_FOUND);
+                return "{ \"error\": \"invalid_meeting_code\" }";
+            }
+
+            final String sessionId = request.getSession().getId();
+            Set<String> sessions = this.sessions.get(meetingCode);
+            
+            if (sessions == null || !sessions.contains(sessionId)) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
+                return "{ \"error\": \"invalid_session\" }";
+            }
+
+            String message = request.getParameter("text");
+            if (message == null || message.trim().isEmpty()) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"empty_message\" }";
+            }
+
+            final Builder builder = new Builder();
+            builder.put("user", request.getSession().getAttribute("user"));
+            builder.put("time", format.format(new Date()));
+            builder.put("session_id", sessionId);
+
+            String image = request.getParameter("image");
+            if (image != null && !image.isEmpty()) {
+                builder.put("message", filter(message) + "<img src=\"" + image + "\" />");
+            } else {
+                builder.put("message", filter(message));
+            }
+
+            if (message.contains("@" + CHAT_GPT)) {
+                final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
+                return this.save(meetingCode, builder, () -> {
+                    try {
+                        processChatGPTResponse(request, meetingCode, sessionId, finalMessage, image);
+                    } catch (Exception e) {
+                        System.err.println("Error processing ChatGPT response: " + e.getMessage());
+                        sendErrorMessage(meetingCode, sessionId, e.getMessage());
+                    }
+                });
+            }
+
+            return this.save(meetingCode, builder);
+        } catch (Exception e) {
+            System.err.println("Error saving message: " + e.getMessage());
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    private void processChatGPTResponse(Request request, Object meetingCode, String sessionId, 
+            String message, String image) throws ApplicationException {
+        final Builder data = new Builder();
+        data.put("user", CHAT_GPT);
+        data.put("session_id", sessionId);
+        data.put("time", format.format(new Date()));
+        
+        try {
+            String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
+            if (response == null || response.trim().isEmpty()) {
+                throw new ApplicationException("Empty response from chat service");
+            }
+            data.put("message", filter(response));
+        } catch (Exception e) {
+            data.put("message", "Error: " + e.getMessage());
+        }
+        
+        save(meetingCode, data);
+    }
+
+    private void sendErrorMessage(Object meetingCode, String sessionId, String errorMessage) {
+        try {
+            final Builder data = new Builder();
+            data.put("user", CHAT_GPT);
+            data.put("session_id", sessionId);
+            data.put("time", format.format(new Date()));
+            data.put("message", "Error: " + errorMessage);
+            save(meetingCode, data);
+        } catch (Exception e) {
+            System.err.println("Failed to send error message: " + e.getMessage());
+        }
     }
 
     @Action("chat")
@@ -329,34 +400,128 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     private String processAIResponse(String response) throws ApplicationException {
-        // Regex to detect PlantUML code block - either in markdown format or raw format
-        Pattern pattern = Pattern.compile("```plantuml\\s*@startuml(.*?)@enduml\\s*```|@startuml(.*?)@enduml", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(response);
-        while (matcher.find()) {
-            String match = matcher.group(0); // The entire match
+        if (response == null || response.isEmpty()) {
+            return "";
+        }
 
+        // Regex to detect PlantUML code block - either in markdown format or raw format
+        Pattern pattern = Pattern.compile("```plantuml\\s*@startuml(.*?)@enduml\\s*```|@startuml(.*?)@enduml", 
+            Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(response);
+        
+        StringBuilder processedResponse = new StringBuilder(response);
+        int offset = 0;
+
+        while (matcher.find()) {
             try {
+                String match = matcher.group(0);
                 plantuml plantUML = new plantuml();
                 List<String> umlImages = plantUML.generateUML(match);
+                
                 if (!umlImages.isEmpty()) {
-                    String umlImage = umlImages.get(0); // Get the first image
-                    // Add the image after the code block
-                    String replacement = "\n<placeholder-image>data:image/png;base64," + umlImage + "</placeholder-image>";
-                    // Insert <placeholder></placeholder> after the code block
-                    response = response.replaceFirst("```plantuml([\\s\\S]*?)```", "$0\n\n" + replacement);
+                    String umlImage = umlImages.get(0);
+                    String replacement = "\n<placeholder-image>data:image/png;base64," + 
+                        umlImage + "</placeholder-image>";
+                    
+                    int start = matcher.end() + offset;
+                    processedResponse.insert(start, replacement);
+                    offset += replacement.length();
                 }
             } catch (IOException e) {
                 System.err.println("Error generating UML: " + e.getMessage());
+                // Continue processing other UML diagrams even if one fails
             }
         }
 
-        return response;
+        return processedResponse.toString();
     }
 
     private String chat(String sessionId, String message) throws ApplicationException {
-        if (this.chatGPT) return this.chatGPT(sessionId, message, null);
+        return chat(sessionId, message, null);
+    }
 
-        return this.chat(sessionId, message, null); // Process the response to replace PlantUML code
+    private String chat(String sessionId, String message, String image) throws ApplicationException {
+        if (!cliMode) {
+            message = sanitizeMessage(message);
+        }
+
+        if (message == null || message.trim().isEmpty()) {
+            throw new ApplicationException("Message cannot be empty");
+        }
+
+        try {
+            String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
+            
+            if (response == null || response.trim().isEmpty()) {
+                System.err.println("Warning: Received empty response from chat API for message: " + message);
+                throw new ApplicationException("No response received from chat service");
+            }
+            
+            return processAIResponse(response);
+        } catch (ApplicationException e) {
+            System.err.println("Error in chat processing: " + e.getMessage() + " for message: " + message);
+            throw new ApplicationException("Chat processing failed: " + e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("Unexpected error in chat: " + e.getMessage() + " for message: " + message);
+            throw new ApplicationException("Unexpected error in chat processing", e);
+        }
+    }
+
+    private String sanitizeMessage(String message) {
+        if (message == null) return "";
+        return message.replaceAll("<br>|<br />", "");
+    }
+
+    private Builder createChatPayload(String sessionId, String message, String model) {
+        Builder payload = new Builder();
+        payload.put("model", model);
+        payload.put("max_tokens", DEFAULT_MAX_TOKENS);
+        payload.put("temperature", DEFAULT_TEMPERATURE);
+        payload.put("n", 1);
+        payload.put("user", sessionId);
+        
+        Builders messages = new Builders();
+        Builder systemMessage = new Builder();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", getSystemPrompt());
+        messages.add(systemMessage);
+        
+        // Add previous context if available
+        addPreviousContext(messages);
+        
+        // Add current message
+        Builder userMessage = new Builder();
+        userMessage.put("role", "user");
+        userMessage.put("content", message);
+        messages.add(userMessage);
+        
+        payload.put("messages", messages);
+        return payload;
+    }
+
+    private String getSystemPrompt() {
+        return "I am an AI assistant specialized in IT. If you enter any Linux command, " +
+               "I will execute it and display the result as you would see in a terminal. " +
+               "I can also engage in normal conversations but will consider the context " +
+               "of the conversation to provide the best answers. If you ask me a question " +
+               "that I am not knowledgeable enough to answer, I will ask if you have any " +
+               "reference content, you can provide the content or a url can be referenced.";
+    }
+
+    private void addPreviousContext(Builders messages) {
+        if (this.getVariable("previous_user_message") != null) {
+            Builder previousUser = new Builder();
+            previousUser.put("role", "user");
+            previousUser.put("content", this.getVariable("previous_user_message").getValue());
+            messages.add(previousUser);
+        }
+
+        if (this.getVariable("previous_system_message") != null) {
+            Builder previousSystem = new Builder();
+            previousSystem.put("role", "system");
+            previousSystem.put("content", this.getVariable("previous_system_message").getValue());
+            messages.add(previousSystem);
+        }
     }
 
     /**
@@ -366,138 +531,121 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      * @throws ApplicationException while the failure occurred due to an exception
      */
     private String chatGPT(String sessionId, String message, String image) throws ApplicationException {
-        // Replace YOUR_API_KEY with your actual API key
-        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/chat/completions";
+        validateChatGPTRequest(sessionId, message);
 
-        if (!cliMode) message = message.replaceAll("<br>|<br />", "");
+        String API_URL = getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/chat/completions";
+        if (API_URL == null || API_URL.trim().isEmpty()) {
+            throw new ApplicationException("OpenAI API endpoint not configured");
+        }
 
-        // Try to get some information from internet
-        String payload = "{\n" + "  \"model\": \"" + MODEL + "\"}";
+        message = sanitizeMessage(message);
+        Builder payloadBuilder = createChatGPTPayload(sessionId, message);
+        Builder apiResponse = callOpenAIAPI(API_URL, payloadBuilder);
+        return processGPTResponse(apiResponse, sessionId, message, image);
+    }
 
+    private void validateChatGPTRequest(String sessionId, String message) throws ApplicationException {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            throw new ApplicationException("Session ID is required");
+        }
+        if (message == null || message.trim().isEmpty()) {
+            throw new ApplicationException("Message cannot be empty");
+        }
+    }
+
+    private Builder createChatGPTPayload(String sessionId, String message) throws ApplicationException {
         Builder payloadBuilder = new Builder();
-        payloadBuilder.parse(payload);
-        Builders messages = new Builders();
-        Builder messageBuilder = new Builder();
-        messageBuilder.put("role", "system");
-        messageBuilder.put("content", "I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.");
+        try {
+            payloadBuilder.parse("{\n" + "  \"model\": \"" + MODEL + "\"}");
+            
+            Builders messages = new Builders();
+            Builder systemMessage = new Builder();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", getSystemPrompt());
+            messages.add(systemMessage);
 
-        messages.add(messageBuilder);
+            addPreviousContext(messages);
 
-        Builder previousUser = new Builder();
-        if (this.getVariable("previous_user_message") != null) {
-            previousUser.put("role", "user");
-            previousUser.put("content", this.getVariable("previous_user_message").getValue());
-            messages.add(previousUser);
+            Builder userMessage = new Builder();
+            userMessage.put("role", "user");
+            userMessage.put("content", message);
+            messages.add(userMessage);
+
+            payloadBuilder.put("messages", messages);
+            payloadBuilder.put("user", sessionId);
+            
+            return payloadBuilder;
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to create chat payload: " + e.getMessage(), e);
         }
+    }
 
-        Builder previousSystem = new Builder();
-        if (this.getVariable("previous_system_message") != null) {
-            previousSystem.put("role", "system");
-            previousSystem.put("content", this.getVariable("previous_system_message").getValue());
-            messages.add(previousSystem);
-        }
+    private Builder callOpenAIAPI(String API_URL, Builder payload) throws ApplicationException {
+        try {
+            Context context = new ApplicationContext();
+            context.setAttribute("payload", payload);
+            context.setAttribute("api", API_URL);
 
-        Builder builder = new Builder();
-        builder.put("role", "user");
-        builder.put("content", message);
-        messages.add(builder);
-
-        payloadBuilder.put("user", sessionId);
-        payloadBuilder.put("messages", messages);
-
-        Context context = new ApplicationContext();
-        context.setAttribute("payload", payloadBuilder);
-        context.setAttribute("api", API_URL);
-
-        Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
-        assert apiResponse != null;
-        Builders builders;
-        if ((builders = (Builders) apiResponse.get("choices")) != null && !builders.get(0).isEmpty()) {
-            Builder choice = builders.get(0);
-
-            if (choice.get("message") != null) {
-                String choiceText = ((Builder) choice.get("message")).get("content").toString();
-                this.setVariable("previous_user_message", message);
-                this.setVariable("previous_system_message", choiceText);
-
-                if (choiceText.contains(IMAGES_GENERATIONS)) {
-                    return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_EDITS)) {
-                    return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                    return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
-                }
-
-                if (choiceText.contains("@startuml")) {
-                    return processAIResponse(choiceText);
-                }
-
-                return choiceText;
+            Builder response = (Builder) ApplicationManager.call("openai", context);
+            if (response == null) {
+                throw new ApplicationException("No response received from OpenAI API");
             }
-        } else if (apiResponse.get("error") != null) {
+            return response;
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to call OpenAI API: " + e.getMessage(), e);
+        }
+    }
+
+    private String processGPTResponse(Builder apiResponse, String sessionId, String message, String image) 
+            throws ApplicationException {
+        if (apiResponse.get("error") != null) {
             Builder error = (Builder) apiResponse.get("error");
-            if (error.get("message") != null) {
-                throw new ApplicationException(error.get("message").toString());
-            }
+            String errorMessage = error.get("message") != null ? 
+                error.get("message").toString() : "Unknown error from OpenAI API";
+            System.err.println("OpenAI API error: " + errorMessage);
+            throw new ApplicationException(errorMessage);
         }
 
-        return "";
+        Builders choices = (Builders) apiResponse.get("choices");
+        if (choices == null || choices.isEmpty()) {
+            System.err.println("No choices returned from OpenAI API");
+            throw new ApplicationException("No response choices available");
+        }
+
+        Builder choice = choices.get(0);
+        if (choice == null || choice.get("message") == null) {
+            System.err.println("Invalid choice structure in API response");
+            throw new ApplicationException("Invalid response format");
+        }
+
+        String choiceText = ((Builder) choice.get("message")).get("content").toString();
+        if (choiceText == null || choiceText.trim().isEmpty()) {
+            System.err.println("Empty response content from OpenAI API");
+            throw new ApplicationException("Empty response content");
+        }
+
+        // Store the context for future reference
+        this.setVariable("previous_user_message", message);
+        this.setVariable("previous_system_message", choiceText);
+
+        // Handle special response types
+        if (choiceText.contains(IMAGES_GENERATIONS)) {
+            return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
+        } else if (choiceText.contains(IMAGES_EDITS)) {
+            return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
+        } else if (choiceText.contains(IMAGES_VARIATIONS)) {
+            return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
+        } else if (choiceText.contains("@startuml")) {
+            return processAIResponse(choiceText);
+        }
+
+        return choiceText;
     }
 
     private Builder preprocess(String message) throws ApplicationException {
         Context context = new ApplicationContext();
         context.setAttribute("--query", message);
         return (Builder) ApplicationManager.call("search", context);
-    }
-
-    /**
-     * Call chat GPT API
-     *
-     * @return message from API
-     * @throws ApplicationException while the failure occurred due to an exception
-     */
-    private String chat(String sessionId, String message, String image) throws ApplicationException {
-        // Replace YOUR_API_KEY with your actual API key
-        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/chat/completions";
-
-        if (!cliMode) message = message.replaceAll("<br>|<br />", "");
-
-        String payload = "{\n" + "  \"model\": \"" + MODEL + "\"," + "  \"messages\": [{\"role\": \"user\", \"content\": \"\"}]," + "  \"max_tokens\": 3000," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
-
-        Builder _message = new Builder();
-        _message.parse(payload);
-        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n" + "\n" + message + "\n");
-        _message.put("user", sessionId);
-
-        Context context = new ApplicationContext();
-        context.setAttribute("payload", _message);
-        context.setAttribute("api", API_URL);
-
-        Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
-        assert apiResponse != null;
-        Builders builders;
-        if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
-            Builder choice = builders.get(0);
-            if (choice.get("message") != null) {
-                String choiceText = ((Builder) choice.get("message")).get("content").toString();
-                if (choiceText.contains(IMAGES_GENERATIONS)) {
-                    return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_EDITS)) {
-                    return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                    return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
-                }
-
-                return choiceText;
-            }
-        } else if (apiResponse.get("error") != null) {
-            Builder error = (Builder) apiResponse.get("error");
-            if (error.get("message") != null) {
-                throw new ApplicationException(error.get("message").toString());
-            }
-        }
-
-        return "";
     }
 
     /**
@@ -717,63 +865,116 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{}";
     }
 
+    private String getUploadDirectory() {
+        return getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) != null 
+            ? getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) + "/" + FILE_UPLOAD_DIR 
+            : FILE_UPLOAD_DIR;
+    }
+
+    private void validateFileUpload(String meetingCode) throws ApplicationException {
+        if (meetingCode == null) {
+            throw new ApplicationException("Not allowed to upload any files.");
+        }
+    }
+
+    private void validateFileDownload(String meetingCode, boolean encoded) throws ApplicationException {
+        if (encoded && meetingCode == null) {
+            throw new ApplicationException("Not allowed to download any files.");
+        }
+    }
+
+    private void encryptFile(byte[] data, String meetingCode) {
+        if (data == null || meetingCode == null) return;
+        
+        byte[] keys = meetingCode.getBytes(StandardCharsets.UTF_8);
+        int blocks = (data.length - data.length % 1024) / 1024;
+        int i = 0;
+        do {
+            int min = Math.min(keys.length, data.length);
+            for (int j = 0; j < min; j++) {
+                data[i * 1024 + j] = (byte) (data[i * 1024 + j] ^ keys[j]);
+            }
+        } while (i++ < blocks);
+    }
+
     @Action("talk/upload")
     public String upload(Request request) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
+        validateFileUpload(meetingCode.toString());
 
-        // Create path components to save the file
-        final String path = getConfiguration().get("system.directory") != null ? getConfiguration().get("system.directory").toString() + "/files" : "files";
-
+        final String uploadPath = getUploadDirectory();
         final Builders builders = new Builders();
-        List<FileEntity> list = request.getAttachments();
-        for (FileEntity file : list) {
-            final Builder builder = new Builder();
-            builder.put("type", file.getContentType());
-            builder.put("file", new StringBuilder().append(getContext().getAttribute(HTTP_HOST)).append("files/").append(file.getFilename()));
-            final File f = new File(path + File.separator + file.getFilename());
-            if (!f.exists()) {
-                if (!f.getParentFile().exists()) {
-                    f.getParentFile().mkdirs();
-                }
-            }
 
-            try (final OutputStream out = new FileOutputStream(f); final BufferedOutputStream bout = new BufferedOutputStream(out); final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));) {
-                final byte[] bytes = new byte[1024];
-                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-                int read;
-                while ((read = bs.read(bytes)) != -1) {
-                    int min = Math.min(read, keys.length);
-                    for (int i = 0; i < min; i++) {
-                        bytes[i] = (byte) (bytes[i] ^ keys[i]);
-                    }
-                    bout.write(bytes, 0, read);
-                }
-                bout.close();
-                bs.close();
-
-                builders.add(builder);
-                System.out.printf("File %s being uploaded to %s%n", file.getFilename(), path);
-            } catch (FileNotFoundException e) {
-                throw new ApplicationException("File not found: " + e.getMessage(), e);
+        List<FileEntity> attachments = request.getAttachments();
+        for (FileEntity file : attachments) {
+            try {
+                processUploadedFile(file, uploadPath, meetingCode.toString(), builders);
             } catch (IOException e) {
-                throw new ApplicationException("Error uploading file: " + e.getMessage(), e);
+                throw new ApplicationException("Error processing file: " + e.getMessage(), e);
             }
         }
 
         return builders.toString();
     }
 
+    private void processUploadedFile(FileEntity file, String uploadPath, String meetingCode, Builders builders) 
+            throws IOException, ApplicationException {
+        final Builder builder = new Builder();
+        builder.put("type", file.getContentType());
+        builder.put("file", new StringBuilder()
+            .append(getContext().getAttribute(HTTP_HOST))
+            .append("files/")
+            .append(file.getFilename()));
+
+        final File targetFile = new File(uploadPath + File.separator + file.getFilename());
+        createDirectoryIfNeeded(targetFile.getParentFile());
+
+        try (final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(targetFile));
+             final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()))) {
+            
+            writeEncryptedFile(bout, bs, meetingCode);
+            builders.add(builder);
+            
+            System.out.printf("File %s being uploaded to %s%n", file.getFilename(), uploadPath);
+        }
+    }
+
+    private void createDirectoryIfNeeded(File directory) throws ApplicationException {
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new ApplicationException("Failed to create directory: " + directory.getPath());
+        }
+    }
+
+    private void writeEncryptedFile(BufferedOutputStream bout, BufferedInputStream bs, String meetingCode) 
+            throws IOException {
+        final byte[] buffer = new byte[1024];
+        final byte[] keys = meetingCode.getBytes(StandardCharsets.UTF_8);
+        int read;
+        
+        while ((read = bs.read(buffer)) != -1) {
+            int min = Math.min(read, keys.length);
+            for (int i = 0; i < min; i++) {
+                buffer[i] = (byte) (buffer[i] ^ keys[i]);
+            }
+            bout.write(buffer, 0, read);
+        }
+    }
+
     public byte[] download(String fileName, boolean encoded, Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (encoded && meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
+        validateFileDownload(meetingCode.toString(), encoded);
 
         // Create path to download the file
         final String fileDir = getConfiguration().get("system.directory") != null ? getConfiguration().get("system.directory") + "/files" : "files";
 
+        try {
+            fileName = URLDecoder.decode(fileName, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
         // Creating an object of Path class and
         // assigning local directory path of file to it
-        Path path = Paths.get(fileDir, new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8));
+        Path path = Paths.get(fileDir, fileName);
 
         // Converting the file into a byte array
         // using Files.readAllBytes() method
@@ -783,20 +984,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (mimeType != null) {
                 response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
             } else {
-                response.addHeader(Header.CONTENT_DISPOSITION.name(), "application/octet-stream;filename=\"" + fileName + "\"");
+                response.addHeader(Header.CONTENT_DISPOSITION.name(), "attachment; filename*=UTF-8''" +
+                        URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replace("+", "%20"));
             }
 
             arr = Files.readAllBytes(path);
             if (encoded) {
-                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-                int blocks = (arr.length - arr.length % 1024) / 1024;
-                int i = 0;
-                do {
-                    int min = Math.min(keys.length, arr.length);
-                    for (int j = 0; j < min; j++) {
-                        arr[i * 1024 + j] = (byte) (arr[i * 1024 + j] ^ keys[j]);
-                    }
-                } while (i++ < blocks);
+                encryptFile(arr, meetingCode.toString());
             }
         } catch (IOException e) {
             throw new ApplicationException("Error reading the file: " + e.getMessage(), e);
@@ -838,45 +1032,79 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Override
-    public void onSessionEvent(SessionEvent arg0) {
-        Object meetingCode = arg0.getSession().getAttribute("meeting_code");
-        if (arg0.getType() == SessionEvent.Type.CREATED) {
-            if (meetingCode == null) {
-                meetingCode = java.util.UUID.randomUUID().toString();
-                arg0.getSession().setAttribute("meeting_code", meetingCode);
+    public void onSessionEvent(SessionEvent event) {
+        switch (event.getType()) {
+            case CREATED:
+                handleSessionCreated(event);
+                break;
+            case DESTROYED:
+                handleSessionDestroyed(event);
+                break;
+            default:
+                // Log unexpected event type
+                System.err.println("Unexpected session event type: " + event.getType());
+        }
+    }
 
-                dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
-            }
+    private void handleSessionCreated(SessionEvent event) {
+        Object meetingCode = event.getSession().getAttribute("meeting_code");
+        if (meetingCode == null) {
+            meetingCode = generateMeetingCode();
+            event.getSession().setAttribute("meeting_code", meetingCode);
+            dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
+        }
 
-            final String sessionId = arg0.getSession().getId();
-            if (!this.list.containsKey(sessionId)) {
-                this.list.put(sessionId, new ArrayDeque<Builder>());
-            }
-        } else if (arg0.getType() == SessionEvent.Type.DESTROYED) {
-            if (meetingCode != null) {
-                final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-                final Builder builder = new Builder();
-                builder.put("user", null);
-                builder.put("time", format.format(new Date()));
-                builder.put("cmd", "expired");
-                this.save(meetingCode, builder);
+        final String sessionId = event.getSession().getId();
+        initializeSessionQueue(sessionId);
+    }
 
-                Queue<Builder> messages;
-                Set<String> session_ids;
-                if ((session_ids = this.sessions.get(meetingCode)) != null) {
-                    session_ids.remove(arg0.getSession().getId());
-                }
+    private String generateMeetingCode() {
+        return UUID.randomUUID().toString();
+    }
 
-                if ((messages = this.groups.get(meetingCode)) != null) {
-                    messages.remove(meetingCode);
-                }
+    private void initializeSessionQueue(String sessionId) {
+        if (!this.list.containsKey(sessionId)) {
+            this.list.put(sessionId, new ArrayDeque<Builder>());
+        }
+    }
 
-                final String sessionId = arg0.getSession().getId();
-                if (this.list.containsKey(sessionId)) {
-                    this.list.remove(sessionId);
-                    wakeup();
-                }
-            }
+    private void handleSessionDestroyed(SessionEvent event) {
+        Object meetingCode = event.getSession().getAttribute("meeting_code");
+        if (meetingCode != null) {
+            cleanupSession(event.getSession(), meetingCode.toString());
+        }
+    }
+
+    private void cleanupSession(Session session, String meetingCode) {
+        notifySessionExpired(meetingCode);
+        removeSessionFromGroups(session.getId(), meetingCode);
+        removeSessionQueue(session.getId());
+    }
+
+    private void notifySessionExpired(String meetingCode) {
+        final Builder builder = new Builder();
+        builder.put("user", null);
+        builder.put("time", format.format(new Date()));
+        builder.put("cmd", "expired");
+        this.save(meetingCode, builder);
+    }
+
+    private void removeSessionFromGroups(String sessionId, String meetingCode) {
+        Set<String> sessionIds = this.sessions.get(meetingCode);
+        if (sessionIds != null) {
+            sessionIds.remove(sessionId);
+        }
+
+        Queue<Builder> messages = this.groups.get(meetingCode);
+        if (messages != null) {
+            messages.remove(meetingCode);
+        }
+    }
+
+    private void removeSessionQueue(String sessionId) {
+        if (this.list.containsKey(sessionId)) {
+            this.list.remove(sessionId);
+            wakeup();
         }
     }
 }
