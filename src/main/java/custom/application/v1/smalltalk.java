@@ -32,6 +32,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static custom.ai.OpenAI.*;
 import static org.tinystruct.http.Constants.HTTP_HOST;
@@ -326,10 +328,35 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         System.exit(-1);
     }
 
+    private String processAIResponse(String response) throws ApplicationException {
+        // Regex to detect PlantUML code block - either in markdown format or raw format
+        Pattern pattern = Pattern.compile("```plantuml\\s*@startuml(.*?)@enduml\\s*```|@startuml(.*?)@enduml", Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(response);
+        while (matcher.find()) {
+            String match = matcher.group(0); // The entire match
+
+            try {
+                plantuml plantUML = new plantuml();
+                List<String> umlImages = plantUML.generateUML(match);
+                if (!umlImages.isEmpty()) {
+                    String umlImage = umlImages.get(0); // Get the first image
+                    // Add the image after the code block
+                    String replacement = "\n<placeholder-image>data:image/png;base64," + umlImage + "</placeholder-image>";
+                    // Insert <placeholder></placeholder> after the code block
+                    response = response.replaceFirst("```plantuml([\\s\\S]*?)```", "$0\n\n" + replacement);
+                }
+            } catch (IOException e) {
+                System.err.println("Error generating UML: " + e.getMessage());
+            }
+        }
+
+        return response;
+    }
+
     private String chat(String sessionId, String message) throws ApplicationException {
         if (this.chatGPT) return this.chatGPT(sessionId, message, null);
 
-        return this.chat(sessionId, message, null);
+        return this.chat(sessionId, message, null); // Process the response to replace PlantUML code
     }
 
     /**
@@ -401,6 +428,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
                 }
 
+                if (choiceText.contains("@startuml")) {
+                    return processAIResponse(choiceText);
+                }
+
                 return choiceText;
             }
         } else if (apiResponse.get("error") != null) {
@@ -431,7 +462,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         if (!cliMode) message = message.replaceAll("<br>|<br />", "");
 
-        String payload = "{\n" + "  \"model\": \"" + MODEL + "\"," + "  \"messages\": [{\"role\": \"user\", \"content\": \"\"}]," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
+        String payload = "{\n" + "  \"model\": \"" + MODEL + "\"," + "  \"messages\": [{\"role\": \"user\", \"content\": \"\"}]," + "  \"max_tokens\": 3000," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
 
         Builder _message = new Builder();
         _message.parse(payload);
