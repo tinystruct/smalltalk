@@ -3,8 +3,14 @@ package custom.ai;
 import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
-import org.tinystruct.http.*;
+import org.tinystruct.http.Header;
+import org.tinystruct.http.Headers;
+import org.tinystruct.http.Method;
 import org.tinystruct.http.client.HttpRequestBuilder;
+import org.tinystruct.net.URLHandler;
+import org.tinystruct.net.URLHandlerFactory;
+import org.tinystruct.net.URLRequest;
+import org.tinystruct.net.URLResponse;
 import org.tinystruct.system.annotation.Action;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
@@ -47,53 +53,50 @@ public class OpenAI extends AbstractApplication implements Provider {
         // Replace YOUR_API_KEY with your actual API key
         String API_KEY = getConfiguration().get("openai.api_key");
 
-        Headers headers = new Headers();
-        headers.add(Header.AUTHORIZATION.set("Bearer " + API_KEY));
-        headers.add(Header.CONTENT_TYPE.set(contentType));
-        headers.add(Header.ACCEPT.set("application/json"));
-        // Add OpenRouter specific headers
-        headers.add(Header.REFERER.set("https://github.com/tinystruct/smalltalk"));
-        headers.add(Header.USER_AGENT.set("Smalltalk/1.0.0"));
-
-        HttpRequestBuilder builder = new HttpRequestBuilder();
-        builder.setHeaders(headers).setMethod(Method.POST);
-
-        if (getContext().getAttribute("payload") != null) {
-            payload = (Builder) getContext().getAttribute("payload");
-            if (contentType.equalsIgnoreCase("multipart/form-data")) {
-                builder.setParameter("prompt", payload.get("prompt").toString());
-                builder.setParameter("user", payload.get("user").toString());
-                builder.setParameter("n", Integer.parseInt(payload.get("n").toString()));
-                builder.setParameter("response_format", "b64_json");
-            } else {
-                builder.setRequestBody(payload.toString());
-            }
-        }
-
-        if (image != null) {
-            ContentDisposition imageContent = new ContentDisposition("image", "image.png", "image/png", Base64.getDecoder().decode(image.toString()));
-            builder.setFormData(new ContentDisposition[]{imageContent});
-            if (mask != null) {
-                ContentDisposition maskContent = new ContentDisposition("mask", "mask.png", "image/png", Base64.getDecoder().decode(mask.toString()));
-                builder.setFormData(new ContentDisposition[]{maskContent});
-            }
-        }
-
         try {
             URLRequest request = new URLRequest(new URL(api));
-            byte[] bytes = request.send(builder);
-            String response = new String(bytes);
-            
+            request.setHeader("Authorization", "Bearer " + API_KEY);
+            request.setHeader("Content-Type", contentType);
+            request.setHeader("Accept", "application/json");
+
+            // Add OpenRouter specific headers
+            request.setHeader("Referer", "https://github.com/tinystruct/smalltalk");
+            request.setHeader("User-Agent", "Smalltalk/1.0.0");
+
+            if (getContext().getAttribute("payload") != null) {
+                payload = (Builder) getContext().getAttribute("payload");
+                if (contentType.equalsIgnoreCase("multipart/form-data")) {
+                    request.setParameter("prompt", payload.get("prompt").toString());
+                    request.setParameter("user", payload.get("user").toString());
+                    request.setParameter("n", Integer.parseInt(payload.get("n").toString()));
+                    request.setParameter("response_format", "b64_json");
+                } else {
+                    request.setBody(payload.toString());
+                }
+            }
+
+            if (image != null) {
+                ContentDisposition imageContent = new ContentDisposition("image", "image.png", "image/png", Base64.getDecoder().decode(image.toString()));
+                request.setFormData(new ContentDisposition[]{imageContent});
+                if (mask != null) {
+                    ContentDisposition maskContent = new ContentDisposition("mask", "mask.png", "image/png", Base64.getDecoder().decode(mask.toString()));
+                    request.setFormData(new ContentDisposition[]{maskContent});
+                }
+            }
+
+            URLHandler handler = URLHandlerFactory.getHandler(new URL(api));
+            URLResponse urlResponse = handler.handleRequest(request);
+            String response = urlResponse.getBody();
+
             // Check if response looks like HTML
             if (response.trim().startsWith("<!DOCTYPE html>") || response.trim().startsWith("<html>")) {
                 throw new ApplicationException("Received HTML response instead of JSON. API endpoint may be incorrect or returning an error page.");
             }
-            
+
             Builder apiResponse = new Builder();
             apiResponse.parse(response);
-
             return apiResponse;
-        } catch (MalformedURLException | URISyntaxException e) {
+        } catch (MalformedURLException e) {
             throw new ApplicationException(e.getMessage(), e.getCause());
         } catch (ApplicationException e) {
             throw e;
