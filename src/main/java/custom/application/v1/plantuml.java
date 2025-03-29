@@ -6,9 +6,7 @@ import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.SourceStringReader;
 import org.tinystruct.AbstractApplication;
-import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
-import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.annotation.Action;
 import org.tinystruct.system.util.TextFileLoader;
 
