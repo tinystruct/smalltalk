@@ -156,6 +156,7 @@
             outline: 0;
             background: #fff;
             position: relative;
+            border-radius: 5px;
         }
 
         .text:hover, .hover .text {
@@ -217,13 +218,13 @@
 
         .btn-file {
             position: absolute;
-            left: 10px;
-            bottom: 10px;
+            left: 0;
+            bottom: 0;
             overflow: hidden;
             background: transparent;
             border: none;
             color: #337ab7;
-            padding: 5px;
+            padding: 0;
             margin: 0;
             transition: all 0.3s ease;
             z-index: 1;
@@ -484,10 +485,9 @@
             height: 100%;
         }
 
-
         #text {
             min-height: 40px;
-            padding: 0 45px;  /* Add padding for the buttons */
+            padding: 0 0 0 15px;  /* Add padding for the buttons */
             width: 100%;
             font-style: Consolas;
             font-family: monospace;
@@ -570,7 +570,7 @@
         .sidebar-toggle {
             position: fixed;
             left: 15px;
-            top: 15px;
+            top: 10px;
             padding: 5px;
             z-index: 1051;
             cursor: pointer;
