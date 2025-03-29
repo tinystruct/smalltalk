@@ -12,6 +12,8 @@ import org.tinystruct.application.SharedVariables;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
+import org.tinystruct.data.component.Row;
+import org.tinystruct.data.component.Table;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
@@ -21,9 +23,15 @@ import org.tinystruct.system.template.variable.StringVariable;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
+import custom.objects.ChatHistory;
+import custom.util.DocumentProcessor;
+import custom.util.DocumentQA;
+import custom.util.EmbeddingManager;
+import custom.objects.DocumentFragment;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -50,7 +58,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private static final double DEFAULT_TEMPERATURE = 0.8;
     private static final String DATE_FORMAT_PATTERN = "yyyy-M-d h:m:s";
     private static final String FILE_UPLOAD_DIR = "files";
-    
+
     // Configuration keys
     private static final String CONFIG_OPENAI_API_KEY = "openai.api_key";
     private static final String CONFIG_OPENAI_API_ENDPOINT = "openai.api_endpoint";
@@ -85,8 +93,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Configure TLS settings
         System.setProperty("https.protocols", "TLSv1.2,TLSv1.3");
         System.setProperty("jdk.tls.client.protocols", "TLSv1.2,TLSv1.3");
-        System.setProperty("https.cipherSuites", 
-            "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384");
+        System.setProperty("https.cipherSuites",
+                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384");
     }
 
     private void initializeAIServices() {
@@ -94,15 +102,15 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         ApplicationManager.install(new StabilityAI());
         ApplicationManager.install(new SearchAI());
 
-        this.chatGPT = getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE) != null 
-            ? !getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE).equals("gpt-3")
-            : false;
+        this.chatGPT = getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE) != null
+                ? !getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE).equals("gpt-3")
+                : false;
     }
 
     private void setupEventHandling() {
         SessionManager.getInstance().addListener(this);
-        dispatcher.registerHandler(SessionCreated.class, event -> 
-            System.out.println(event.getPayload()));
+        dispatcher.registerHandler(SessionCreated.class, event ->
+                System.out.println(event.getPayload()));
     }
 
     @Action("talk")
@@ -254,7 +262,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             final String sessionId = request.getSession().getId();
             Set<String> sessions = this.sessions.get(meetingCode);
-            
+
             if (sessions == null || !sessions.contains(sessionId)) {
                 response.setStatus(ResponseStatus.UNAUTHORIZED);
                 return "{ \"error\": \"invalid_session\" }";
@@ -298,13 +306,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
-    private void processChatGPTResponse(Request request, Object meetingCode, String sessionId, 
-            String message, String image) throws ApplicationException {
+    private void processChatGPTResponse(Request request, Object meetingCode, String sessionId,
+                                        String message, String image) throws ApplicationException {
         final Builder data = new Builder();
         data.put("user", CHAT_GPT);
         data.put("session_id", sessionId);
         data.put("time", format.format(new Date()));
-        
+
         try {
             String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
             if (response == null || response.trim().isEmpty()) {
@@ -314,7 +322,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         } catch (Exception e) {
             data.put("message", "Error: " + e.getMessage());
         }
-        
+
         save(meetingCode, data);
     }
 
@@ -405,10 +413,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
 
         // Regex to detect PlantUML code block - either in markdown format or raw format
-        Pattern pattern = Pattern.compile("```plantuml\\s*@startuml(.*?)@enduml\\s*```|@startuml(.*?)@enduml", 
-            Pattern.DOTALL);
+        Pattern pattern = Pattern.compile("```plantuml\\s*@startuml(.*?)@enduml\\s*```|@startuml(.*?)@enduml",
+                Pattern.DOTALL);
         Matcher matcher = pattern.matcher(response);
-        
+
         StringBuilder processedResponse = new StringBuilder(response);
         int offset = 0;
 
@@ -417,12 +425,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 String match = matcher.group(0);
                 plantuml plantUML = new plantuml();
                 List<String> umlImages = plantUML.generateUML(match);
-                
+
                 if (!umlImages.isEmpty()) {
                     String umlImage = umlImages.get(0);
-                    String replacement = "\n<placeholder-image>data:image/png;base64," + 
-                        umlImage + "</placeholder-image>";
-                    
+                    String replacement = "\n<placeholder-image>data:image/png;base64," +
+                            umlImage + "</placeholder-image>";
+
                     int start = matcher.end() + offset;
                     processedResponse.insert(start, replacement);
                     offset += replacement.length();
@@ -451,12 +459,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         try {
             String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
-            
+
             if (response == null || response.trim().isEmpty()) {
                 System.err.println("Warning: Received empty response from chat API for message: " + message);
                 throw new ApplicationException("No response received from chat service");
             }
-            
+
             return processAIResponse(response);
         } catch (ApplicationException e) {
             System.err.println("Error in chat processing: " + e.getMessage() + " for message: " + message);
@@ -479,33 +487,36 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         payload.put("temperature", DEFAULT_TEMPERATURE);
         payload.put("n", 1);
         payload.put("user", sessionId);
-        
+
         Builders messages = new Builders();
         Builder systemMessage = new Builder();
         systemMessage.put("role", "system");
         systemMessage.put("content", getSystemPrompt());
         messages.add(systemMessage);
-        
+
         // Add previous context if available
         addPreviousContext(messages);
-        
+
         // Add current message
         Builder userMessage = new Builder();
         userMessage.put("role", "user");
         userMessage.put("content", message);
         messages.add(userMessage);
-        
+
         payload.put("messages", messages);
         return payload;
     }
 
     private String getSystemPrompt() {
         return "I am an AI assistant specialized in IT. If you enter any Linux command, " +
-               "I will execute it and display the result as you would see in a terminal. " +
-               "I can also engage in normal conversations but will consider the context " +
-               "of the conversation to provide the best answers. If you ask me a question " +
-               "that I am not knowledgeable enough to answer, I will ask if you have any " +
-               "reference content, you can provide the content or a url can be referenced.";
+                "I will execute it and display the result as you would see in a terminal. " +
+                "I can also engage in normal conversations but will consider the context " +
+                "of the conversation to provide the best answers. " +
+                "I can search through uploaded documents to find information relevant to your questions. " +
+                "If you ask me a question, I will check if there are any uploaded documents with relevant information. " +
+                "If there are, I will use that information to provide the most accurate answer possible. " +
+                "If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any " +
+                "reference content, you can provide the content or a url can be referenced.";
     }
 
     private void addPreviousContext(Builders messages) {
@@ -557,7 +568,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builder payloadBuilder = new Builder();
         try {
             payloadBuilder.parse("{\n" + "  \"model\": \"" + MODEL + "\"}");
-            
+
             Builders messages = new Builders();
             Builder systemMessage = new Builder();
             systemMessage.put("role", "system");
@@ -566,6 +577,24 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             addPreviousContext(messages);
 
+            // Try to add relevant document context for the query
+            try {
+                // Get meeting code from session
+                String meetingCode = null;
+                for (Map.Entry<?, Set<String>> entry : this.sessions.entrySet()) {
+                    if (entry.getValue().contains(sessionId)) {
+                        meetingCode = entry.getKey().toString();
+                        break;
+                    }
+                }
+
+                // Add document context with meeting code
+                DocumentQA.addDocumentContextToMessages(URI.create(getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/embeddings").toURL(), message, meetingCode, messages);
+            } catch (Exception e) {
+                System.err.println("Warning: Error adding document context: " + e.getMessage());
+                // Continue without document context if there's an error
+            }
+
             Builder userMessage = new Builder();
             userMessage.put("role", "user");
             userMessage.put("content", message);
@@ -573,7 +602,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             payloadBuilder.put("messages", messages);
             payloadBuilder.put("user", sessionId);
-            
+
             return payloadBuilder;
         } catch (Exception e) {
             throw new ApplicationException("Failed to create chat payload: " + e.getMessage(), e);
@@ -596,12 +625,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
-    private String processGPTResponse(Builder apiResponse, String sessionId, String message, String image) 
+    private String processGPTResponse(Builder apiResponse, String sessionId, String message, String image)
             throws ApplicationException {
         if (apiResponse.get("error") != null) {
             Builder error = (Builder) apiResponse.get("error");
-            String errorMessage = error.get("message") != null ? 
-                error.get("message").toString() : "Unknown error from OpenAI API";
+            String errorMessage = error.get("message") != null ?
+                    error.get("message").toString() : "Unknown error from OpenAI API";
             System.err.println("OpenAI API error: " + errorMessage);
             throw new ApplicationException(errorMessage);
         }
@@ -651,9 +680,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     /**
      * Process image requests with the given image processor from stability AI.
      *
-     * @param imageProcessorType
-     * @param image
-     * @param message
+     * @param imageProcessorType type of image processor
+     * @param image              image base64 encoded string
+     * @param message            message to process
      * @return image base64 encoded string
      */
     private String imageProcessorStability(ImageProcessorType imageProcessorType, String image, String message) throws ApplicationException {
@@ -685,7 +714,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 apiResponse = (Builder) ApplicationManager.call("stability", context);
                 if (!apiResponse.isEmpty()) {
                     Builders artifacts = (Builders) apiResponse.get("artifacts");
-                    if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
+                    if (artifacts != null && !artifacts.isEmpty() && artifacts.get(0).get("base64") != null) {
                         return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
                     }
                 }
@@ -708,9 +737,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 context.setAttribute("api", "v1beta/generation/stable-diffusion-512-v2-1/image-to-image");
 
                 apiResponse = (Builder) ApplicationManager.call("stability", context);
-                if (apiResponse.size() > 0) {
+                if (!apiResponse.isEmpty()) {
                     Builders artifacts = (Builders) apiResponse.get("artifacts");
-                    if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
+                    if (artifacts != null && !artifacts.isEmpty() && artifacts.get(0).get("base64") != null) {
                         return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
                     } else if (apiResponse.get("message") != null) {
                         return apiResponse.get("message").toString();
@@ -834,6 +863,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "";
     }
 
+    @Action("talk/update")
     public String update(Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
@@ -846,6 +876,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
+    @Action("talk/update")
     public String update(String meetingCode, String sessionId, Request request, Response response) throws ApplicationException {
         if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
             String error = "{ \"error\": \"expired\" }";
@@ -866,9 +897,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     private String getUploadDirectory() {
-        return getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) != null 
-            ? getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) + "/" + FILE_UPLOAD_DIR 
-            : FILE_UPLOAD_DIR;
+        return getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) != null
+                ? getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) + "/" + FILE_UPLOAD_DIR
+                : FILE_UPLOAD_DIR;
     }
 
     private void validateFileUpload(String meetingCode) throws ApplicationException {
@@ -885,7 +916,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     private void encryptFile(byte[] data, String meetingCode) {
         if (data == null || meetingCode == null) return;
-        
+
         byte[] keys = meetingCode.getBytes(StandardCharsets.UTF_8);
         int blocks = (data.length - data.length % 1024) / 1024;
         int i = 0;
@@ -917,25 +948,45 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return builders.toString();
     }
 
-    private void processUploadedFile(FileEntity file, String uploadPath, String meetingCode, Builders builders) 
+    private void processUploadedFile(FileEntity file, String uploadPath, String meetingCode, Builders builders)
             throws IOException, ApplicationException {
         final Builder builder = new Builder();
         builder.put("type", file.getContentType());
         builder.put("file", new StringBuilder()
-            .append(getContext().getAttribute(HTTP_HOST))
-            .append("files/")
-            .append(file.getFilename()));
+                .append(getContext().getAttribute(HTTP_HOST))
+                .append("files/")
+                .append(file.getFilename()));
+        builder.put("originalName", file.getFilename());
 
         final File targetFile = new File(uploadPath + File.separator + file.getFilename());
         createDirectoryIfNeeded(targetFile.getParentFile());
 
         try (final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(targetFile));
              final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()))) {
-            
-            writeEncryptedFile(bout, bs, meetingCode);
+
+            // Check if encryption is enabled
+            String encryptionEnabledStr = getConfiguration().get("file.upload.encryption.enabled");
+            boolean encryptionEnabled = encryptionEnabledStr != null && Boolean.parseBoolean(encryptionEnabledStr);
+
+            if (encryptionEnabled) {
+                writeEncryptedFile(bout, bs, meetingCode);
+            } else {
+                // Write file without encryption
+                final byte[] buffer = new byte[1024];
+                int read;
+                while ((read = bs.read(buffer)) != -1) {
+                    bout.write(buffer, 0, read);
+                }
+            }
+
             builders.add(builder);
-            
+
             System.out.printf("File %s being uploaded to %s%n", file.getFilename(), uploadPath);
+
+            // Process document if it's a supported type
+            if (DocumentProcessor.isSupportedMimeType(file.getContentType())) {
+                processDocumentContent(targetFile.getPath(), file.getContentType(), meetingCode);
+            }
         }
     }
 
@@ -945,12 +996,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
-    private void writeEncryptedFile(BufferedOutputStream bout, BufferedInputStream bs, String meetingCode) 
+    private void writeEncryptedFile(BufferedOutputStream bout, BufferedInputStream bs, String meetingCode)
             throws IOException {
         final byte[] buffer = new byte[1024];
         final byte[] keys = meetingCode.getBytes(StandardCharsets.UTF_8);
         int read;
-        
+
         while ((read = bs.read(buffer)) != -1) {
             int min = Math.min(read, keys.length);
             for (int i = 0; i < min; i++) {
@@ -960,7 +1011,47 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
-    public byte[] download(String fileName, boolean encoded, Request request, Response response) throws ApplicationException {
+    private void processDocumentContent(String filePath, String mimeType, String meetingCode) {
+        try {
+            DocumentProcessor processor = new DocumentProcessor();
+            List<DocumentFragment> fragments = processor.processDocument(filePath, mimeType.trim());
+
+            // Save fragments to database
+            for (DocumentFragment fragment : fragments) {
+                try {
+                    fragment.append();
+
+                    // Generate embedding for the fragment
+                    try {
+                        EmbeddingManager.generateEmbedding(URI.create(getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/embeddings").toURL(), fragment);
+                    } catch (Exception e) {
+                        System.err.println("Failed to generate embedding for document fragment: " + e.getMessage());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to save document fragment: " + e.getMessage());
+                }
+            }
+
+            // Add a message to the chat about the document processing
+            final Builder messageBuilder = new Builder();
+            messageBuilder.put("user", "System");
+            messageBuilder.put("time", format.format(new Date()));
+            messageBuilder.put("message", String.format("Document '%s' has been processed into %d fragments and is now searchable.",
+                    new File(filePath).getName(), fragments.size()));
+            save(meetingCode, messageBuilder);
+
+        } catch (ApplicationException e) {
+            System.err.println("Error processing document: " + e.getMessage());
+            // Add error message to chat
+            final Builder errorBuilder = new Builder();
+            errorBuilder.put("user", "System");
+            errorBuilder.put("time", format.format(new Date()));
+            errorBuilder.put("message", "Error processing document: " + e.getMessage());
+            save(meetingCode, errorBuilder);
+        }
+    }
+
+    private byte[] download(String fileName, boolean encoded, Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         validateFileDownload(meetingCode.toString(), encoded);
 
@@ -983,10 +1074,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             String mimeType = Files.probeContentType(path);
             if (mimeType != null) {
                 response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
-            } else {
-                response.addHeader(Header.CONTENT_DISPOSITION.name(), "attachment; filename*=UTF-8''" +
-                        URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replace("+", "%20"));
             }
+
+            response.addHeader(Header.CONTENT_DISPOSITION.name(), "attachment; filename*=UTF-8''" +
+                    URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replace("+", "%20"));
 
             arr = Files.readAllBytes(path);
             if (encoded) {
@@ -1105,6 +1196,77 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (this.list.containsKey(sessionId)) {
             this.list.remove(sessionId);
             wakeup();
+        }
+    }
+
+    private void saveChatHistory(Builder builder, String meetingCode) throws ApplicationException {
+        ChatHistory history = new ChatHistory();
+        history.setMeetingCode(meetingCode);
+        history.setUserName(builder.get("user").toString());
+        history.setMessage(builder.get("message").toString());
+        history.setSessionId(builder.get("session_id") != null ? builder.get("session_id").toString() : "");
+        history.setMessageType(builder.get("image") != null ? "IMAGE" : "TEXT");
+        history.setImageUrl(builder.get("image") != null ? builder.get("image").toString() : null);
+        history.setCreatedAt(format.format(new Date()));
+
+        try {
+            history.append();
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to save chat history: " + e.getMessage(), e);
+        }
+    }
+
+    private String save(String meetingCode, Builder data) {
+        Queue<Builder> queue = this.groups.get(meetingCode);
+        if (queue != null) {
+            queue.add(data);
+
+            // Automatically save to chat history database
+            try {
+                saveChatHistory(data, meetingCode);
+            } catch (ApplicationException e) {
+                System.err.println("Failed to save chat history: " + e.getMessage());
+                // Continue execution even if saving to history fails
+            }
+
+            wakeup();
+            return "{ \"status\": \"ok\" }";
+        }
+
+        return "{ \"error\": \"invalid_meeting_code\" }";
+    }
+
+    @Action("talk/history")
+    public String getChatHistory(Request request, Response response) throws ApplicationException {
+        final Object meetingCode = request.getSession().getAttribute("meeting_code");
+        if (meetingCode == null) {
+            response.setStatus(ResponseStatus.BAD_REQUEST);
+            return "{ \"error\": \"missing_meeting_code\" }";
+        }
+
+        try {
+            ChatHistory history = new ChatHistory();
+            Table messages = history.find("meeting_code = ?", new Object[]{meetingCode.toString()});
+
+            Builders builders = new Builders();
+            for (Row row : messages) {
+                ChatHistory msg = new ChatHistory();
+                msg.setData(row);
+                Builder builder = new Builder();
+                builder.put("user", msg.getUserName());
+                builder.put("time", msg.getCreatedAt());
+                builder.put("message", msg.getMessage());
+                builder.put("type", msg.getMessageType());
+                if (msg.getImageUrl() != null && !msg.getImageUrl().isEmpty()) {
+                    builder.put("image", msg.getImageUrl());
+                }
+                builders.add(builder);
+            }
+
+            return builders.toString();
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
         }
     }
 }
