@@ -3,10 +3,6 @@ package custom.ai;
 import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
-import org.tinystruct.http.Header;
-import org.tinystruct.http.Headers;
-import org.tinystruct.http.Method;
-import org.tinystruct.http.client.HttpRequestBuilder;
 import org.tinystruct.net.URLHandler;
 import org.tinystruct.net.URLHandlerFactory;
 import org.tinystruct.net.URLRequest;
@@ -15,7 +11,6 @@ import org.tinystruct.system.annotation.Action;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Base64;
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mapping>
+    <class name="DocumentEmbedding" table="document_embeddings">
+        <id name="Id" column="id" increment="true" generate="true" length="20" type="INTEGER"/>
+        <property name="fragmentId" column="fragment_id" length="100" type="VARCHAR"/>
+        <property name="embedding" column="embedding" length="0" type="BLOB"/>
+        <property name="embeddingDimension" column="embedding_dimension" length="11" type="INTEGER"/>
+        <property name="createdAt" column="created_at" length="0" type="TIMESTAMP"/>
+    </class>
+</mapping> 

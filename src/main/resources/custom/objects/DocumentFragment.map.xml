@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mapping>
+    <class name="DocumentFragment" table="document_fragments">
+        <id name="Id" column="id" increment="true" generate="true" length="20" type="INTEGER"/>
+        <property name="documentId" column="document_id" length="36" type="VARCHAR"/>
+        <property name="content" column="content" length="0" type="TEXT"/>
+        <property name="fragmentIndex" column="fragment_index" length="11" type="INTEGER"/>
+        <property name="filePath" column="file_path" length="255" type="VARCHAR"/>
+        <property name="mimeType" column="mime_type" length="50" type="VARCHAR"/>
+        <property name="createdAt" column="created_at" length="0" type="TIMESTAMP"/>
+    </class>
+</mapping>

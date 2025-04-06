@@ -4,6 +4,11 @@ import custom.ai.ImageProcessorType;
 import custom.ai.OpenAI;
 import custom.ai.SearchAI;
 import custom.ai.StabilityAI;
+import custom.objects.ChatHistory;
+import custom.objects.DocumentFragment;
+import custom.util.DocumentProcessor;
+import custom.util.DocumentQA;
+import custom.util.EmbeddingManager;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
@@ -23,15 +28,9 @@ import org.tinystruct.system.template.variable.StringVariable;
 import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
-import custom.objects.ChatHistory;
-import custom.util.DocumentProcessor;
-import custom.util.DocumentQA;
-import custom.util.EmbeddingManager;
-import custom.objects.DocumentFragment;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -52,7 +51,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     // Constants
     public static final String CHAT_GPT = "ChatGPT";
-    private static final String DEFAULT_MODEL = "deepseek/deepseek-r1:free";
+    // private static final String DEFAULT_MODEL = "deepseek/deepseek-r1:free";
+    private static final String DEFAULT_MODEL = "gpt-4o-mini";
     private static final int DEFAULT_MESSAGE_POOL_SIZE = 100;
     private static final int DEFAULT_MAX_TOKENS = 3000;
     private static final double DEFAULT_TEMPERATURE = 0.8;
@@ -60,8 +60,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private static final String FILE_UPLOAD_DIR = "files";
 
     // Configuration keys
-    private static final String CONFIG_OPENAI_API_KEY = "openai.api_key";
-    private static final String CONFIG_OPENAI_API_ENDPOINT = "openai.api_endpoint";
+    public static final String CONFIG_OPENAI_API_KEY = "openai.api_key";
+    public static final String CONFIG_OPENAI_API_ENDPOINT = "openai.api_endpoint";
     private static final String CONFIG_DEFAULT_CHAT_ENGINE = "default.chat.engine";
     private static final String CONFIG_SYSTEM_DIRECTORY = "system.directory";
 
@@ -101,6 +101,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         ApplicationManager.install(new OpenAI());
         ApplicationManager.install(new StabilityAI());
         ApplicationManager.install(new SearchAI());
+        ApplicationManager.install(new EmbeddingManager());
 
         this.chatGPT = getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE) != null
                 ? !getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE).equals("gpt-3")
@@ -589,7 +590,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 }
 
                 // Add document context with meeting code
-                DocumentQA.addDocumentContextToMessages(URI.create(getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/embeddings").toURL(), message, meetingCode, messages);
+                DocumentQA.addDocumentContextToMessages(message, meetingCode, messages);
             } catch (Exception e) {
                 System.err.println("Warning: Error adding document context: " + e.getMessage());
                 // Continue without document context if there's an error
@@ -1016,6 +1017,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             DocumentProcessor processor = new DocumentProcessor();
             List<DocumentFragment> fragments = processor.processDocument(filePath, mimeType.trim());
 
+            EmbeddingManager manager = (EmbeddingManager) ApplicationManager.get(EmbeddingManager.class.getName());
             // Save fragments to database
             for (DocumentFragment fragment : fragments) {
                 try {
@@ -1023,7 +1025,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                     // Generate embedding for the fragment
                     try {
-                        EmbeddingManager.generateEmbedding(URI.create(getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/embeddings").toURL(), fragment);
+                        manager.generateEmbedding(fragment);
                     } catch (Exception e) {
                         System.err.println("Failed to generate embedding for document fragment: " + e.getMessage());
                     }
