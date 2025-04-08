@@ -545,10 +545,29 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private String chatGPT(String sessionId, String message, String image) throws ApplicationException {
         validateChatGPTRequest(sessionId, message);
 
-        String API_URL = getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/chat/completions";
+        String API_URL = getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT);
         if (API_URL == null || API_URL.trim().isEmpty()) {
             throw new ApplicationException("OpenAI API endpoint not configured");
         }
+
+        // Check if API key is configured
+        String API_KEY = getConfiguration().get(CONFIG_OPENAI_API_KEY);
+        if (API_KEY == null || API_KEY.trim().isEmpty() ||
+            API_KEY.equals("your_openai_api_key_here") ||
+            API_KEY.equals("$_OPENAI_API_KEY")) {
+
+            // Try to get from environment variable
+            String envApiKey = System.getenv("OPENAI_API_KEY");
+            if (envApiKey != null && !envApiKey.trim().isEmpty()) {
+                // Use the environment variable
+                API_KEY = envApiKey;
+                System.out.println("Using OpenAI API key from environment variable");
+            } else {
+                throw new ApplicationException("OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
+            }
+        }
+
+        API_URL = API_URL + "/v1/chat/completions";
 
         message = sanitizeMessage(message);
         Builder payloadBuilder = createChatGPTPayload(sessionId, message);
@@ -580,6 +599,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             // Try to add relevant document context for the query
             try {
+                System.out.println("Attempting to add document context for message: '" + message + "'");
+
                 // Get meeting code from session
                 String meetingCode = null;
                 for (Map.Entry<?, Set<String>> entry : this.sessions.entrySet()) {
@@ -589,10 +610,24 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     }
                 }
 
+                if (meetingCode != null) {
+                    System.out.println("Found meeting code: " + meetingCode + " for session ID: " + sessionId);
+                } else {
+                    System.out.println("No meeting code found for session ID: " + sessionId + ", using default context");
+                }
+
                 // Add document context with meeting code
-                DocumentQA.addDocumentContextToMessages(message, meetingCode, messages);
+                boolean contextAdded = DocumentQA.addDocumentContextToMessages(message, meetingCode, messages);
+
+                if (contextAdded) {
+                    System.out.println("Successfully added document context to messages");
+                } else {
+                    System.out.println("No relevant document context found for message");
+                }
             } catch (Exception e) {
                 System.err.println("Warning: Error adding document context: " + e.getMessage());
+                e.printStackTrace();
+                System.out.println("Continuing without document context due to error");
                 // Continue without document context if there's an error
             }
 
@@ -1014,25 +1049,45 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     private void processDocumentContent(String filePath, String mimeType, String meetingCode) {
         try {
+            System.out.println("Starting document processing for: " + filePath);
+            System.out.println("MIME type: " + mimeType);
+            System.out.println("Meeting code: " + meetingCode);
+
             DocumentProcessor processor = new DocumentProcessor();
             List<DocumentFragment> fragments = processor.processDocument(filePath, mimeType.trim());
 
+            System.out.println("Successfully processed document into " + fragments.size() + " fragments");
+
             EmbeddingManager manager = (EmbeddingManager) ApplicationManager.get(EmbeddingManager.class.getName());
+            if (manager == null) {
+                System.err.println("ERROR: EmbeddingManager not found. Make sure it's properly initialized.");
+                throw new ApplicationException("EmbeddingManager not found");
+            }
+
             // Save fragments to database
+            int successCount = 0;
             for (DocumentFragment fragment : fragments) {
                 try {
                     fragment.append();
+                    System.out.println("Saved fragment " + fragment.getId() + " to database");
 
                     // Generate embedding for the fragment
                     try {
                         manager.generateEmbedding(fragment);
+                        successCount++;
+                        System.out.println("Generated embedding for fragment " + fragment.getId());
                     } catch (Exception e) {
                         System.err.println("Failed to generate embedding for document fragment: " + e.getMessage());
+                        e.printStackTrace();
                     }
                 } catch (Exception e) {
                     System.err.println("Failed to save document fragment: " + e.getMessage());
+                    e.printStackTrace();
                 }
             }
+
+            System.out.println("Document processing complete. Successfully processed " +
+                    successCount + " out of " + fragments.size() + " fragments.");
 
             // Add a message to the chat about the document processing
             final Builder messageBuilder = new Builder();
@@ -1044,11 +1099,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         } catch (ApplicationException e) {
             System.err.println("Error processing document: " + e.getMessage());
+            e.printStackTrace();
             // Add error message to chat
             final Builder errorBuilder = new Builder();
             errorBuilder.put("user", "System");
             errorBuilder.put("time", format.format(new Date()));
             errorBuilder.put("message", "Error processing document: " + e.getMessage());
+            save(meetingCode, errorBuilder);
+        } catch (Exception e) {
+            System.err.println("Unexpected error processing document: " + e.getMessage());
+            e.printStackTrace();
+            // Add error message to chat
+            final Builder errorBuilder = new Builder();
+            errorBuilder.put("user", "System");
+            errorBuilder.put("time", format.format(new Date()));
+            errorBuilder.put("message", "Unexpected error processing document: " + e.getMessage());
             save(meetingCode, errorBuilder);
         }
     }

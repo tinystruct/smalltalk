@@ -84,7 +84,7 @@ public class DocumentFragment extends AbstractData implements Serializable {
             this.setFragmentIndex(row.getFieldInfo("fragment_index").intValue());
         if (row.getFieldInfo("file_path") != null) this.setFilePath(row.getFieldInfo("file_path").stringValue());
         if (row.getFieldInfo("mime_type") != null) this.setMimeType(row.getFieldInfo("mime_type").stringValue());
-        if (row.getFieldInfo("created_at") != null) this.setCreatedAt(row.getFieldInfo("created_at").timestampValue());
+        if (row.getFieldInfo("created_at") != null) this.setCreatedAt(row.getFieldInfo("created_at").dateValue());
     }
 
     @Override

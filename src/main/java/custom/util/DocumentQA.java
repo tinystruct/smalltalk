@@ -15,10 +15,10 @@ import java.util.stream.Collectors;
  * Uses semantic search to find relevant document fragments for user queries.
  */
 public class DocumentQA {
-    
+
     private static final int DEFAULT_MAX_RESULTS = 3;
     private static final double SIMILARITY_THRESHOLD = 0.7;
-    
+
     /**
      * Find relevant document fragments for a given query
      *
@@ -29,22 +29,42 @@ public class DocumentQA {
     public static List<EmbeddingManager.SimilarityResult> findRelevantDocuments(String query, int maxResults)
             throws ApplicationException {
         try {
+            System.out.println("Finding relevant documents for query: '" + query + "' with max results: " + maxResults);
+
             EmbeddingManager manager = (EmbeddingManager) ApplicationManager.get(EmbeddingManager.class.getName());
-                    // Generate embedding for the query
+            if (manager == null) {
+                System.err.println("Error: EmbeddingManager not found");
+                throw new ApplicationException("EmbeddingManager not found");
+            }
+
+            // Generate embedding for the query
+            System.out.println("Generating embedding for query");
             Vector<Double> queryEmbedding = manager.generateQueryEmbedding(query);
-            
+            if (queryEmbedding == null) {
+                System.err.println("Error: Failed to generate query embedding");
+                throw new ApplicationException("Failed to generate query embedding");
+            }
+            System.out.println("Generated query embedding with dimension: " + queryEmbedding.size());
+
             // Find similar documents
+            System.out.println("Finding similar documents");
             List<EmbeddingManager.SimilarityResult> results = EmbeddingManager.findSimilar(queryEmbedding, maxResults);
-            
+            System.out.println("Found " + results.size() + " similar documents");
+
             // Filter by similarity threshold
-            return results.stream()
+            List<EmbeddingManager.SimilarityResult> filteredResults = results.stream()
                     .filter(result -> result.similarity >= SIMILARITY_THRESHOLD)
                     .collect(Collectors.toList());
+
+            System.out.println("Filtered to " + filteredResults.size() + " documents with similarity >= " + SIMILARITY_THRESHOLD);
+            return filteredResults;
         } catch (Exception e) {
+            System.err.println("Error finding relevant documents: " + e.getMessage());
+            e.printStackTrace();
             throw new ApplicationException("Failed to find relevant documents: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * Find relevant document fragments for a given query (with default max results)
      *
@@ -55,7 +75,7 @@ public class DocumentQA {
             throws ApplicationException {
         return findRelevantDocuments(query, DEFAULT_MAX_RESULTS);
     }
-    
+
     /**
      * Format document fragments as context for a language model
      * @param results List of document fragments with similarity scores
@@ -65,23 +85,23 @@ public class DocumentQA {
         if (results == null || results.isEmpty()) {
             return "";
         }
-        
+
         StringBuilder context = new StringBuilder();
         context.append("I found the following information that might help answer your question:\n\n");
-        
+
         for (int i = 0; i < results.size(); i++) {
             EmbeddingManager.SimilarityResult result = results.get(i);
             DocumentFragment fragment = result.fragment;
-            
+
             context.append("Document ").append(i + 1).append(" (")
                    .append(new java.io.File(fragment.getFilePath()).getName())
                    .append("):\n");
             context.append(fragment.getContent()).append("\n\n");
         }
-        
+
         return context.toString();
     }
-    
+
     /**
      * Enhance a user query with relevant document fragments
      *
@@ -91,11 +111,11 @@ public class DocumentQA {
     public static String enhanceQueryWithDocuments(String query) throws ApplicationException {
         try {
             List<EmbeddingManager.SimilarityResult> relevantDocs = findRelevantDocuments(query);
-            
+
             if (relevantDocs.isEmpty()) {
                 return query;
             }
-            
+
             String context = formatDocumentsAsContext(relevantDocs);
             return context + "\nBased on the information above, please answer the following question:\n" + query;
         } catch (Exception e) {
@@ -104,7 +124,7 @@ public class DocumentQA {
             return query;
         }
     }
-    
+
     /**
      * Get document fragments for a specific meeting code
      * This allows contextualizing document search by meeting
@@ -117,17 +137,31 @@ public class DocumentQA {
     public static boolean addDocumentContextToMessages(String query, String meetingCode,
                                                        Builders messages) throws ApplicationException {
         try {
+            System.out.println("Finding relevant documents for query: " + query);
             List<EmbeddingManager.SimilarityResult> relevantDocs = findRelevantDocuments(query);
-            
+
             if (relevantDocs.isEmpty()) {
+                System.out.println("No relevant documents found for query");
                 return false;
             }
-            
+
+            System.out.println("Found " + relevantDocs.size() + " relevant documents");
+
+            // Print document details for debugging
+            for (int i = 0; i < relevantDocs.size(); i++) {
+                EmbeddingManager.SimilarityResult result = relevantDocs.get(i);
+                DocumentFragment fragment = result.fragment;
+                System.out.println("Document " + (i + 1) + ": " +
+                        new java.io.File(fragment.getFilePath()).getName() +
+                        " (similarity: " + result.similarity + ")");
+            }
+
             // Filter documents by meeting code if needed in the future
             // For now, we're using all available document fragments
-            
+
             String context = formatDocumentsAsContext(relevantDocs);
-            
+            System.out.println("Generated document context with " + context.length() + " characters");
+
             // Add system message with document context
             Builder contextMessage = new Builder();
             contextMessage.put("role", "system");
@@ -135,14 +169,16 @@ public class DocumentQA {
                     "Use this information to provide an accurate and helpful response. " +
                     "If the documents contain the answer, cite the specific document in your response.\n\n" + context);
             messages.add(contextMessage);
-            
+
+            System.out.println("Added document context to messages");
             return true;
         } catch (Exception e) {
             System.err.println("Warning: Failed to add document context to messages: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
-    
+
     /**
      * Add document context to a chat system messages array if relevant
      *
@@ -155,4 +191,4 @@ public class DocumentQA {
         // Call the overloaded method with null meeting code
         return addDocumentContextToMessages(query, null, messages);
     }
-} 
+}

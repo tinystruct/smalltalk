@@ -6,6 +6,6 @@
         <property name="fragmentId" column="fragment_id" length="100" type="VARCHAR"/>
         <property name="embedding" column="embedding" length="0" type="BLOB"/>
         <property name="embeddingDimension" column="embedding_dimension" length="11" type="INTEGER"/>
-        <property name="createdAt" column="created_at" length="0" type="TIMESTAMP"/>
+        <property name="createdAt" column="created_at" length="0" type="DATE"/>
     </class>
 </mapping> 

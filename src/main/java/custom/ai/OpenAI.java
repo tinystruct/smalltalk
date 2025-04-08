@@ -45,8 +45,24 @@ public class OpenAI extends AbstractApplication implements Provider {
 
         String api = getContext().getAttribute("api").toString();
 
-        // Replace YOUR_API_KEY with your actual API key
+        // Get API key from configuration or environment variable
         String API_KEY = getConfiguration().get("openai.api_key");
+
+        // Check if API key is configured or using placeholder
+        if (API_KEY == null || API_KEY.trim().isEmpty() ||
+            API_KEY.equals("your_openai_api_key_here") ||
+            API_KEY.equals("$_OPENAI_API_KEY")) {
+
+            // Try to get from environment variable
+            String envApiKey = System.getenv("OPENAI_API_KEY");
+            if (envApiKey != null && !envApiKey.trim().isEmpty()) {
+                // Use the environment variable
+                API_KEY = envApiKey;
+                System.out.println("Using OpenAI API key from environment variable");
+            } else {
+                throw new ApplicationException("OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
+            }
+        }
 
         try {
             URLRequest request = new URLRequest(new URL(api));

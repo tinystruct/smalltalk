@@ -19,7 +19,7 @@ import static custom.application.v1.smalltalk.CONFIG_OPENAI_API_ENDPOINT;
 public class EmbeddingManager extends AbstractApplication {
     private static final int EMBEDDING_DIMENSION = 1536; // OpenAI's text-embedding-ada-002 dimension
     private static final String EMBEDDING_MODEL = "text-embedding-ada-002";
-    
+
     // In-memory cache for query embeddings to avoid redundant API calls
     private static final Map<String, Vector<Double>> queryEmbeddingCache = new ConcurrentHashMap<>();
     private static final int MAX_CACHE_SIZE = 1000; // Maximum number of cached query embeddings
@@ -43,85 +43,166 @@ public class EmbeddingManager extends AbstractApplication {
     private static Vector<Double> getExistingEmbedding(DocumentFragment fragment) throws ApplicationException {
         DocumentEmbedding embedding = new DocumentEmbedding();
         Table results = embedding.find("fragment_id = ?", new Object[]{fragment.getId()});
-        
+
         if (results == null || results.isEmpty()) {
             return null;
         }
-        
+
         DocumentEmbedding embeddingData = new DocumentEmbedding();
         embeddingData.setData(results.get(0));
-        
+
         return embeddingData.getEmbeddingVector();
     }
 
     /**
-     * Call OpenAI API to generate an embedding
+     * Call OpenAI API to generate an embedding with retry logic
      *
      * @param text Text to generate embedding for
      * @return Vector of embedding values
      */
     private Vector<Double> callOpenAIEmbeddingAPI(String text) throws ApplicationException {
-        try {
-            // Create a payload for the OpenAI API call
-            Builder payload = new Builder();
-            payload.parse("{\n" +
-                    "  \"model\": \"" + EMBEDDING_MODEL + "\",\n" +
-                    "  \"input\": \"" + escapeJsonString(text) + "\"\n" +
-                    "}");
+        int maxRetries = 3;
+        int retryCount = 0;
 
-            String API_URL = getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT) + "/v1/embeddings";
+        while (retryCount < maxRetries) {
+            try {
+                System.out.println("Calling OpenAI API for embedding generation (attempt " + (retryCount + 1) + ")");
 
-            // Create context for the API call
-            Context context = new ApplicationContext();
-            context.setAttribute("payload", payload);
-            context.setAttribute("api", API_URL);
+                // Create a payload for the OpenAI API call
+                Builder payload = new Builder();
+                payload.parse("{\n" +
+                        "  \"model\": \"" + EMBEDDING_MODEL + "\",\n" +
+                        "  \"input\": \"" + escapeJsonString(text) + "\"\n" +
+                        "}");
 
-            // Call the OpenAI API
-            Builder response = (Builder) ApplicationManager.call("openai", context);
-            if (response == null) {
-                throw new ApplicationException("No response received from OpenAI API");
-            }
-
-            // Check for errors
-            if (response.get("error") != null) {
-                Builder error = (Builder) response.get("error");
-                String errorMessage = error.get("message") != null ?
-                        error.get("message").toString() : "Unknown error from OpenAI API";
-                throw new ApplicationException(errorMessage);
-            }
-
-            Builders data = null;
-            // Extract the embedding
-            if (response.get("data") != null && response.get("data") instanceof Builders) {
-                data = (Builders) response.get("data");
-                if (data == null || data.get(0) == null) {
-                    throw new ApplicationException("No embedding data in API response");
+                String API_URL = getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT);
+                if (API_URL == null || API_URL.trim().isEmpty()) {
+                    throw new ApplicationException("OpenAI API endpoint not configured");
                 }
-            }
 
-            List<Object> embeddingList = (List<Object>) data.get(0).get("embedding");
-            if (embeddingList == null || embeddingList.isEmpty()) {
-                throw new ApplicationException("No embedding vector in API response");
-            }
+                // Check if API key is configured
+                String API_KEY = getConfiguration().get("openai.api_key");
+                if (API_KEY == null || API_KEY.trim().isEmpty() ||
+                    API_KEY.equals("your_openai_api_key_here") ||
+                    API_KEY.equals("$_OPENAI_API_KEY")) {
 
-            // Convert to Vector<Double>
-            Vector<Double> embedding = new Vector<>();
-            for (Object value : embeddingList) {
-                if (value instanceof Number) {
-                    embedding.add(((Number) value).doubleValue());
+                    // Try to get from environment variable
+                    String envApiKey = System.getenv("OPENAI_API_KEY");
+                    if (envApiKey != null && !envApiKey.trim().isEmpty()) {
+                        // Use the environment variable
+                        API_KEY = envApiKey;
+                        System.out.println("Using OpenAI API key from environment variable");
+                    } else {
+                        throw new ApplicationException("OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
+                    }
+                }
+
+                API_URL = API_URL + "/v1/embeddings";
+                System.out.println("Using API URL: " + API_URL);
+
+                // Create context for the API call
+                Context context = new ApplicationContext();
+                context.setAttribute("payload", payload);
+                context.setAttribute("api", API_URL);
+
+                // Call the OpenAI API
+                Builder response = (Builder) ApplicationManager.call("openai", context);
+                if (response == null) {
+                    throw new ApplicationException("No response received from OpenAI API");
+                }
+
+                // Check for errors
+                if (response.get("error") != null) {
+                    Builder error = (Builder) response.get("error");
+                    String errorMessage = error.get("message") != null ?
+                            error.get("message").toString() : "Unknown error from OpenAI API";
+                    throw new ApplicationException(errorMessage);
+                }
+
+                Builders data = null;
+                // Extract the embedding
+                if (response.get("data") != null && response.get("data") instanceof Builders) {
+                    data = (Builders) response.get("data");
+                    if (data == null || data.get(0) == null) {
+                        throw new ApplicationException("No embedding data in API response");
+                    }
                 } else {
-                    embedding.add(Double.parseDouble(value.toString()));
+                    throw new ApplicationException("Invalid response format: 'data' field missing or not a Builders object");
+                }
+
+                Object embeddingObj = data.get(0).get("embedding");
+                if (embeddingObj == null) {
+                    throw new ApplicationException("No embedding field in API response");
+                }
+
+                System.out.println("Embedding object class: " + embeddingObj.getClass().getName());
+
+                List<Object> embeddingList;
+                if (embeddingObj instanceof List) {
+                    embeddingList = (List<Object>) embeddingObj;
+                    if (!embeddingList.isEmpty()) {
+                        Object firstValue = embeddingList.get(0);
+                        System.out.println("First embedding value class: " +
+                                (firstValue != null ? firstValue.getClass().getName() : "null") +
+                                ", value: " + firstValue);
+                    }
+                } else {
+                    throw new ApplicationException("Embedding is not a list: " + embeddingObj.getClass().getName());
+                }
+
+                if (embeddingList.isEmpty()) {
+                    throw new ApplicationException("Empty embedding vector in API response");
+                }
+
+                // Convert to Vector<Double>
+                Vector<Double> embedding = new Vector<>();
+                for (Object value : embeddingList) {
+                    try {
+                        if (value instanceof Number) {
+                            embedding.add(((Number) value).doubleValue());
+                        } else {
+                            // Remove any quotes from the string before parsing
+                            String valueStr = value.toString().replaceAll("\"", "");
+                            embedding.add(Double.parseDouble(valueStr));
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("Error parsing embedding value: " + value +
+                                " (" + (value != null ? value.getClass().getName() : "null") + ")");
+                        throw new ApplicationException("Failed to parse embedding value: " + e.getMessage(), e);
+                    }
+                }
+
+                if (embedding.size() != EMBEDDING_DIMENSION) {
+                    System.out.println("Warning: Unexpected embedding dimension: " + embedding.size() +
+                            " (expected " + EMBEDDING_DIMENSION + ")");
+                }
+
+                System.out.println("Successfully generated embedding with dimension: " + embedding.size());
+                return embedding;
+
+            } catch (Exception e) {
+                retryCount++;
+                System.err.println("Error calling OpenAI API (attempt " + retryCount + "): " + e.getMessage());
+                e.printStackTrace();
+
+                if (retryCount >= maxRetries) {
+                    throw new ApplicationException("Failed to call OpenAI embedding API after " + maxRetries + " attempts: " + e.getMessage(), e);
+                }
+
+                try {
+                    // Exponential backoff
+                    long sleepTime = 1000 * (long)Math.pow(2, retryCount - 1);
+                    System.out.println("Retrying in " + sleepTime + "ms...");
+                    Thread.sleep(sleepTime);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new ApplicationException("Interrupted while waiting to retry", ie);
                 }
             }
-
-            if (embedding.size() != EMBEDDING_DIMENSION) {
-                throw new ApplicationException("Unexpected embedding dimension: " + embedding.size());
-            }
-
-            return embedding;
-        } catch (Exception e) {
-            throw new ApplicationException("Failed to call OpenAI embedding API: " + e.getMessage(), e);
         }
+
+        // This should never be reached due to the exception in the loop
+        throw new ApplicationException("Failed to call OpenAI embedding API");
     }
 
     /**
@@ -131,7 +212,7 @@ public class EmbeddingManager extends AbstractApplication {
         if (input == null) {
             return "";
         }
-        
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < input.length(); i++) {
             char ch = input.charAt(i);
@@ -225,50 +306,91 @@ public class EmbeddingManager extends AbstractApplication {
     public static List<SimilarityResult> findSimilar(Vector<Double> queryEmbedding, int limit) throws ApplicationException {
         List<SimilarityResult> results = new ArrayList<>();
         try {
-            // Get all embeddings from database
-            DocumentEmbedding embeddingModel = new DocumentEmbedding();
-            Table embeddingTable = embeddingModel.find("1=1", null);  // Find all records
-            
-            if (embeddingTable == null || embeddingTable.isEmpty()) {
+            if (queryEmbedding == null) {
+                System.err.println("Error: Query embedding is null");
                 return results;
             }
-            
-            // Calculate similarity for each embedding
-            for (int i = 0; i < embeddingTable.size(); i++) {
-                DocumentEmbedding embeddingData = new DocumentEmbedding();
-                embeddingData.setData(embeddingTable.get(i));
-                
-                Vector<Double> storedEmbedding = embeddingData.getEmbeddingVector();
-                if (storedEmbedding == null) {
-                    continue;
-                }
-                
-                // Calculate cosine similarity
-                double similarity = cosineSimilarity(queryEmbedding, storedEmbedding);
-                
-                // Get corresponding document fragment
-                DocumentFragment fragment = new DocumentFragment();
-                Table fragmentTable = fragment.find("id = ?", new Object[]{embeddingData.getFragmentId()});
-                
-                if (fragmentTable == null || fragmentTable.isEmpty()) {
-                    continue;
-                }
-                
-                DocumentFragment fragmentData = new DocumentFragment();
-                fragmentData.setData(fragmentTable.get(0));
-                
-                results.add(new SimilarityResult(fragmentData, similarity));
+
+            System.out.println("Finding similar documents for query embedding with dimension: " + queryEmbedding.size());
+
+            // Get all embeddings from database
+            DocumentEmbedding embeddingModel = new DocumentEmbedding();
+            // Use a valid SQL condition to find all records
+            Table embeddingTable = embeddingModel.findAll();  // Find all records
+
+            if (embeddingTable == null || embeddingTable.isEmpty()) {
+                System.out.println("No embeddings found in database");
+                return results;
             }
-            
+
+            System.out.println("Found " + embeddingTable.size() + " embeddings in database");
+
+            // Calculate similarity for each embedding
+            int processedCount = 0;
+            int errorCount = 0;
+
+            for (int i = 0; i < embeddingTable.size(); i++) {
+                try {
+                    DocumentEmbedding embeddingData = new DocumentEmbedding();
+                    embeddingData.setData(embeddingTable.get(i));
+                    String fragmentId = embeddingData.getFragmentId();
+
+                    Vector<Double> storedEmbedding = embeddingData.getEmbeddingVector();
+                    if (storedEmbedding == null) {
+                        System.err.println("Warning: Null embedding vector for fragment ID: " + fragmentId);
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Verify vector dimensions match
+                    if (storedEmbedding.size() != queryEmbedding.size()) {
+                        System.err.println("Warning: Vector dimension mismatch. Query: " + queryEmbedding.size() +
+                                ", Stored: " + storedEmbedding.size() + " for fragment ID: " + fragmentId);
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Calculate cosine similarity
+                    double similarity = cosineSimilarity(queryEmbedding, storedEmbedding);
+
+                    // Get corresponding document fragment
+                    DocumentFragment fragment = new DocumentFragment();
+                    Table fragmentTable = fragment.findWith("WHERE id = ?", new Object[]{fragmentId});
+
+                    if (fragmentTable == null || fragmentTable.isEmpty()) {
+                        System.err.println("Warning: No document fragment found for fragment ID: " + fragmentId);
+                        errorCount++;
+                        continue;
+                    }
+
+                    DocumentFragment fragmentData = new DocumentFragment();
+                    fragmentData.setData(fragmentTable.get(0));
+
+                    results.add(new SimilarityResult(fragmentData, similarity));
+                    processedCount++;
+                } catch (Exception e) {
+                    System.err.println("Error processing embedding at index " + i + ": " + e.getMessage());
+                    e.printStackTrace();
+                    errorCount++;
+                }
+            }
+
+            System.out.println("Processed " + processedCount + " embeddings successfully, " +
+                    errorCount + " errors, found " + results.size() + " results");
+
             // Sort by similarity score and limit results
             results.sort((a, b) -> Double.compare(b.similarity, a.similarity));
             if (results.size() > limit) {
                 results = results.subList(0, limit);
             }
+
+            System.out.println("Returning " + results.size() + " most similar documents");
         } catch (Exception e) {
+            System.err.println("Failed to find similar documents: " + e.getMessage());
+            e.printStackTrace();
             throw new ApplicationException("Failed to find similar documents: " + e.getMessage(), e);
         }
-        
+
         return results;
     }
 
@@ -340,19 +462,19 @@ public class EmbeddingManager extends AbstractApplication {
             if (queryEmbeddingCache.containsKey(query)) {
                 return queryEmbeddingCache.get(query);
             }
-            
+
             // Generate new embedding
             Vector<Double> embedding = callOpenAIEmbeddingAPI(query);
-            
+
             // Cache the result for future use
             addToCache(query, embedding);
-            
+
             return embedding;
         } catch (Exception e) {
             throw new ApplicationException("Failed to generate query embedding: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * Add a query and its embedding to the cache
      * @param query The query string
@@ -365,15 +487,15 @@ public class EmbeddingManager extends AbstractApplication {
             String keyToRemove = queryEmbeddingCache.keySet().iterator().next();
             queryEmbeddingCache.remove(keyToRemove);
         }
-        
+
         // Add new entry to cache
         queryEmbeddingCache.put(query, embedding);
     }
-    
+
     /**
      * Clear the query embedding cache
      */
     public static void clearCache() {
         queryEmbeddingCache.clear();
     }
-} 
+}
