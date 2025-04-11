@@ -997,32 +997,45 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         final File targetFile = new File(uploadPath + File.separator + file.getFilename());
         createDirectoryIfNeeded(targetFile.getParentFile());
 
-        try (final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(targetFile));
-             final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()))) {
+        // Get file content
+        byte[] fileContent = file.get();
 
-            // Check if encryption is enabled
-            String encryptionEnabledStr = getConfiguration().get("file.upload.encryption.enabled");
-            boolean encryptionEnabled = encryptionEnabledStr != null && Boolean.parseBoolean(encryptionEnabledStr);
+        if (fileContent == null || fileContent.length == 0) {
+            System.err.println("Warning: Empty file content for " + file.getFilename());
+        }
 
-            if (encryptionEnabled) {
-                writeEncryptedFile(bout, bs, meetingCode);
-            } else {
-                // Write file without encryption
-                final byte[] buffer = new byte[1024];
-                int read;
-                while ((read = bs.read(buffer)) != -1) {
-                    bout.write(buffer, 0, read);
+        try (final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(targetFile))) {
+            // Write file content
+            if (fileContent != null && fileContent.length > 0) {
+                // Check if encryption is enabled
+                String encryptionEnabledStr = getConfiguration().get("file.upload.encryption.enabled");
+                boolean encryptionEnabled = encryptionEnabledStr != null && Boolean.parseBoolean(encryptionEnabledStr);
+
+                if (encryptionEnabled) {
+                    // Write encrypted content
+                    try (final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(fileContent))) {
+                        writeEncryptedFile(bout, bs, meetingCode);
+                    }
+                } else {
+                    // Write content directly
+                    bout.write(fileContent);
                 }
             }
+        }
 
-            builders.add(builder);
+        builders.add(builder);
+        System.out.printf("File %s being uploaded to %s%n", file.getFilename(), uploadPath);
 
-            System.out.printf("File %s being uploaded to %s%n", file.getFilename(), uploadPath);
+        // Verify file was written correctly
+        if (targetFile.exists() && targetFile.length() > 0) {
+            System.out.println("File written successfully: " + targetFile.getPath() + " (" + targetFile.length() + " bytes)");
 
             // Process document if it's a supported type
             if (DocumentProcessor.isSupportedMimeType(file.getContentType())) {
                 processDocumentContent(targetFile.getPath(), file.getContentType(), meetingCode);
             }
+        } else {
+            System.err.println("Warning: File appears to be empty after writing: " + targetFile.getPath());
         }
     }
 
