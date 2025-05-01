@@ -28,10 +28,6 @@ public class libraries extends AbstractApplication {
     @Override
     public void init() {
         this.setTemplateRequired(true);
-        this.setAction("libraries", "librariesPage");
-        this.setAction("libraries/my-documents", "getMyDocuments");
-        this.setAction("libraries/public-documents", "getPublicDocuments");
-        this.setAction("libraries/all-documents", "getAllDocuments");
     }
 
     @Override
