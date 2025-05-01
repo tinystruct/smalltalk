@@ -859,6 +859,22 @@
         .file-drop-zone {
             display: none !important;
         }
+
+        .panel-primary {
+            border-color: #ffffff;
+        }
+
+        .panel {
+            margin-bottom: 20px;
+            background-color: #fff;
+            border: 0px solid transparent;
+        }
+
+        .panel-primary>.panel-heading {
+            color: #000;
+            background-color: #ffffff;
+            border-color: #ffffff;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -898,12 +914,37 @@
 
         // Check if user is logged in
         function checkAuthStatus() {
+            console.log('Checking authentication status...');
+
+            // First check if we already have the show_login variable set by the server
+            var showLogin = '{%show_login%}';
+            console.log('Server-side show_login:', showLogin);
+
+            if (showLogin === 'true' || showLogin === 'false') {
+                // Use the server-side variable to set initial visibility
+                if (showLogin === 'true') {
+                    console.log('Using server-side variable: User is not logged in');
+                    $('#auth-forms').show();
+                    $('#chat-interface').hide();
+                    $('#user-info').hide();
+                } else {
+                    console.log('Using server-side variable: User is logged in');
+                    $('#auth-forms').hide();
+                    $('#chat-interface').show();
+                    $('#user-info').show();
+                    $('#current-username').text('{%username%}');
+                }
+                return;
+            }
+
+            // If server-side variable is not set, check via AJAX
             $.ajax({
                 url: '/?q=auth/profile',
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
                     // User is logged in
+                    console.log('User is logged in:', response.username);
                     $('#auth-forms').hide();
                     $('#chat-interface').show();
                     $('#user-info').show();
@@ -911,8 +952,10 @@
                 },
                 error: function() {
                     // User is not logged in
+                    console.log('User is not logged in');
                     $('#auth-forms').show();
                     $('#chat-interface').hide();
+                    $('#user-info').hide();
                 }
             });
         }
@@ -938,7 +981,13 @@
                     },
                     dataType: 'json',
                     success: function(response) {
-                        // Reload the page to show chat interface
+                        console.log('Login successful:', response);
+                        // Hide login form and show chat interface
+                        $('#auth-forms').hide();
+                        $('#chat-interface').show();
+                        $('#user-info').show();
+                        $('#current-username').text(response.username);
+                        // Reload the page to ensure everything is properly initialized
                         window.location.reload();
                     },
                     error: function(xhr) {
@@ -978,7 +1027,13 @@
                     },
                     dataType: 'json',
                     success: function(response) {
-                        // Reload the page to show chat interface
+                        console.log('Registration successful:', response);
+                        // Hide registration form and show chat interface
+                        $('#auth-forms').hide();
+                        $('#chat-interface').show();
+                        $('#user-info').show();
+                        $('#current-username').text(response.username);
+                        // Reload the page to ensure everything is properly initialized
                         window.location.reload();
                     },
                     error: function(xhr) {
@@ -1929,7 +1984,7 @@
     <div class="pageheader"></div>
 
     <!-- Login and Registration Forms -->
-    <div id="auth-forms" style="display: none;">
+    <div id="auth-forms" style="display: {%show_login%} === 'true' ? 'block' : 'none';">
         <div class="row">
             <div class="col-md-6">
                 <div class="panel panel-primary">
@@ -1985,10 +2040,10 @@
     </div>
 
     <!-- Chat Interface -->
-    <div id="chat-interface">
+    <div id="chat-interface" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
         <p>Welcome to use smalltalk application!</p>
         <p id="topic">{%topic%}</p>
-        <div id="user-info" style="display: none;">
+        <div id="user-info" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
             <p>Logged in as: <strong id="current-username">{%username%}</strong> <a href="#" id="logout-link">(Logout)</a></p>
         </div>
         <div id="list">
