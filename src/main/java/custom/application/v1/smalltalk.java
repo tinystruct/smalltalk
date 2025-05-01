@@ -6,6 +6,8 @@ import custom.ai.SearchAI;
 import custom.ai.StabilityAI;
 import custom.objects.ChatHistory;
 import custom.objects.DocumentFragment;
+import custom.objects.User;
+import custom.util.AuthenticationService;
 import custom.util.DocumentProcessor;
 import custom.util.DocumentQA;
 import custom.util.EmbeddingManager;
@@ -86,6 +88,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private void initializeBasicSettings() {
         this.setVariable("message", "");
         this.setVariable("topic", "");
+        this.setVariable("meeting_update_url", "");
+
         System.setProperty("LANG", "en_US.UTF-8");
     }
 
@@ -114,8 +118,50 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 System.out.println(event.getPayload()));
     }
 
+    /**
+     * Login page
+     */
+    @Action("login")
+    public smalltalk loginPage(Request request, Response response) {
+        // If user is already logged in, redirect to chat
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId != null) {
+            try {
+                Reforward reforward = new Reforward(request, response);
+                reforward.setDefault("/?q=talk");
+                return (smalltalk) reforward.forward();
+            } catch (Exception e) {
+                // Continue to login page if redirect fails
+            }
+        }
+
+        // Set variable to show login form
+        this.setVariable("show_login", "true");
+        return this;
+    }
+
     @Action("talk")
-    public smalltalk index(Request request, Response response) {
+    public Object index(Request request, Response response) throws ApplicationException {
+        // Check if user is authenticated
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            // User is not authenticated, redirect to login page
+            System.out.println("User is not authenticated, redirecting to login page");
+            try {
+                Reforward reforward = new Reforward(request, response);
+                reforward.setDefault("/?q=login");
+                return reforward.forward();
+            } catch (Exception e) {
+                throw new ApplicationException("Failed to redirect to login page: " + e.getMessage(), e);
+            }
+        }
+
+        // User is authenticated, set username variable
+        String username = (String) request.getSession().getAttribute("username");
+        this.setVariable("username", username != null ? username : "User");
+        this.setVariable("show_login", "false");
+        System.out.println("User is authenticated as: " + username);
+
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
         if (meetingCode == null) {
@@ -181,6 +227,14 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/join")
     public Object join(String meetingCode, Request request, Response response) throws ApplicationException {
+        // Check if user is authenticated
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            // Redirect to login page
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "Please login to join a meeting.";
+        }
+
         if (!isValidMeetingCode(meetingCode)) {
             response.setStatus(ResponseStatus.NOT_FOUND);
             return "Invalid meeting code.";
@@ -1344,6 +1398,142 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             }
 
             return builders.toString();
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Register a new user
+     */
+    @Action("auth/register")
+    public String register(Request request, Response response) throws ApplicationException {
+        String username = request.getParameter("username");
+        String password = request.getParameter("password");
+        String email = request.getParameter("email");
+        String fullName = request.getParameter("fullName");
+
+        // Validate required fields
+        if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+            response.setStatus(ResponseStatus.BAD_REQUEST);
+            return "{ \"error\": \"missing_required_fields\", \"message\": \"Username and password are required\" }";
+        }
+
+        try {
+            // Register the user
+            AuthenticationService authService = AuthenticationService.getInstance();
+            User user = authService.registerUser(username, password, email, fullName);
+
+            // Set user in session
+            request.getSession().setAttribute("user_id", user.getId());
+            request.getSession().setAttribute("username", user.getUsername());
+
+            // Return success response
+            Builder builder = new Builder();
+            builder.put("id", user.getId());
+            builder.put("username", user.getUsername());
+            builder.put("email", user.getEmail() != null ? user.getEmail() : "");
+            builder.put("fullName", user.getFullName() != null ? user.getFullName() : "");
+            builder.put("createdAt", format.format(user.getCreatedAt()));
+
+            return builder.toString();
+        } catch (ApplicationException e) {
+            response.setStatus(ResponseStatus.BAD_REQUEST);
+            return "{ \"error\": \"registration_failed\", \"message\": \"" + e.getMessage() + "\" }";
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Login a user
+     */
+    @Action("auth/login")
+    public String login(Request request, Response response) throws ApplicationException {
+        String username = request.getParameter("username");
+        String password = request.getParameter("password");
+
+        // Validate required fields
+        if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+            response.setStatus(ResponseStatus.BAD_REQUEST);
+            return "{ \"error\": \"missing_required_fields\", \"message\": \"Username and password are required\" }";
+        }
+
+        try {
+            // Authenticate the user
+            AuthenticationService authService = AuthenticationService.getInstance();
+            User user = authService.authenticateUser(username, password);
+
+            // Set user in session
+            request.getSession().setAttribute("user_id", user.getId());
+            request.getSession().setAttribute("username", user.getUsername());
+
+            // Return success response
+            Builder builder = new Builder();
+            builder.put("id", user.getId());
+            builder.put("username", user.getUsername());
+            builder.put("email", user.getEmail() != null ? user.getEmail() : "");
+            builder.put("fullName", user.getFullName() != null ? user.getFullName() : "");
+            builder.put("lastLogin", user.getLastLogin() != null ? format.format(user.getLastLogin()) : "");
+            builder.put("isActive",user.getIsActive());
+
+            return builder.toString();
+        } catch (ApplicationException e) {
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "{ \"error\": \"authentication_failed\", \"message\": \"" + e.getMessage() + "\" }";
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Logout the current user
+     */
+    @Action("auth/logout")
+    public String logout(Request request, Response response) {
+        // Clear user session
+        request.getSession().removeAttribute("user_id");
+        request.getSession().removeAttribute("username");
+
+        // Return success response
+        return "{ \"status\": \"ok\" }";
+    }
+
+    /**
+     * Get the current user's profile
+     */
+    @Action("auth/profile")
+    public String getProfile(Request request, Response response) throws ApplicationException {
+        // Check if user is logged in
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "{ \"error\": \"not_authenticated\", \"message\": \"User is not logged in\" }";
+        }
+
+        try {
+            // Get user profile
+            AuthenticationService authService = AuthenticationService.getInstance();
+            User user = authService.findUserById(userId.toString());
+
+            if (user == null) {
+                response.setStatus(ResponseStatus.NOT_FOUND);
+                return "{ \"error\": \"user_not_found\", \"message\": \"User not found\" }";
+            }
+
+            // Return user profile
+            Builder builder = new Builder();
+            builder.put("id", user.getId());
+            builder.put("username", user.getUsername());
+            builder.put("email", user.getEmail() != null ? user.getEmail() : "");
+            builder.put("fullName", user.getFullName() != null ? user.getFullName() : "");
+            builder.put("createdAt", format.format(user.getCreatedAt()));
+            builder.put("lastLogin", user.getLastLogin() != null ? format.format(user.getLastLogin()) : "");
+
+            return builder.toString();
         } catch (Exception e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
             return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
