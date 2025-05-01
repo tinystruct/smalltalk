@@ -729,7 +729,7 @@
                 width: 100%;
                 z-index: 1050;
             }
-            
+
             .sidebar.active {
                 left: 0;
             }
@@ -895,6 +895,119 @@
             smartypants: false,
             xhtml: false
         };
+
+        // Check if user is logged in
+        function checkAuthStatus() {
+            $.ajax({
+                url: '/?q=auth/profile',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    // User is logged in
+                    $('#auth-forms').hide();
+                    $('#chat-interface').show();
+                    $('#user-info').show();
+                    $('#current-username').text(response.username);
+                },
+                error: function() {
+                    // User is not logged in
+                    $('#auth-forms').show();
+                    $('#chat-interface').hide();
+                }
+            });
+        }
+
+        // Handle login form submission
+        function setupLoginForm() {
+            $('#login-form').submit(function(e) {
+                e.preventDefault();
+
+                var username = $('#login-username').val();
+                var password = $('#login-password').val();
+
+                // Clear previous errors
+                $('#login-error').hide().text('');
+
+                // Send login request
+                $.ajax({
+                    url: '/?q=auth/login',
+                    type: 'POST',
+                    data: {
+                        username: username,
+                        password: password
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        // Reload the page to show chat interface
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        var errorMessage = 'Login failed. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#login-error').text(errorMessage).show();
+                    }
+                });
+            });
+        }
+
+        // Handle registration form submission
+        function setupRegisterForm() {
+            $('#register-form').submit(function(e) {
+                e.preventDefault();
+
+                var username = $('#register-username').val();
+                var password = $('#register-password').val();
+                var email = $('#register-email').val();
+                var fullName = $('#register-fullname').val();
+
+                // Clear previous errors
+                $('#register-error').hide().text('');
+
+                // Send registration request
+                $.ajax({
+                    url: '/?q=auth/register',
+                    type: 'POST',
+                    data: {
+                        username: username,
+                        password: password,
+                        email: email,
+                        fullName: fullName
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        // Reload the page to show chat interface
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        var errorMessage = 'Registration failed. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#register-error').text(errorMessage).show();
+                    }
+                });
+            });
+        }
+
+        // Handle logout
+        function setupLogout() {
+            $('#logout-link').click(function(e) {
+                e.preventDefault();
+
+                $.ajax({
+                    url: '/?q=auth/logout',
+                    type: 'POST',
+                    success: function() {
+                        // Reload the page to show login form
+                        window.location.reload();
+                    }
+                });
+            });
+        }
 
         function update($data) {
             if (typeof ($data.message) != 'undefined') {
@@ -1243,6 +1356,12 @@
         }
 
         $(function () {
+            // Initialize authentication
+            checkAuthStatus();
+            setupLoginForm();
+            setupRegisterForm();
+            setupLogout();
+
             $("#button").click(function () {
                 save();
                 timer.stop();
@@ -1491,7 +1610,7 @@
                                 container.classList.add('shifted');
                             });
                         }
-                        
+
                         // Adjust list width after resize
                         this.adjustListWidth();
                     });
@@ -1557,7 +1676,7 @@
 
             // Initialize sidebar after DOM is loaded
             const sidebar = new Sidebar();
-            
+
             // Update sidebar topic when topic changes
             const updateSidebarTopic = () => {
                 const topicElement = document.querySelector('#sidebar-topic');
@@ -1565,17 +1684,17 @@
                     topicElement.textContent = $("#topic").text() || 'No topic set';
                 }
             };
-            
+
             // Update topic when it changes
             const originalTopicSubmit = $("#topic_submit").click;
             $("#topic_submit").click(function() {
                 originalTopicSubmit.apply(this, arguments);
                 updateSidebarTopic();
             });
-            
+
             // Initial topic update
             updateSidebarTopic();
-            
+
             // Set initial active time
             const activeTimeElement = document.querySelector('#sidebar-active-time');
             if (activeTimeElement) {
@@ -1613,19 +1732,19 @@
             fileInput.addEventListener('change', function(e) {
                 const files = Array.from(e.target.files);
                 selectedFiles = files;
-                
+
                 // Clear previous preview
                 previewList.innerHTML = '';
-                
+
                 // Add new previews
                 files.forEach(file => {
                     const item = document.createElement('div');
                     item.className = 'file-preview-item';
-                    
+
                     const name = document.createElement('div');
                     name.className = 'file-preview-name';
                     name.textContent = file.name;
-                    
+
                     const remove = document.createElement('div');
                     remove.className = 'file-preview-remove';
                     remove.innerHTML = '×';
@@ -1638,12 +1757,12 @@
                             fileInput.value = '';
                         }
                     };
-                    
+
                     item.appendChild(name);
                     item.appendChild(remove);
                     previewList.appendChild(item);
                 });
-                
+
                 if (files.length > 0) {
                     previewContainer.style.display = 'block';
                 }
@@ -1660,7 +1779,7 @@
 
                 // Show progress bar
                 uploadProgress.style.display = 'block';
-                
+
                 $.ajax({
                     url: '/?q=talk/upload',
                     type: 'POST',
@@ -1680,7 +1799,7 @@
                 }).done(function(response) {
                     // Handle successful upload
                     uploadProgress.style.width = '100%';
-                    
+
                     // Parse response and add files to message
                     const files = JSON.parse(response);
                     files.forEach(file => {
@@ -1698,7 +1817,7 @@
 
                     // Show success message
                     showUploadStatus('Files uploaded successfully!');
-                    
+
                     // Reset upload state
                     setTimeout(() => {
                         uploadProgress.style.width = '0';
@@ -1722,10 +1841,10 @@
                 status.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
                 status.textContent = message;
                 document.body.appendChild(status);
-                
+
                 // Show status
                 status.style.display = 'block';
-                
+
                 // Remove after 3 seconds
                 setTimeout(() => {
                     status.style.opacity = '0';
@@ -1808,39 +1927,102 @@
         </div>
     </nav>
     <div class="pageheader"></div>
-    <p>Welcome to use smalltalk application!</p>
-    <p id="topic">{%topic%}</p>
-    <div id="list">
-        <ul id="messages">
-            <li>Type your message(s) in the below input box...</li>
-        </ul>
-    </div>
-    <form id="sender">
-        <div class="note">Share the link to invite others join this conversation: <a id="link"
-                                                                                     href="javascript:void(0)">{%meeting_url%}</a>
-            <div id="matrix"><img/><span>Click For QR Code</span></div>
-        </div>
-        <div class="pad">
-            <div class="text">
-                <div contenteditable="true" id="text"></div>
-                <input type="button" id="button" value="Send" class="btn btn-primary btn-sm"/>
-                <div class="upload-wrapper">
-                    <span class="btn btn-file">
-                        <i class="fas fa-paperclip"></i>
-                        <input id="attachment" name="attachment" type="file" multiple="true"/>
-                    </span>
-                    <div class="file-preview-container">
-                        <div class="file-preview-list"></div>
+
+    <!-- Login and Registration Forms -->
+    <div id="auth-forms" style="display: none;">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="panel panel-primary">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Login</h3>
                     </div>
-                    <div class="upload-progress"></div>
+                    <div class="panel-body">
+                        <form id="login-form">
+                            <div class="form-group">
+                                <label for="login-username">Username</label>
+                                <input type="text" class="form-control" id="login-username" placeholder="Enter username">
+                            </div>
+                            <div class="form-group">
+                                <label for="login-password">Password</label>
+                                <input type="password" class="form-control" id="login-password" placeholder="Password">
+                            </div>
+                            <div class="alert alert-danger" id="login-error" style="display: none;"></div>
+                            <button type="submit" class="btn btn-primary">Login</button>
+                        </form>
+                    </div>
                 </div>
             </div>
-            <span class="arrowbox">
-                <b class="arrow arrowline"></b>
-                <b class="arrow arrowbg"></b>
-            </span>
+            <div class="col-md-6">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Register</h3>
+                    </div>
+                    <div class="panel-body">
+                        <form id="register-form">
+                            <div class="form-group">
+                                <label for="register-username">Username</label>
+                                <input type="text" class="form-control" id="register-username" placeholder="Enter username">
+                            </div>
+                            <div class="form-group">
+                                <label for="register-password">Password</label>
+                                <input type="password" class="form-control" id="register-password" placeholder="Password">
+                            </div>
+                            <div class="form-group">
+                                <label for="register-email">Email (optional)</label>
+                                <input type="email" class="form-control" id="register-email" placeholder="Email">
+                            </div>
+                            <div class="form-group">
+                                <label for="register-fullname">Full Name (optional)</label>
+                                <input type="text" class="form-control" id="register-fullname" placeholder="Full Name">
+                            </div>
+                            <div class="alert alert-danger" id="register-error" style="display: none;"></div>
+                            <button type="submit" class="btn btn-default">Register</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
-    </form>
+    </div>
+
+    <!-- Chat Interface -->
+    <div id="chat-interface">
+        <p>Welcome to use smalltalk application!</p>
+        <p id="topic">{%topic%}</p>
+        <div id="user-info" style="display: none;">
+            <p>Logged in as: <strong id="current-username">{%username%}</strong> <a href="#" id="logout-link">(Logout)</a></p>
+        </div>
+        <div id="list">
+            <ul id="messages">
+                <li>Type your message(s) in the below input box...</li>
+            </ul>
+        </div>
+        <form id="sender">
+            <div class="note">Share the link to invite others join this conversation: <a id="link"
+                                                                                         href="javascript:void(0)">{%meeting_url%}</a>
+                <div id="matrix"><img/><span>Click For QR Code</span></div>
+            </div>
+            <div class="pad">
+                <div class="text">
+                    <div contenteditable="true" id="text"></div>
+                    <input type="button" id="button" value="Send" class="btn btn-primary btn-sm"/>
+                    <div class="upload-wrapper">
+                        <span class="btn btn-file">
+                            <i class="fas fa-paperclip"></i>
+                            <input id="attachment" name="attachment" type="file" multiple="true"/>
+                        </span>
+                        <div class="file-preview-container">
+                            <div class="file-preview-list"></div>
+                        </div>
+                        <div class="upload-progress"></div>
+                    </div>
+                </div>
+                <span class="arrowbox">
+                    <b class="arrow arrowline"></b>
+                    <b class="arrow arrowbg"></b>
+                </span>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Modal -->
