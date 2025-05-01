@@ -1120,8 +1120,42 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             System.out.println("MIME type: " + mimeType);
             System.out.println("Meeting code: " + meetingCode);
 
+            // Get user ID from session
+            String userId = null;
+            String username = null;
+            for (Map.Entry<?, Set<String>> entry : this.sessions.entrySet()) {
+                if (entry.getKey().toString().equals(meetingCode)) {
+                    // Get the first session ID for this meeting
+                    if (!entry.getValue().isEmpty()) {
+                        String sessionId = entry.getValue().iterator().next();
+                        // Get the session object
+                        Session session = SessionManager.getInstance().getSession(sessionId);
+                        if (session != null) {
+                            userId = (String) session.getAttribute("user_id");
+                            username = (String) session.getAttribute("username");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            System.out.println("User ID: " + (userId != null ? userId : "none (anonymous)"));
+
+            // Get file name for title
+            String fileName = new File(filePath).getName();
+            String title = fileName;
+            String description = "Uploaded by " + (username != null ? username : "anonymous user") + " on " +
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+
             DocumentProcessor processor = new DocumentProcessor();
-            List<DocumentFragment> fragments = processor.processDocument(filePath, mimeType.trim());
+            List<DocumentFragment> fragments = processor.processDocument(
+                filePath,
+                mimeType.trim(),
+                userId,
+                title,
+                description,
+                true  // Public by default
+            );
 
             System.out.println("Successfully processed document into " + fragments.size() + " fragments");
 
@@ -1532,8 +1566,160 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             builder.put("fullName", user.getFullName() != null ? user.getFullName() : "");
             builder.put("createdAt", format.format(user.getCreatedAt()));
             builder.put("lastLogin", user.getLastLogin() != null ? format.format(user.getLastLogin()) : "");
+            builder.put("isAdmin", user.getIsAdmin());
 
             return builder.toString();
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Libraries page
+     */
+    @Action("libraries")
+    public smalltalk librariesPage(Request request, Response response) throws ApplicationException {
+        // Check if user is authenticated
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            // Redirect to login page
+            try {
+                Reforward reforward = new Reforward(request, response);
+                reforward.setDefault("/?q=login");
+                return (smalltalk) reforward.forward();
+            } catch (Exception e) {
+                throw new ApplicationException("Failed to redirect to login page: " + e.getMessage(), e);
+            }
+        }
+
+        return this;
+    }
+
+    /**
+     * Get user's documents
+     */
+    @Action("libraries/my-documents")
+    public String getMyDocuments(Request request, Response response) throws ApplicationException {
+        // Check if user is logged in
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "{ \"error\": \"not_authenticated\", \"message\": \"User is not logged in\" }";
+        }
+
+        try {
+            // Get user's documents
+            DocumentFragment fragment = new DocumentFragment();
+            Table documents = fragment.find("user_id = ?", new Object[]{userId.toString()});
+
+            Builders builders = new Builders();
+            for (Row row : documents) {
+                DocumentFragment doc = new DocumentFragment();
+                doc.setData(row);
+                Builder builder = new Builder();
+                builder.put("id", doc.getId());
+                builder.put("documentId", doc.getDocumentId());
+                builder.put("title", doc.getTitle() != null ? doc.getTitle() : "");
+                builder.put("description", doc.getDescription() != null ? doc.getDescription() : "");
+                builder.put("filePath", doc.getFilePath());
+                builder.put("mimeType", doc.getMimeType());
+                builder.put("createdAt", format.format(doc.getCreatedAt()));
+                builder.put("isPublic", doc.getIsPublic());
+                builders.add(builder);
+            }
+
+            return builders.toString();
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Get public documents
+     */
+    @Action("libraries/public-documents")
+    public String getPublicDocuments(Request request, Response response) throws ApplicationException {
+        // Check if user is logged in
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "{ \"error\": \"not_authenticated\", \"message\": \"User is not logged in\" }";
+        }
+
+        try {
+            // Get public documents
+            DocumentFragment fragment = new DocumentFragment();
+            Table documents = fragment.find("is_public = ? AND user_id != ?", new Object[]{true, userId.toString()});
+
+            Builders builders = new Builders();
+            for (Row row : documents) {
+                DocumentFragment doc = new DocumentFragment();
+                doc.setData(row);
+                Builder builder = new Builder();
+                builder.put("id", doc.getId());
+                builder.put("documentId", doc.getDocumentId());
+                builder.put("title", doc.getTitle() != null ? doc.getTitle() : "");
+                builder.put("description", doc.getDescription() != null ? doc.getDescription() : "");
+                builder.put("filePath", doc.getFilePath());
+                builder.put("mimeType", doc.getMimeType());
+                builder.put("createdAt", format.format(doc.getCreatedAt()));
+                builder.put("isPublic", doc.getIsPublic());
+                builders.add(builder);
+            }
+
+            return builders.toString();
+        } catch (Exception e) {
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Get all documents (admin only)
+     */
+    @Action("libraries/all-documents")
+    public String getAllDocuments(Request request, Response response) throws ApplicationException {
+        // Check if user is logged in
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "{ \"error\": \"not_authenticated\", \"message\": \"User is not logged in\" }";
+        }
+
+        try {
+            // Check if user is admin
+            AuthenticationService authService = AuthenticationService.getInstance();
+            User user = authService.findUserById(userId.toString());
+
+            if (user == null || !user.getIsAdmin()) {
+                response.setStatus(ResponseStatus.FORBIDDEN);
+                return "{ \"error\": \"forbidden\", \"message\": \"Admin access required\" }";
+            }
+
+            // Get all documents
+            DocumentFragment fragment = new DocumentFragment();
+            Table documents = fragment.find("1=1", new Object[]{});
+
+            Builders builders = new Builders();
+            for (Row row : documents) {
+                DocumentFragment doc = new DocumentFragment();
+                doc.setData(row);
+                Builder builder = new Builder();
+                builder.put("id", doc.getId());
+                builder.put("documentId", doc.getDocumentId());
+                builder.put("title", doc.getTitle() != null ? doc.getTitle() : "");
+                builder.put("description", doc.getDescription() != null ? doc.getDescription() : "");
+                builder.put("filePath", doc.getFilePath());
+                builder.put("mimeType", doc.getMimeType());
+                builder.put("createdAt", format.format(doc.getCreatedAt()));
+                builder.put("isPublic", doc.getIsPublic());
+                builder.put("userId", doc.getUserId());
+                builders.add(builder);
+            }
+
+            return builders.toString();
         } catch (Exception e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
             return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
