@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mapping>
+    <class name="User" table="users">
+        <id name="Id" column="id" increment="true" generate="true" length="20" type="INTEGER"/>
+        <property name="username" column="username" length="50" type="VARCHAR"/>
+        <property name="passwordHash" column="password_hash" length="255" type="VARCHAR"/>
+        <property name="email" column="email" length="100" type="VARCHAR"/>
+        <property name="fullName" column="full_name" length="100" type="VARCHAR"/>
+        <property name="createdAt" column="created_at" length="0" type="DATE"/>
+        <property name="lastLogin" column="last_login" length="0" type="DATE"/>
+        <property name="isActive" column="is_active" length="1" type="BOOLEAN"/>
+    </class>
+</mapping>
