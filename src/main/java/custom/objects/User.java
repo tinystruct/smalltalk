@@ -20,6 +20,7 @@ public class User extends AbstractData implements Serializable {
     private Date createdAt;
     private Date lastLogin;
     private boolean isActive;
+    private boolean isAdmin;
 
     public String getId() {
         return String.valueOf(this.Id);
@@ -81,6 +82,14 @@ public class User extends AbstractData implements Serializable {
         return this.isActive;
     }
 
+    public void setIsAdmin(boolean isAdmin) {
+        this.isAdmin = this.setFieldAsBoolean("isAdmin", isAdmin);
+    }
+
+    public boolean getIsAdmin() {
+        return this.isAdmin;
+    }
+
     @Override
     public void setData(Row row) {
         if (row.getFieldInfo("id") != null) this.setId(row.getFieldInfo("id").stringValue());
@@ -91,6 +100,7 @@ public class User extends AbstractData implements Serializable {
         if (row.getFieldInfo("created_at") != null) this.setCreatedAt(row.getFieldInfo("created_at").dateValue());
         if (row.getFieldInfo("last_login") != null) this.setLastLogin(row.getFieldInfo("last_login").dateValue());
         if (row.getFieldInfo("is_active") != null) this.setIsActive(row.getFieldInfo("is_active").booleanValue());
+        if (row.getFieldInfo("is_admin") != null) this.setIsAdmin(row.getFieldInfo("is_admin").booleanValue());
     }
 
     @Override
@@ -104,6 +114,7 @@ public class User extends AbstractData implements Serializable {
         buffer.append(",\"createdAt\":\"").append(this.getCreatedAt()).append("\"");
         buffer.append(",\"lastLogin\":\"").append(this.getLastLogin() != null ? this.getLastLogin() : "").append("\"");
         buffer.append(",\"isActive\":").append(this.getIsActive());
+        buffer.append(",\"isAdmin\":").append(this.getIsAdmin());
         buffer.append("}");
         return buffer.toString();
     }

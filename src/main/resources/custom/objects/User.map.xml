@@ -10,5 +10,6 @@
         <property name="createdAt" column="created_at" length="0" type="DATE"/>
         <property name="lastLogin" column="last_login" length="0" type="DATE"/>
         <property name="isActive" column="is_active" length="1" type="BOOLEAN"/>
+        <property name="isAdmin" column="is_admin" length="1" type="BOOLEAN"/>
     </class>
 </mapping>
