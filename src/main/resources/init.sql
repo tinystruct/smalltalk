@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    is_admin BOOLEAN DEFAULT FALSE
 );
 
 -- Create indexes for users
@@ -28,12 +29,19 @@ CREATE TABLE IF NOT EXISTS document_fragments (
     fragment_index INTEGER NOT NULL,
     file_path VARCHAR(255),
     mime_type VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER,
+    title VARCHAR(255),
+    description TEXT,
+    is_public BOOLEAN DEFAULT TRUE,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 -- Create indexes for document_fragments
 CREATE INDEX idx_document_id ON document_fragments(document_id);
 CREATE INDEX idx_fragment_index ON document_fragments(fragment_index);
 CREATE INDEX idx_created_at ON document_fragments(created_at);
+CREATE INDEX idx_user_id ON document_fragments(user_id);
+CREATE INDEX idx_is_public ON document_fragments(is_public);
 
 DROP TABLE IF EXISTS document_embeddings;
 CREATE TABLE IF NOT EXISTS document_embeddings (
