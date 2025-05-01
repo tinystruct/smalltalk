@@ -67,7 +67,18 @@ public class DocumentProcessor {
      * @return List of document fragments
      * @throws ApplicationException if processing fails
      */
-    public List<DocumentFragment> processDocument(String filePath, String mimeType) throws ApplicationException {
+    /**
+     * Process a document file into fragments with user information
+     * @param filePath Path to the document file
+     * @param mimeType MIME type of the document
+     * @param userId ID of the user who uploaded the document
+     * @param title Title of the document
+     * @param description Description of the document
+     * @param isPublic Whether the document is publicly accessible
+     * @return List of document fragments
+     * @throws ApplicationException if processing fails
+     */
+    public List<DocumentFragment> processDocument(String filePath, String mimeType, String userId, String title, String description, boolean isPublic) throws ApplicationException {
         if (!isSupportedMimeType(mimeType)) {
             throw new ApplicationException("Unsupported MIME type: " + mimeType);
         }
@@ -97,6 +108,10 @@ public class DocumentProcessor {
                 fragment.setFilePath(filePath);
                 fragment.setMimeType(mimeType);
                 fragment.setCreatedAt(new Date());
+                fragment.setUserId(userId);
+                fragment.setTitle(title);
+                fragment.setDescription(description);
+                fragment.setIsPublic(isPublic);
 
                 fragments.add(fragment);
             }
@@ -105,6 +120,41 @@ public class DocumentProcessor {
         } catch (IOException e) {
             throw new ApplicationException("Failed to process document: " + e.getMessage(), e);
         }
+    }
+
+    public List<DocumentFragment> processDocument(String filePath, String mimeType) throws ApplicationException {
+        // Call the more detailed method with default values
+        return processDocument(filePath, mimeType, null, getDefaultTitle(filePath), "", true);
+    }
+
+    /**
+     * Generate a default title from the file path
+     * @param filePath Path to the file
+     * @return A title based on the file name
+     */
+    private String getDefaultTitle(String filePath) {
+        File file = new File(filePath);
+        String fileName = file.getName();
+        // Remove extension if present
+        int dotIndex = fileName.lastIndexOf('.');
+        if (dotIndex > 0) {
+            fileName = fileName.substring(0, dotIndex);
+        }
+        // Replace underscores and hyphens with spaces
+        fileName = fileName.replace('_', ' ').replace('-', ' ');
+        // Capitalize first letter of each word
+        String[] words = fileName.split("\\s+");
+        StringBuilder titleBuilder = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                titleBuilder.append(Character.toUpperCase(word.charAt(0)));
+                if (word.length() > 1) {
+                    titleBuilder.append(word.substring(1));
+                }
+                titleBuilder.append(" ");
+            }
+        }
+        return titleBuilder.toString().trim();
     }
 
     /**
