@@ -1617,7 +1617,7 @@
                             <ul class="sidebar-menu">
                                 <li><i class="fas fa-home"></i> Home</li>
                                 <li><i class="fas fa-cog"></i> Settings</li>
-                                <li><i class="fas fa-users"></i> Participants</li>
+                                <li><i class="fas fa-book"></i> Libraries</li>
                                 <li><i class="fas fa-history"></i> Chat History</li>
                             </ul>
                             <div class="sidebar-section">
@@ -1689,12 +1689,14 @@
                     switch(action) {
                         case 'home':
                             // Handle home action
+                            window.location.href = '/?q=talk';
                             break;
                         case 'settings':
                             // Show settings modal
                             break;
-                        case 'participants':
-                            // Show participants list
+                        case 'libraries':
+                            // Go to libraries page
+                            window.location.href = '/?q=libraries';
                             break;
                         case 'chat history':
                             // Show chat history
