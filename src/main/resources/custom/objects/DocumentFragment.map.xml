@@ -9,5 +9,9 @@
         <property name="filePath" column="file_path" length="255" type="VARCHAR"/>
         <property name="mimeType" column="mime_type" length="50" type="VARCHAR"/>
         <property name="createdAt" column="created_at" length="0" type="DATE"/>
+        <property name="userId" column="user_id" length="20" type="VARCHAR"/>
+        <property name="title" column="title" length="255" type="VARCHAR"/>
+        <property name="description" column="description" length="0" type="TEXT"/>
+        <property name="isPublic" column="is_public" length="1" type="BOOLEAN"/>
     </class>
 </mapping>

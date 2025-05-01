@@ -21,6 +21,10 @@ public class DocumentFragment extends AbstractData implements Serializable {
     private String filePath;
     private String mimeType;
     private Date createdAt;
+    private String userId;
+    private String title;
+    private String description;
+    private boolean isPublic;
 
     public String getId() {
         return String.valueOf(this.Id);
@@ -74,6 +78,38 @@ public class DocumentFragment extends AbstractData implements Serializable {
         return this.createdAt;
     }
 
+    public void setUserId(String userId) {
+        this.userId = this.setFieldAsString("userId", userId);
+    }
+
+    public String getUserId() {
+        return this.userId;
+    }
+
+    public void setTitle(String title) {
+        this.title = this.setFieldAsString("title", title);
+    }
+
+    public String getTitle() {
+        return this.title;
+    }
+
+    public void setDescription(String description) {
+        this.description = this.setFieldAsString("description", description);
+    }
+
+    public String getDescription() {
+        return this.description;
+    }
+
+    public void setIsPublic(boolean isPublic) {
+        this.isPublic = this.setFieldAsBoolean("isPublic", isPublic);
+    }
+
+    public boolean getIsPublic() {
+        return this.isPublic;
+    }
+
 
     @Override
     public void setData(Row row) {
@@ -85,6 +121,10 @@ public class DocumentFragment extends AbstractData implements Serializable {
         if (row.getFieldInfo("file_path") != null) this.setFilePath(row.getFieldInfo("file_path").stringValue());
         if (row.getFieldInfo("mime_type") != null) this.setMimeType(row.getFieldInfo("mime_type").stringValue());
         if (row.getFieldInfo("created_at") != null) this.setCreatedAt(row.getFieldInfo("created_at").dateValue());
+        if (row.getFieldInfo("user_id") != null) this.setUserId(row.getFieldInfo("user_id").stringValue());
+        if (row.getFieldInfo("title") != null) this.setTitle(row.getFieldInfo("title").stringValue());
+        if (row.getFieldInfo("description") != null) this.setDescription(row.getFieldInfo("description").stringValue());
+        if (row.getFieldInfo("is_public") != null) this.setIsPublic(row.getFieldInfo("is_public").booleanValue());
     }
 
     @Override
@@ -101,4 +141,4 @@ public class DocumentFragment extends AbstractData implements Serializable {
         buffer.append("}");
         return buffer.toString();
     }
-} 
+}
