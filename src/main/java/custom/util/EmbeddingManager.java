@@ -42,7 +42,7 @@ public class EmbeddingManager extends AbstractApplication {
      */
     private static Vector<Double> getExistingEmbedding(DocumentFragment fragment) throws ApplicationException {
         DocumentEmbedding embedding = new DocumentEmbedding();
-        Table results = embedding.find("fragment_id = ?", new Object[]{fragment.getId()});
+        Table results = embedding.findWith("WHERE fragment_id = ?", new Object[]{fragment.getId()});
 
         if (results == null || results.isEmpty()) {
             return null;
