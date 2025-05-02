@@ -42,6 +42,7 @@ public class libraries extends AbstractApplication {
         this.setAction("libraries/public-documents", "getPublicDocuments");
         this.setAction("libraries/all-documents", "getAllDocuments");
         this.setAction("libraries/upload", "uploadDocument");
+        this.setAction("libraries/delete", "deleteDocument");
     }
 
     @Override
@@ -100,6 +101,7 @@ public class libraries extends AbstractApplication {
                 builder.put("mimeType", doc.getMimeType());
                 builder.put("createdAt", format.format(doc.getCreatedAt()));
                 builder.put("isPublic", doc.getIsPublic());
+                builder.put("userId", doc.getUserId());
                 builders.add(builder);
             }
 
@@ -140,6 +142,7 @@ public class libraries extends AbstractApplication {
                 builder.put("mimeType", doc.getMimeType());
                 builder.put("createdAt", format.format(doc.getCreatedAt()));
                 builder.put("isPublic", doc.getIsPublic());
+                builder.put("userId", doc.getUserId());
                 builders.add(builder);
             }
 
@@ -319,6 +322,92 @@ public class libraries extends AbstractApplication {
     private void createDirectoryIfNeeded(File directory) {
         if (directory != null && !directory.exists()) {
             directory.mkdirs();
+        }
+    }
+
+    /**
+     * Delete a document and all its fragments
+     */
+    @Action("libraries/delete")
+    public String deleteDocument(Request request, Response response) throws ApplicationException {
+        // Check if user is logged in
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            response.setStatus(ResponseStatus.UNAUTHORIZED);
+            return "{ \"error\": \"not_authenticated\", \"message\": \"User is not logged in\" }";
+        }
+
+        try {
+            // Get document ID from request
+            String documentId = request.getParameter("documentId");
+            if (documentId == null || documentId.trim().isEmpty()) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"missing_document_id\", \"message\": \"Document ID is required\" }";
+            }
+
+            // Check if document exists and user is the owner
+            DocumentFragment fragment = new DocumentFragment();
+            Table documents = fragment.findWith("WHERE document_id = ? AND user_id = ?", new Object[]{documentId, userId.toString()});
+
+            if (documents == null || documents.isEmpty()) {
+                // Check if user is admin
+                AuthenticationService authService = AuthenticationService.getInstance();
+                User user = authService.findUserById(userId.toString());
+
+                if (user == null || !user.getIsAdmin()) {
+                    response.setStatus(ResponseStatus.FORBIDDEN);
+                    return "{ \"error\": \"forbidden\", \"message\": \"You don't have permission to delete this document\" }";
+                }
+
+                // Admin can delete any document, so check if document exists
+                documents = fragment.findWith("WHERE document_id = ?", new Object[]{documentId});
+                if (documents == null || documents.isEmpty()) {
+                    response.setStatus(ResponseStatus.NOT_FOUND);
+                    return "{ \"error\": \"not_found\", \"message\": \"Document not found\" }";
+                }
+            }
+
+            // Get the file path from the first fragment to delete the file later
+            DocumentFragment firstFragment = new DocumentFragment();
+            firstFragment.setData(documents.get(0));
+            String filePath = firstFragment.getFilePath();
+
+            // Delete all embeddings for this document's fragments
+            try (org.tinystruct.data.DatabaseOperator db = new org.tinystruct.data.DatabaseOperator()) {
+                // First delete embeddings
+                String deleteEmbeddingsSQL = "DELETE FROM document_embeddings WHERE fragment_id IN " +
+                        "(SELECT id FROM document_fragments WHERE document_id = '" + documentId + "')";
+                db.execute(deleteEmbeddingsSQL);
+
+                // Then delete fragments
+                String deleteFragmentsSQL = "DELETE FROM document_fragments WHERE document_id = '" + documentId + "'";
+                db.execute(deleteFragmentsSQL);
+            }
+
+            // Try to delete the physical file if it exists
+            try {
+                if (filePath != null && !filePath.isEmpty()) {
+                    File file = new File(filePath);
+                    if (file.exists() && file.isFile()) {
+                        file.delete();
+                    }
+                }
+            } catch (Exception e) {
+                // Log but continue - the database records are more important
+                System.err.println("Warning: Could not delete file: " + filePath + ". Error: " + e.getMessage());
+            }
+
+            // Return success response
+            Builder builder = new Builder();
+            builder.put("success", true);
+            builder.put("message", "Document deleted successfully");
+            builder.put("documentId", documentId);
+
+            return builder.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
         }
     }
 }

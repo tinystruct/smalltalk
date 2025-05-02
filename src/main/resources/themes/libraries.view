@@ -172,6 +172,9 @@
 <script type="text/javascript" src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
 <script type="text/javascript">
     $(document).ready(function() {
+        // Variables to store user info
+        var userId = null;
+        var isAdmin = false;
         // Handle file upload
         $('#uploadButton').click(function() {
             // Get form data
@@ -257,20 +260,24 @@
             });
         });
 
-        // Check if user is admin
+        // Check if user is admin and get user info
         $.ajax({
             url: '/?q=auth/profile',
             type: 'GET',
             dataType: 'json',
             success: function(response) {
-                if (response.isAdmin) {
+                // Store user info for later use
+                userId = response.id;
+                isAdmin = response.isAdmin;
+
+                if (isAdmin) {
                     $('#adminTab').show();
                 }
 
                 // Load documents
                 loadMyDocuments();
                 loadPublicDocuments();
-                if (response.isAdmin) {
+                if (isAdmin) {
                     loadAllDocuments();
                 }
             },
@@ -346,6 +353,38 @@
             });
         }
 
+        // Handle document deletion
+        $(document).on('click', '.delete-document', function() {
+            var documentId = $(this).data('document-id');
+            var documentTitle = $(this).data('document-title');
+
+            if (confirm('Are you sure you want to delete "' + documentTitle + '"? This action cannot be undone.')) {
+                $.ajax({
+                    url: '/?q=libraries/delete',
+                    type: 'POST',
+                    data: { documentId: documentId },
+                    dataType: 'json',
+                    success: function(response) {
+                        alert('Document deleted successfully');
+
+                        // Reload documents
+                        loadMyDocuments();
+                        loadPublicDocuments();
+                        if (isAdmin) {
+                            loadAllDocuments();
+                        }
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'Failed to delete document';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        alert(errorMessage);
+                    }
+                });
+            }
+        });
+
         // Render documents to the specified container
         function renderDocuments(documents, containerId) {
             var container = $('#' + containerId);
@@ -375,8 +414,20 @@
                 cardBody.append('<p class="document-meta">File: ' + firstDoc.filePath.split('/').pop() + '</p>');
                 cardBody.append('<p class="document-meta">Fragments: ' + docs.length + '</p>');
 
-                var viewBtn = $('<a href="/?q=talk&document=' + documentId + '" class="btn btn-primary btn-sm">Chat with Document</a>');
-                cardBody.append(viewBtn);
+                // Add buttons container for better styling
+                var btnContainer = $('<div class="btn-group btn-group-sm" style="margin-top: 10px;"></div>');
+
+                // Chat button
+                var chatBtn = $('<a href="/?q=talk&document=' + documentId + '" class="btn btn-primary">Chat with Document</a>');
+                btnContainer.append(chatBtn);
+
+                // Delete button - only show for documents the user owns
+                if (firstDoc.userId === userId || isAdmin) {
+                    var deleteBtn = $('<button class="btn btn-danger delete-document" data-document-id="' + documentId + '" data-document-title="' + firstDoc.title + '">Delete</button>');
+                    btnContainer.append(deleteBtn);
+                }
+
+                cardBody.append(btnContainer);
 
                 card.append(cardBody);
                 col.append(card);
