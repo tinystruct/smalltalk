@@ -7,6 +7,7 @@ import org.tinystruct.ApplicationException;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -93,6 +94,12 @@ public class DocumentProcessor {
         try {
             // Extract content using Tika for rich documents or direct reading for text files
             String content = extractContent(filePath, mimeType);
+
+            // Check if we got any content
+            if (content == null || content.trim().isEmpty()) {
+                throw new ApplicationException("Failed to extract any content from the document");
+            }
+
             String documentId = UUID.randomUUID().toString();
 
             // Split content into fragments
@@ -169,6 +176,7 @@ public class DocumentProcessor {
 
         // Detect MIME type if not provided
         String detectedMimeType = mimeType != null ? mimeType : tika.detect(file);
+        System.out.println("Processing file: " + filePath + " with MIME type: " + detectedMimeType);
 
         // For simple text files, use direct file reading for efficiency
         if (detectedMimeType.equals("text/plain") ||
@@ -179,9 +187,41 @@ public class DocumentProcessor {
 
         try {
             // Use Tika to extract text content from rich documents
-            return tika.parseToString(file);
+            String content = tika.parseToString(file);
+
+            // Check if content was extracted successfully
+            if (content == null || content.trim().isEmpty()) {
+                System.err.println("Warning: Tika extracted empty content from file: " + filePath);
+
+                // For DOCX files, try an alternative approach if the content is empty
+                if (detectedMimeType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+                    System.out.println("Attempting alternative DOCX parsing using Apache POI...");
+                    try {
+                        content = extractDocxContent(file);
+
+                        if (content == null || content.trim().isEmpty()) {
+                            System.err.println("Alternative parsing also produced empty content");
+                        } else {
+                            System.out.println("Alternative parsing successful, extracted " + content.length() + " characters");
+                        }
+                    } catch (Exception ex) {
+                        System.err.println("Alternative parsing failed: " + ex.getMessage());
+                        ex.printStackTrace();
+                    }
+                }
+            } else {
+                System.out.println("Successfully extracted " + content.length() + " characters from document");
+            }
+
+            return content;
         } catch (TikaException e) {
+            System.err.println("Tika exception: " + e.getMessage());
+            e.printStackTrace();
             throw new IOException("Failed to parse document with Tika: " + e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("Unexpected exception during content extraction: " + e.getMessage());
+            e.printStackTrace();
+            throw new IOException("Unexpected error during content extraction: " + e.getMessage(), e);
         }
     }
 
@@ -197,6 +237,108 @@ public class DocumentProcessor {
             String line;
             while ((line = reader.readLine()) != null) {
                 content.append(line).append("\n");
+            }
+        }
+        return content.toString();
+    }
+
+    /**
+     * Extract content from a DOCX file using Apache POI
+     * @param file The DOCX file
+     * @return The extracted text content
+     * @throws IOException if reading fails
+     */
+    private String extractDocxContent(File file) throws IOException {
+        // First try using Tika with explicit configuration
+        try {
+            System.out.println("Trying to extract DOCX content with explicit Tika configuration...");
+            Tika configuredTika = new Tika();
+            String content = configuredTika.parseToString(file);
+            if (content != null && !content.trim().isEmpty()) {
+                System.out.println("Successfully extracted " + content.length() + " characters with configured Tika");
+                return content;
+            }
+        } catch (Exception e) {
+            System.err.println("Error with configured Tika: " + e.getMessage());
+        }
+
+        // If POI classes are available, try using them directly
+        try {
+            // Check if POI classes are available
+            Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument");
+
+            try (FileInputStream fis = new FileInputStream(file)) {
+                // Use reflection to avoid direct dependency that might not be available
+                Object document = Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument")
+                        .getConstructor(FileInputStream.class)
+                        .newInstance(fis);
+
+                Object extractor = Class.forName("org.apache.poi.xwpf.extractor.XWPFWordExtractor")
+                        .getConstructor(Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument"))
+                        .newInstance(document);
+
+                String content = (String) extractor.getClass().getMethod("getText").invoke(extractor);
+                System.out.println("POI extracted " + (content != null ? content.length() : 0) + " characters");
+
+                // Close resources
+                extractor.getClass().getMethod("close").invoke(extractor);
+
+                return content;
+            }
+        } catch (ClassNotFoundException e) {
+            System.err.println("POI classes not available: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error extracting DOCX content with POI: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // Fallback: Try to read the file as a ZIP and extract text from document.xml
+        try {
+            System.out.println("Trying fallback method to extract DOCX content...");
+            return extractTextFromDocxAsZip(file);
+        } catch (Exception e) {
+            System.err.println("Fallback extraction failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        // If all methods fail, throw an exception
+        throw new IOException("Failed to extract content from DOCX file using all available methods");
+    }
+
+    /**
+     * Extract text from a DOCX file by treating it as a ZIP archive and reading document.xml
+     * @param file The DOCX file
+     * @return The extracted text content
+     * @throws IOException if reading fails
+     */
+    private String extractTextFromDocxAsZip(File file) throws IOException {
+        StringBuilder content = new StringBuilder();
+        try (java.util.zip.ZipFile zipFile = new java.util.zip.ZipFile(file)) {
+            // Look for document.xml in the word directory
+            java.util.zip.ZipEntry documentEntry = zipFile.getEntry("word/document.xml");
+            if (documentEntry != null) {
+                try (java.io.InputStream is = zipFile.getInputStream(documentEntry)) {
+                    // Read the XML content
+                    byte[] buffer = new byte[1024];
+                    int read;
+                    StringBuilder xmlContent = new StringBuilder();
+                    while ((read = is.read(buffer)) != -1) {
+                        xmlContent.append(new String(buffer, 0, read, "UTF-8"));
+                    }
+
+                    // Extract text from XML (simple approach - extract content between <w:t> tags)
+                    String xml = xmlContent.toString();
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("<w:t[^>]*>(.*?)</w:t>", java.util.regex.Pattern.DOTALL);
+                    java.util.regex.Matcher matcher = pattern.matcher(xml);
+
+                    while (matcher.find()) {
+                        content.append(matcher.group(1)).append(" ");
+                    }
+
+                    System.out.println("Extracted " + content.length() + " characters from document.xml");
+                }
+            } else {
+                System.err.println("Could not find word/document.xml in the DOCX file");
             }
         }
         return content.toString();
