@@ -269,37 +269,57 @@ public class libraries extends AbstractApplication {
             System.out.println("File written successfully: " + targetFile.getPath() + " (" + targetFile.length() + " bytes)");
 
             // Process document if it's a supported type
-            if (DocumentProcessor.isSupportedMimeType(file.getContentType())) {
-                // Process the document with user information
-                DocumentProcessor processor = new DocumentProcessor();
-                List<DocumentFragment> fragments = processor.processDocument(
-                    targetFile.getPath(),
-                    file.getContentType(),
-                    userId.toString(),
-                    title,
-                    description,
-                    isPublic
-                );
+            String mimeType = file.getContentType();
+            System.out.println("Processing document with MIME type: " + mimeType);
 
-                // Save fragments to database
-                for (DocumentFragment fragment : fragments) {
-                    fragment.append();
+            if (DocumentProcessor.isSupportedMimeType(mimeType)) {
+                try {
+                    // Process the document with user information
+                    DocumentProcessor processor = new DocumentProcessor();
+                    List<DocumentFragment> fragments = processor.processDocument(
+                        targetFile.getPath(),
+                        mimeType,
+                        userId.toString(),
+                        title,
+                        description,
+                        isPublic
+                    );
+
+                    if (fragments.isEmpty()) {
+                        System.err.println("Warning: No fragments were generated from the document");
+                        response.setStatus(ResponseStatus.BAD_REQUEST);
+                        return "{ \"error\": \"processing_failed\", \"message\": \"Failed to extract content from document\" }";
+                    }
+
+                    // Save fragments to database
+                    for (DocumentFragment fragment : fragments) {
+                        // Save the fragment and get the generated ID
+                        fragment.appendAndGetId();
+
+                        // Log the fragment ID for debugging
+                        System.out.println("Saved fragment with ID: " + fragment.getId());
+                    }
+
+                    // Generate embeddings for the fragments
+                    EmbeddingManager embeddingManager = (EmbeddingManager) ApplicationManager.get(EmbeddingManager.class.getName());
+                    for (DocumentFragment fragment : fragments) {
+                        embeddingManager.generateEmbedding(fragment);
+                    }
+
+                    // Return success response
+                    Builder builder = new Builder();
+                    builder.put("success", true);
+                    builder.put("message", "Document uploaded and processed successfully");
+                    builder.put("title", title);
+                    builder.put("fragmentCount", fragments.size());
+
+                    return builder.toString();
+                } catch (Exception e) {
+                    System.err.println("Error processing document: " + e.getMessage());
+                    e.printStackTrace();
+                    response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+                    return "{ \"error\": \"processing_error\", \"message\": \"" + e.getMessage() + "\" }";
                 }
-
-                // Generate embeddings for the fragments
-                EmbeddingManager embeddingManager = (EmbeddingManager) ApplicationManager.get(EmbeddingManager.class.getName());
-                for (DocumentFragment fragment : fragments) {
-                    embeddingManager.generateEmbedding(fragment);
-                }
-
-                // Return success response
-                Builder builder = new Builder();
-                builder.put("success", true);
-                builder.put("message", "Document uploaded and processed successfully");
-                builder.put("title", title);
-                builder.put("fragmentCount", fragments.size());
-
-                return builder.toString();
             } else {
                 response.setStatus(ResponseStatus.BAD_REQUEST);
                 return "{ \"error\": \"unsupported_file_type\", \"message\": \"Unsupported file type: " + file.getContentType() + "\" }";
