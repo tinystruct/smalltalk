@@ -570,13 +570,13 @@
         .sidebar-toggle {
             position: fixed;
             left: 15px;
-            top: 10px;
-            padding: 5px;
+            top: 5px;
+            padding: 11px;
             z-index: 1051;
             cursor: pointer;
             border-radius: 30px;
-            width: 30px;
-            height: 30px;
+            width: 42px;
+            height: 42px;
         }
 
         .sidebar-toggle:hover {
@@ -747,7 +747,7 @@
             }
 
             .sidebar-toggle {
-                top: 10px;
+                top: 7px;
                 left: 10px;
                 width: 35px;
                 height: 35px;
