@@ -39,7 +39,7 @@ public class libraries extends AbstractApplication {
      * Libraries page
      */
     @Action("libraries")
-    public libraries librariesPage(Request request, Response response) throws ApplicationException {
+    public Object librariesPage(Request request, Response response) throws ApplicationException {
         // Check if user is authenticated
         Object userId = request.getSession().getAttribute("user_id");
         if (userId == null) {
@@ -47,7 +47,7 @@ public class libraries extends AbstractApplication {
             try {
                 Reforward reforward = new Reforward(request, response);
                 reforward.setDefault("/?q=login");
-                return (libraries) reforward.forward();
+                return reforward.forward();
             } catch (Exception e) {
                 throw new ApplicationException("Failed to redirect to login page: " + e.getMessage(), e);
             }
@@ -71,7 +71,7 @@ public class libraries extends AbstractApplication {
         try {
             // Get user's documents
             DocumentFragment fragment = new DocumentFragment();
-            Table documents = fragment.find("user_id = ?", new Object[]{userId.toString()});
+            Table documents = fragment.findWith("WHERE user_id = ?", new Object[]{userId.toString()});
 
             Builders builders = new Builders();
             for (Row row : documents) {
@@ -111,7 +111,7 @@ public class libraries extends AbstractApplication {
         try {
             // Get public documents
             DocumentFragment fragment = new DocumentFragment();
-            Table documents = fragment.find("is_public = ? AND user_id != ?", new Object[]{true, userId.toString()});
+            Table documents = fragment.findWith("WHERE is_public = ? AND user_id != ?", new Object[]{true, userId.toString()});
 
             Builders builders = new Builders();
             for (Row row : documents) {
@@ -160,7 +160,7 @@ public class libraries extends AbstractApplication {
 
             // Get all documents
             DocumentFragment fragment = new DocumentFragment();
-            Table documents = fragment.find("id > ?", new Object[]{0});
+            Table documents = fragment.findWith("WHERE id > ?", new Object[]{0});
 
             Builders builders = new Builders();
             for (Row row : documents) {
