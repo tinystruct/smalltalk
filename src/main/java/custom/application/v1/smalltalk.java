@@ -1063,7 +1063,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (fileContent != null && fileContent.length > 0) {
                 // Check if encryption is enabled
                 String encryptionEnabledStr = getConfiguration().get("file.upload.encryption.enabled");
-                boolean encryptionEnabled = encryptionEnabledStr != null && Boolean.parseBoolean(encryptionEnabledStr);
+                boolean encryptionEnabled = Boolean.parseBoolean(encryptionEnabledStr);
 
                 if (encryptionEnabled) {
                     // Write encrypted content
@@ -1169,7 +1169,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             int successCount = 0;
             for (DocumentFragment fragment : fragments) {
                 try {
-                    fragment.append();
+                    fragment.appendAndGetId();
                     System.out.println("Saved fragment " + fragment.getId() + " to database");
 
                     // Generate embedding for the fragment
@@ -1197,7 +1197,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             messageBuilder.put("message", String.format("Document '%s' has been processed into %d fragments and is now searchable.",
                     new File(filePath).getName(), fragments.size()));
             save(meetingCode, messageBuilder);
-
         } catch (ApplicationException e) {
             System.err.println("Error processing document: " + e.getMessage());
             e.printStackTrace();
@@ -1237,7 +1236,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         // Converting the file into a byte array
         // using Files.readAllBytes() method
-        byte[] arr = new byte[0];
+        byte[] arr;
         try {
             String mimeType = Files.probeContentType(path);
             if (mimeType != null) {
@@ -1342,9 +1341,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     private void notifySessionExpired(String meetingCode) {
         final Builder builder = new Builder();
-        builder.put("user", null);
+        builder.put("user", "System");
         builder.put("time", format.format(new Date()));
         builder.put("cmd", "expired");
+        builder.put("message", "Session expired");
         this.save(meetingCode, builder);
     }
 
@@ -1370,8 +1370,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private void saveChatHistory(Builder builder, String meetingCode) throws ApplicationException {
         ChatHistory history = new ChatHistory();
         history.setMeetingCode(meetingCode);
-        history.setUserName(builder.get("user").toString());
-        history.setMessage(builder.get("message").toString());
+
+        // Safely handle user field which might be null
+        Object user = builder.get("user");
+        history.setUserName(user != null ? user.toString() : "System");
+
+        // Safely handle message field which might be null
+        Object message = builder.get("message");
+        if (message != null) {
+            history.setMessage(message.toString());
+        } else {
+            // If message is null, check if there's a cmd field
+            Object cmd = builder.get("cmd");
+            history.setMessage(cmd != null ? "Command: " + cmd.toString() : "No message");
+        }
+
         history.setSessionId(builder.get("session_id") != null ? builder.get("session_id").toString() : "");
         history.setMessageType(builder.get("image") != null ? "IMAGE" : "TEXT");
         history.setImageUrl(builder.get("image") != null ? builder.get("image").toString() : null);
