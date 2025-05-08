@@ -67,7 +67,7 @@ public class libraries extends AbstractApplication {
     }
 
     /**
-     * Get user's documents
+     * Get user's non-public documents
      */
     @Action("libraries/my-documents")
     public String getMyDocuments(Request request, Response response) throws ApplicationException {
@@ -79,9 +79,9 @@ public class libraries extends AbstractApplication {
         }
 
         try {
-            // Get user's documents
+            // Get user's non-public documents
             DocumentFragment fragment = new DocumentFragment();
-            Table documents = fragment.findWith("WHERE user_id = ?", new Object[]{userId.toString()});
+            Table documents = fragment.findWith("WHERE user_id = ? AND is_public = ?", new Object[]{userId.toString(), false});
 
             Builders builders = new Builders();
             for (Row row : documents) {
@@ -120,9 +120,9 @@ public class libraries extends AbstractApplication {
         }
 
         try {
-            // Get public documents
+            // Get all public documents (including those uploaded by the current user)
             DocumentFragment fragment = new DocumentFragment();
-            Table documents = fragment.findWith("WHERE is_public = ? AND user_id != ?", new Object[]{true, userId.toString()});
+            Table documents = fragment.findWith("WHERE is_public = ?", new Object[]{true});
 
             Builders builders = new Builders();
             for (Row row : documents) {
