@@ -987,6 +987,8 @@
                         $('#chat-interface').show();
                         $('#user-info').show();
                         $('#current-username').text(response.username);
+                        struct.save("user", response.username);
+                        command("greeting");
                         // Reload the page to ensure everything is properly initialized
                         window.location.reload();
                     },
