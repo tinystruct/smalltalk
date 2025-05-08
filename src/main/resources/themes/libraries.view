@@ -175,6 +175,26 @@
         // Variables to store user info
         var userId = null;
         var isAdmin = false;
+
+        // Auto-fill title when file is selected
+        $('#documentFile').change(function() {
+            var file = this.files[0];
+            if (file) {
+                // Only set the title if it's currently empty
+                var currentTitle = $('#documentTitle').val();
+                if (!currentTitle) {
+                    // Extract filename without extension
+                    var fileName = file.name;
+                    var fileNameWithoutExt = fileName.split('.').slice(0, -1).join('.');
+                    // If filename has no extension or extraction failed, use the full filename
+                    if (!fileNameWithoutExt) {
+                        fileNameWithoutExt = fileName;
+                    }
+                    $('#documentTitle').val(fileNameWithoutExt);
+                }
+            }
+        });
+
         // Handle file upload
         $('#uploadButton').click(function() {
             // Get form data
@@ -231,14 +251,18 @@
                     // Hide progress bar
                     $('.progress').hide();
 
-                    // Show success message
+                    // Show success message briefly
                     $('#uploadSuccess').text('Document uploaded successfully').show();
 
                     // Reset form
                     $('#uploadForm')[0].reset();
 
-                    // Reload documents after a short delay
+                    // Reload documents and close the modal after a short delay
                     setTimeout(function() {
+                        // Close the modal
+                        $('#uploadModal').modal('hide');
+
+                        // Reload the document lists
                         loadMyDocuments();
                         loadPublicDocuments();
                         if ($('#adminTab').is(':visible')) {
