@@ -8,19 +8,18 @@ import custom.objects.ChatHistory;
 import custom.objects.DocumentFragment;
 import custom.objects.User;
 import custom.util.AuthenticationService;
+import custom.util.ConversationHistoryManager;
 import custom.util.DocumentProcessor;
 import custom.util.DocumentQA;
 import custom.util.EmbeddingManager;
+import custom.util.SessionVariableManager;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
 import org.tinystruct.application.Context;
 import org.tinystruct.application.SharedVariables;
 import org.tinystruct.data.FileEntity;
-import org.tinystruct.data.component.Builder;
-import org.tinystruct.data.component.Builders;
-import org.tinystruct.data.component.Row;
-import org.tinystruct.data.component.Table;
+import org.tinystruct.data.component.*;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
@@ -41,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
@@ -60,6 +60,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private static final double DEFAULT_TEMPERATURE = 0.8;
     private static final String DATE_FORMAT_PATTERN = "yyyy-M-d h:m:s";
     private static final String FILE_UPLOAD_DIR = "files";
+    private static final int MAX_CONVERSATION_HISTORY = 5; // Store up to 5 message pairs for context
 
     // Configuration keys
     public static final String CONFIG_OPENAI_API_KEY = "openai.api_key";
@@ -535,6 +536,97 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return message.replaceAll("<br>|<br />", "");
     }
 
+    /**
+     * Creates a more contextual query by combining the current message with recent conversation history
+     * This helps improve document retrieval relevance by providing more context
+     *
+     * @param currentMessage The current user message
+     * @return A contextual query that includes relevant parts of the conversation history
+     */
+    private String createContextualQuery(String sessionId, String currentMessage) {
+        StringBuilder contextualQuery = new StringBuilder(currentMessage);
+        int totalContextAdded = 0;
+
+        System.out.println("Building contextual query starting with: '" + currentMessage + "'");
+
+        // Get conversation history from our manager
+        List<Map<String, String>> conversationHistory = ConversationHistoryManager.getConversationHistory(sessionId);
+
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            // Add up to MAX_CONVERSATION_HISTORY previous message pairs
+            int count = Math.min(conversationHistory.size(), MAX_CONVERSATION_HISTORY);
+
+            for (int i = 0; i < count; i++) {
+                Map<String, String> messagePair = conversationHistory.get(i);
+                String userMessage = messagePair.get("user");
+                String assistantMessage = messagePair.get("assistant");
+
+                if (userMessage != null && assistantMessage != null) {
+                    // Add all messages regardless of length, but truncate very long messages
+                    String truncatedUserMessage = userMessage;
+                    String truncatedAssistantMessage = assistantMessage;
+
+                    // Truncate very long messages to avoid excessive token usage
+                    if (userMessage.length() > 1000) {
+                        truncatedUserMessage = userMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    if (assistantMessage.length() > 1000) {
+                        truncatedAssistantMessage = assistantMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    contextualQuery.append("\nPreviously I asked: ").append(truncatedUserMessage);
+                    contextualQuery.append("\nAnd you answered: ").append(truncatedAssistantMessage);
+
+                    totalContextAdded++;
+                    System.out.println("Added context pair #" + (i+1) + " from conversation history to query");
+                }
+            }
+        }
+
+        // Fallback to session variables if no conversation history found
+        if (totalContextAdded == 0) {
+            System.out.println("No conversation history found, falling back to session variables");
+
+            // Get conversation history from session variable manager
+            java.util.List<String[]> messagePairs = SessionVariableManager.getAllMessagePairs(sessionId);
+            System.out.println("Retrieved " + messagePairs.size() + " message pairs from session variable history");
+
+            // Add message pairs to the contextual query
+            for (int i = 0; i < messagePairs.size(); i++) {
+                String[] pair = messagePairs.get(i);
+                String userMessage = pair[0];
+                String assistantMessage = pair[1];
+
+                if (userMessage != null && !userMessage.isEmpty() &&
+                    assistantMessage != null && !assistantMessage.isEmpty()) {
+
+                    // Add all messages regardless of length, but truncate very long messages
+                    String truncatedUserMessage = userMessage;
+                    String truncatedAssistantMessage = assistantMessage;
+
+                    // Truncate very long messages to avoid excessive token usage
+                    if (userMessage.length() > 1000) {
+                        truncatedUserMessage = userMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    if (assistantMessage.length() > 1000) {
+                        truncatedAssistantMessage = assistantMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    contextualQuery.append("\nPreviously I asked: ").append(truncatedUserMessage);
+                    contextualQuery.append("\nAnd you answered: ").append(truncatedAssistantMessage);
+
+                    totalContextAdded++;
+                    System.out.println("Added context pair #" + (i+1) + " from session variable history to query");
+                }
+            }
+        }
+
+        System.out.println("Final contextual query length: " + contextualQuery.length() + " characters");
+        return contextualQuery.toString();
+    }
+
     private Builder createChatPayload(String sessionId, String message, String model) {
         Builder payload = new Builder();
         payload.put("model", model);
@@ -550,7 +642,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         messages.add(systemMessage);
 
         // Add previous context if available
-        addPreviousContext(messages);
+        addPreviousContext(messages, sessionId);
 
         // Add current message
         Builder userMessage = new Builder();
@@ -565,28 +657,77 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private String getSystemPrompt() {
         return "I am an AI assistant specialized in IT. If you enter any Linux command, " +
                 "I will execute it and display the result as you would see in a terminal. " +
-                "I can also engage in normal conversations but will consider the context " +
-                "of the conversation to provide the best answers. " +
-                "I can search through uploaded documents to find information relevant to your questions. " +
-                "If you ask me a question, I will check if there are any uploaded documents with relevant information. " +
-                "If there are, I will use that information to provide the most accurate answer possible. " +
+                "I always consider the full context of our conversation to provide the most relevant answers. " +
+                "This includes both our conversation history and any relevant documents that have been uploaded. " +
+                "When I find information in uploaded documents that's relevant to your question, I will: " +
+                "1. Use that information as my primary source for answering " +
+                "2. Cite the specific document I'm referencing " +
+                "3. Synthesize information from multiple documents if needed " +
+                "4. Maintain continuity with our previous conversation " +
                 "If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any " +
-                "reference content, you can provide the content or a url can be referenced.";
+                "reference content you can provide or a URL I can reference. " +
+                "I will always prioritize context from our conversation and uploaded documents over my general knowledge.";
     }
 
-    private void addPreviousContext(Builders messages) {
-        if (this.getVariable("previous_user_message") != null) {
-            Builder previousUser = new Builder();
-            previousUser.put("role", "user");
-            previousUser.put("content", this.getVariable("previous_user_message").getValue());
-            messages.add(previousUser);
+    private void addPreviousContext(Builders messages, String sessionId) {
+        // Try to get conversation history from our manager first
+        List<Map<String, String>> conversationHistory = ConversationHistoryManager.getConversationHistory(sessionId);
+
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            System.out.println("Adding previous context from conversation history manager");
+
+            // Add up to MAX_CONVERSATION_HISTORY previous message pairs
+            int count = Math.min(conversationHistory.size(), MAX_CONVERSATION_HISTORY);
+
+            for (int i = 0; i < count; i++) {
+                Map<String, String> messagePair = conversationHistory.get(i);
+                String userMessage = messagePair.get("user");
+                String assistantMessage = messagePair.get("assistant");
+
+                if (userMessage != null) {
+                    Builder previousUser = new Builder();
+                    previousUser.put("role", "user");
+                    previousUser.put("content", userMessage);
+                    messages.add(previousUser);
+
+                    if (assistantMessage != null) {
+                        Builder previousAssistant = new Builder();
+                        previousAssistant.put("role", "assistant");
+                        previousAssistant.put("content", assistantMessage);
+                        messages.add(previousAssistant);
+                    }
+                }
+            }
+
+            System.out.println("Added " + count + " message pairs from conversation history manager");
+            return; // Return early if we successfully added context
         }
 
-        if (this.getVariable("previous_system_message") != null) {
-            Builder previousSystem = new Builder();
-            previousSystem.put("role", "system");
-            previousSystem.put("content", this.getVariable("previous_system_message").getValue());
-            messages.add(previousSystem);
+        // Fall back to session variables if no conversation history is available
+        System.out.println("No conversation history found, falling back to session variables");
+
+        // Get conversation history from session variable manager
+        java.util.List<String[]> messagePairs = SessionVariableManager.getAllMessagePairs(sessionId);
+        System.out.println("Retrieved " + messagePairs.size() + " message pairs from session variable history");
+
+        // Add message pairs to the context
+        for (String[] pair : messagePairs) {
+            String userMessage = pair[0];
+            String assistantMessage = pair[1];
+
+            if (userMessage != null && !userMessage.isEmpty()) {
+                Builder previousUser = new Builder();
+                previousUser.put("role", "user");
+                previousUser.put("content", userMessage);
+                messages.add(previousUser);
+
+                if (assistantMessage != null && !assistantMessage.isEmpty()) {
+                    Builder previousAssistant = new Builder();
+                    previousAssistant.put("role", "assistant");
+                    previousAssistant.put("content", assistantMessage);
+                    messages.add(previousAssistant);
+                }
+            }
         }
     }
 
@@ -649,7 +790,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             systemMessage.put("content", getSystemPrompt());
             messages.add(systemMessage);
 
-            addPreviousContext(messages);
+            addPreviousContext(messages, sessionId);
 
             // Try to add relevant document context for the query
             try {
@@ -670,8 +811,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     System.out.println("No meeting code found for session ID: " + sessionId + ", using default context");
                 }
 
-                // Add document context with meeting code
-                boolean contextAdded = DocumentQA.addDocumentContextToMessages(message, meetingCode, messages);
+                // Create a more contextual query by combining the current message with recent history
+                String contextualQuery = createContextualQuery(sessionId, message);
+                System.out.println("Created contextual query: '" + contextualQuery + "'");
+
+                // Add document context with meeting code and contextual query
+                boolean contextAdded = DocumentQA.addDocumentContextToMessages(contextualQuery, meetingCode, messages);
 
                 if (contextAdded) {
                     System.out.println("Successfully added document context to messages");
@@ -743,9 +888,17 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             throw new ApplicationException("Empty response content");
         }
 
-        // Store the context for future reference
-        this.setVariable("previous_user_message", message);
-        this.setVariable("previous_system_message", choiceText);
+        // Store conversation history using our manager
+        ConversationHistoryManager.addMessagePair(sessionId, message, choiceText);
+        System.out.println("Stored conversation history for session " + sessionId);
+
+        // Also store in session variables using the dedicated manager
+        try {
+            SessionVariableManager.addMessagePair(sessionId, message, choiceText);
+        } catch (Exception e) {
+            System.err.println("Error storing conversation in session variables: " + e.getMessage());
+            // Continue execution even if variable storage fails
+        }
 
         // Handle special response types
         if (choiceText.contains(IMAGES_GENERATIONS)) {
@@ -1327,7 +1480,14 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     private void handleSessionDestroyed(SessionEvent event) {
+        String sessionId = event.getSession().getId();
         Object meetingCode = event.getSession().getAttribute("meeting_code");
+
+        // Clean up conversation history
+        ConversationHistoryManager.clearConversationHistory(sessionId);
+        SessionVariableManager.clearSession(sessionId);
+        System.out.println("Cleared conversation history for session: " + sessionId);
+
         if (meetingCode != null) {
             cleanupSession(event.getSession(), meetingCode.toString());
         }
