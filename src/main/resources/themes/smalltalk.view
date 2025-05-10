@@ -1694,7 +1694,8 @@
                             window.location.href = '/?q=talk';
                             break;
                         case 'settings':
-                            // Show settings modal
+                            // Navigate to settings page
+                            window.location.href = '/?q=settings';
                             break;
                         case 'libraries':
                             // Go to libraries page
