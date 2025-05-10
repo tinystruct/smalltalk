@@ -100,6 +100,7 @@ public class libraries extends AbstractApplication {
                 builders.add(builder);
             }
 
+
             return builders.toString();
         } catch (Exception e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
@@ -140,6 +141,7 @@ public class libraries extends AbstractApplication {
                 builder.put("userId", doc.getUserId());
                 builders.add(builder);
             }
+
 
             return builders.toString();
         } catch (Exception e) {
@@ -191,6 +193,7 @@ public class libraries extends AbstractApplication {
                 builders.add(builder);
             }
 
+
             return builders.toString();
         } catch (Exception e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
@@ -216,6 +219,22 @@ public class libraries extends AbstractApplication {
             String description = request.getParameter("description");
             String isPublicStr = request.getParameter("isPublic");
             boolean isPublic = isPublicStr != null && (isPublicStr.equals("true") || isPublicStr.equals("on"));
+
+            // Auto-generate title from filename if empty
+            if (title == null || title.trim().isEmpty()) {
+                if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+                    FileEntity fileEntity = (FileEntity) request.getAttachments().get(0);
+                    title = fileEntity.getFilename();
+                    // Remove file extension from title
+                    int lastDotIndex = title.lastIndexOf(".");
+                    if (lastDotIndex > 0) {
+                        title = title.substring(0, lastDotIndex);
+                    }
+                    // Replace underscores and hyphens with spaces
+                    title = title.replace('_', ' ').replace('-', ' ');
+                    System.out.println("Auto-generated title from filename: " + title);
+                }
+            }
 
             // Validate required fields
             if (title == null || title.trim().isEmpty()) {
