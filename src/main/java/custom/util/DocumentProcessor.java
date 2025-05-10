@@ -1,15 +1,14 @@
 package custom.util;
 
 import custom.objects.DocumentFragment;
-import org.apache.tika.Tika;
-import org.apache.tika.exception.TikaException;
 import org.tinystruct.ApplicationException;
+import org.tinystruct.ApplicationRuntimeException;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -20,8 +19,23 @@ import java.util.UUID;
  */
 public class DocumentProcessor {
 
-    private static final int MAX_FRAGMENT_SIZE = 1000; // Maximum characters per fragment
-    private static final int MIN_FRAGMENT_SIZE = 500;  // Minimum characters per fragment to aim for
+    // Token limit constants
+    private static final int MAX_TOKEN_LIMIT = 8192; // OpenAI's maximum context length
+    private static final int SAFE_TOKEN_LIMIT = 6000; // Reduced safe limit to stay well under the maximum
+
+    // Character to token ratio (approximate)
+    private static final int CHARS_PER_TOKEN = 4; // Approximate ratio for English text
+
+    // Fragment size constants (in characters)
+    private static final int DEFAULT_MAX_FRAGMENT_SIZE = 1000; // Default maximum characters per fragment
+    private static final int DEFAULT_MIN_FRAGMENT_SIZE = 500;  // Default minimum characters per fragment
+
+    // Maximum tokens per fragment
+    private static final int MAX_TOKENS_PER_FRAGMENT = 1500; // Maximum tokens per fragment
+
+    // Configurable fragment sizes
+    private int maxFragmentSize;
+    private int minFragmentSize;
 
     private static final String[] SUPPORTED_MIME_TYPES = {
         "text/plain",
@@ -36,10 +50,28 @@ public class DocumentProcessor {
         "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     };
 
-    private final Tika tika;
-
     public DocumentProcessor() {
-        this.tika = new Tika();
+        this.maxFragmentSize = DEFAULT_MAX_FRAGMENT_SIZE;
+        this.minFragmentSize = DEFAULT_MIN_FRAGMENT_SIZE;
+    }
+
+    /**
+     * Constructor with configurable fragment sizes
+     *
+     * @param maxFragmentSize Maximum characters per fragment
+     * @param minFragmentSize Minimum characters per fragment to aim for
+     */
+    public DocumentProcessor(int maxFragmentSize, int minFragmentSize) {
+        // Calculate the maximum safe fragment size in characters
+        int maxSafeCharSize = SAFE_TOKEN_LIMIT * CHARS_PER_TOKEN;
+
+        // Ensure the fragment size doesn't exceed the token limit
+        this.maxFragmentSize = Math.min(maxFragmentSize, maxSafeCharSize);
+        this.minFragmentSize = Math.min(minFragmentSize, this.maxFragmentSize / 2);
+
+        System.out.println("Configured DocumentProcessor with maxFragmentSize=" + this.maxFragmentSize +
+                          " chars (approx. " + (this.maxFragmentSize / CHARS_PER_TOKEN) + " tokens), " +
+                          "minFragmentSize=" + this.minFragmentSize + " chars");
     }
 
     /**
@@ -62,6 +94,23 @@ public class DocumentProcessor {
     }
 
     /**
+     * Check if a given file extension is supported for document processing
+     * @param fileName The file name to check
+     * @return True if the file extension is supported
+     */
+    public static boolean isSupportedFileExtension(String fileName) {
+        if (fileName == null) return false;
+
+        fileName = fileName.toLowerCase();
+        return fileName.endsWith(".docx") ||
+               fileName.endsWith(".doc") ||
+               fileName.endsWith(".pdf") ||
+               fileName.endsWith(".txt") ||
+               fileName.endsWith(".md") ||
+               fileName.endsWith(".csv");
+    }
+
+    /**
      * Process a document file into fragments
      * @param filePath Path to the document file
      * @param mimeType MIME type of the document
@@ -80,7 +129,13 @@ public class DocumentProcessor {
      * @throws ApplicationException if processing fails
      */
     public List<DocumentFragment> processDocument(String filePath, String mimeType, String userId, String title, String description, boolean isPublic) throws ApplicationException {
-        if (!isSupportedMimeType(mimeType)) {
+        // Check if the file extension is supported
+        if (!isSupportedFileExtension(filePath)) {
+            throw new ApplicationException("Unsupported file type: " + filePath);
+        }
+
+        // For backward compatibility, also check MIME type if provided
+        if (mimeType != null && !mimeType.isEmpty() && !isSupportedMimeType(mimeType)) {
             throw new ApplicationException("Unsupported MIME type: " + mimeType);
         }
 
@@ -93,7 +148,7 @@ public class DocumentProcessor {
 
         try {
             // Extract content using Tika for rich documents or direct reading for text files
-            String content = extractContent(filePath, mimeType);
+            String content = extractContent(filePath);
 
             // Check if we got any content
             if (content == null || content.trim().isEmpty()) {
@@ -166,80 +221,14 @@ public class DocumentProcessor {
 
     /**
      * Extract content from a document based on its MIME type
+     *
      * @param filePath Path to the document file
-     * @param mimeType MIME type of the document
      * @return Extracted text content
      * @throws IOException if file reading fails
      */
-    private String extractContent(String filePath, String mimeType) throws IOException {
+    private String extractContent(String filePath) throws IOException, ApplicationException {
         File file = new File(filePath);
-
-        // Detect MIME type if not provided
-        String detectedMimeType = mimeType != null ? mimeType : tika.detect(file);
-        System.out.println("Processing file: " + filePath + " with MIME type: " + detectedMimeType);
-
-        // For simple text files, use direct file reading for efficiency
-        if (detectedMimeType.equals("text/plain") ||
-            detectedMimeType.equals("text/markdown") ||
-            detectedMimeType.equals("text/csv")) {
-            return readFileContent(file);
-        }
-
-        try {
-            // Use Tika to extract text content from rich documents
-            String content = tika.parseToString(file);
-
-            // Check if content was extracted successfully
-            if (content == null || content.trim().isEmpty()) {
-                System.err.println("Warning: Tika extracted empty content from file: " + filePath);
-
-                // For DOCX files, try an alternative approach if the content is empty
-                if (detectedMimeType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
-                    System.out.println("Attempting alternative DOCX parsing using Apache POI...");
-                    try {
-                        content = extractDocxContent(file);
-
-                        if (content == null || content.trim().isEmpty()) {
-                            System.err.println("Alternative parsing also produced empty content");
-                        } else {
-                            System.out.println("Alternative parsing successful, extracted " + content.length() + " characters");
-                        }
-                    } catch (Exception ex) {
-                        System.err.println("Alternative parsing failed: " + ex.getMessage());
-                        ex.printStackTrace();
-                    }
-                }
-            } else {
-                System.out.println("Successfully extracted " + content.length() + " characters from document");
-            }
-
-            return content;
-        } catch (TikaException e) {
-            System.err.println("Tika exception: " + e.getMessage());
-            e.printStackTrace();
-            throw new IOException("Failed to parse document with Tika: " + e.getMessage(), e);
-        } catch (Exception e) {
-            System.err.println("Unexpected exception during content extraction: " + e.getMessage());
-            e.printStackTrace();
-            throw new IOException("Unexpected error during content extraction: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * Read the content of a plain text file
-     * @param file The file to read
-     * @return The file content as a string
-     * @throws IOException if reading fails
-     */
-    private String readFileContent(File file) throws IOException {
-        StringBuilder content = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                content.append(line).append("\n");
-            }
-        }
-        return content.toString();
+        return extractContent(file);
     }
 
     /**
@@ -248,25 +237,47 @@ public class DocumentProcessor {
      * @return The extracted text content
      * @throws IOException if reading fails
      */
-    private String extractDocxContent(File file) throws IOException {
-        // First try using Tika with explicit configuration
+    private String extractContent(File file) throws ApplicationException {
         try {
-            System.out.println("Trying to extract DOCX content with explicit Tika configuration...");
-            Tika configuredTika = new Tika();
-            String content = configuredTika.parseToString(file);
-            if (content != null && !content.trim().isEmpty()) {
-                System.out.println("Successfully extracted " + content.length() + " characters with configured Tika");
-                return content;
+            // Detect file type based on extension
+            String fileName = file.getName().toLowerCase();
+            System.out.println("Processing file: " + fileName);
+
+            // Process based on file extension
+            if (fileName.endsWith(".docx")) {
+                return extractDocx(file);
+            } else if (fileName.endsWith(".doc")) {
+                return extractDoc(file);
+            } else if (fileName.endsWith(".pdf")) {
+                return extractPdf(file);
+            } else if (fileName.endsWith(".txt") || fileName.endsWith(".md") || fileName.endsWith(".csv")) {
+                return new String(Files.readAllBytes(file.toPath()));
+            } else {
+                // For unknown types, try to extract as DOCX first, then as plain text
+                try {
+                    return extractDocx(file);
+                } catch (Exception e) {
+                    System.out.println("Failed to extract as DOCX, trying as plain text");
+                    return new String(Files.readAllBytes(file.toPath()));
+                }
             }
-        } catch (Exception e) {
-            System.err.println("Error with configured Tika: " + e.getMessage());
+        } catch (IOException e) {
+            throw new ApplicationException("Failed to extract content from file: " + e.getMessage(), e);
         }
+    }
 
-        // If POI classes are available, try using them directly
+    /**
+     * Extract text from a DOCX file (Office Open XML)
+     * @param file The DOCX file
+     * @return The extracted text
+     * @throws IOException If extraction fails
+     */
+    private String extractDocx(File file) throws IOException {
+        System.out.println("Extracting DOCX file...");
+
         try {
-            // Check if POI classes are available
+            // Try using Apache POI first
             Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument");
-
             try (FileInputStream fis = new FileInputStream(file)) {
                 // Use reflection to avoid direct dependency that might not be available
                 Object document = Class.forName("org.apache.poi.xwpf.usermodel.XWPFDocument")
@@ -283,26 +294,115 @@ public class DocumentProcessor {
                 // Close resources
                 extractor.getClass().getMethod("close").invoke(extractor);
 
-                return content;
+                if (content != null && !content.trim().isEmpty()) {
+                    return content;
+                }
             }
         } catch (ClassNotFoundException e) {
             System.err.println("POI classes not available: " + e.getMessage());
         } catch (Exception e) {
             System.err.println("Error extracting DOCX content with POI: " + e.getMessage());
-            e.printStackTrace();
         }
 
         // Fallback: Try to read the file as a ZIP and extract text from document.xml
         try {
             System.out.println("Trying fallback method to extract DOCX content...");
             return extractTextFromDocxAsZip(file);
+        } catch (IOException e) {
+            System.err.println("Error extracting DOCX content as ZIP: " + e.getMessage());
+            throw new IOException("Failed to extract DOCX content: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Extract text from a legacy DOC file (Microsoft Word 97-2003)
+     * @param file The DOC file
+     * @return The extracted text
+     * @throws IOException If extraction fails
+     */
+    private String extractDoc(File file) throws IOException {
+        System.out.println("Extracting DOC file...");
+
+        try {
+            // Try using Apache POI HWPF
+            Class.forName("org.apache.poi.hwpf.HWPFDocument");
+
+            try (FileInputStream fis = new FileInputStream(file)) {
+                // Use reflection to avoid direct dependency that might not be available
+                Object document = Class.forName("org.apache.poi.hwpf.HWPFDocument")
+                        .getConstructor(InputStream.class)
+                        .newInstance(fis);
+
+                Object extractor = Class.forName("org.apache.poi.hwpf.extractor.WordExtractor")
+                        .getConstructor(Class.forName("org.apache.poi.hwpf.HWPFDocument"))
+                        .newInstance(document);
+
+                String content = (String) extractor.getClass().getMethod("getText").invoke(extractor);
+                System.out.println("POI extracted " + (content != null ? content.length() : 0) + " characters from DOC");
+
+                // Close resources
+                extractor.getClass().getMethod("close").invoke(extractor);
+
+                if (content != null && !content.trim().isEmpty()) {
+                    return content;
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            System.err.println("POI HWPF classes not available: " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("Fallback extraction failed: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Error extracting DOC content with POI: " + e.getMessage());
         }
 
-        // If all methods fail, throw an exception
-        throw new IOException("Failed to extract content from DOCX file using all available methods");
+        // No fallback available for DOC files
+        throw new IOException("Failed to extract DOC content: No suitable extractor available");
+    }
+
+    /**
+     * Extract text from a PDF file
+     * @param file The PDF file
+     * @return The extracted text
+     * @throws IOException If extraction fails
+     */
+    private String extractPdf(File file) throws IOException {
+        System.out.println("Extracting PDF file...");
+
+        try {
+            // Try using PDFBox if available
+            Class.forName("org.apache.pdfbox.pdmodel.PDDocument");
+
+            Object document = null;
+            try {
+                document = Class.forName("org.apache.pdfbox.pdmodel.PDDocument")
+                        .getMethod("load", File.class)
+                        .invoke(null, file);
+
+                Object extractor = Class.forName("org.apache.pdfbox.text.PDFTextStripper")
+                        .getConstructor()
+                        .newInstance();
+
+                String content = (String) extractor.getClass().getMethod("getText",
+                        Class.forName("org.apache.pdfbox.pdmodel.PDDocument"))
+                        .invoke(extractor, document);
+
+                System.out.println("PDFBox extracted " + (content != null ? content.length() : 0) + " characters");
+
+                if (content != null && !content.trim().isEmpty()) {
+                    return content;
+                }
+            } finally {
+                // Close the document
+                if (document != null) {
+                    document.getClass().getMethod("close").invoke(document);
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            System.err.println("PDFBox classes not available: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error extracting PDF content with PDFBox: " + e.getMessage());
+        }
+
+        // No fallback available for PDF files
+        throw new IOException("Failed to extract PDF content: No suitable extractor available");
     }
 
     /**
@@ -326,13 +426,17 @@ public class DocumentProcessor {
                         xmlContent.append(new String(buffer, 0, read, "UTF-8"));
                     }
 
-                    // Extract text from XML (simple approach - extract content between <w:t> tags)
+                    // Extract text from XML - only get the actual text content between <w:t> tags
                     String xml = xmlContent.toString();
                     java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("<w:t[^>]*>(.*?)</w:t>", java.util.regex.Pattern.DOTALL);
                     java.util.regex.Matcher matcher = pattern.matcher(xml);
 
                     while (matcher.find()) {
-                        content.append(matcher.group(1)).append(" ");
+                        // Only add the actual text content (group 1), not the XML tags
+                        String textContent = matcher.group(1);
+                        if (textContent != null && !textContent.trim().isEmpty()) {
+                            content.append(textContent).append(" ");
+                        }
                     }
 
                     System.out.println("Extracted " + content.length() + " characters from document.xml");
@@ -341,7 +445,8 @@ public class DocumentProcessor {
                 System.err.println("Could not find word/document.xml in the DOCX file");
             }
         }
-        return content.toString();
+
+        return content.toString().trim();
     }
 
     /**
@@ -352,10 +457,16 @@ public class DocumentProcessor {
     private List<String> splitContentIntoFragments(String content) {
         List<String> fragments = new ArrayList<>();
 
+        // Calculate maximum characters per fragment based on token limit
+        int maxCharsPerFragment = MAX_TOKENS_PER_FRAGMENT * CHARS_PER_TOKEN;
+        System.out.println("Using max chars per fragment: " + maxCharsPerFragment +
+                          " (approx. " + MAX_TOKENS_PER_FRAGMENT + " tokens)");
+
         // Split by paragraphs first (one or more newlines)
         String[] paragraphs = content.split("\\n\\s*\\n");
 
         StringBuilder currentFragment = new StringBuilder();
+        int estimatedTokens = 0;
 
         for (String paragraph : paragraphs) {
             // Skip empty paragraphs
@@ -363,16 +474,26 @@ public class DocumentProcessor {
                 continue;
             }
 
-            // If adding this paragraph would exceed the max size, start a new fragment
-            if (currentFragment.length() + paragraph.length() > MAX_FRAGMENT_SIZE) {
+            // Estimate tokens in this paragraph
+            int paragraphTokens = estimateTokens(paragraph);
+            System.out.println("Paragraph length: " + paragraph.length() + " chars, estimated tokens: " + paragraphTokens);
+
+            // If adding this paragraph would exceed the token limit, start a new fragment
+            if (estimatedTokens + paragraphTokens > MAX_TOKENS_PER_FRAGMENT) {
                 // Only save if we have something significant
                 if (currentFragment.length() > 0) {
-                    fragments.add(currentFragment.toString().trim());
+                    String fragment = currentFragment.toString().trim();
+                    fragments.add(fragment);
+                    System.out.println("Created fragment with " + fragment.length() + " chars, approx. " +
+                                      estimateTokens(fragment) + " tokens");
+
                     currentFragment = new StringBuilder();
+                    estimatedTokens = 0;
                 }
 
                 // If the paragraph itself is too large, split it further
-                if (paragraph.length() > MAX_FRAGMENT_SIZE) {
+                if (paragraphTokens > MAX_TOKENS_PER_FRAGMENT) {
+                    System.out.println("Paragraph exceeds token limit, splitting further");
                     splitLargeParagraph(paragraph, fragments);
                     continue;
                 }
@@ -380,20 +501,44 @@ public class DocumentProcessor {
 
             // Add the paragraph to the current fragment
             currentFragment.append(paragraph).append("\n\n");
+            estimatedTokens += paragraphTokens + 2; // Add 2 tokens for the newlines
 
             // If we've accumulated enough text for a decent-sized fragment, save it
-            if (currentFragment.length() >= MIN_FRAGMENT_SIZE) {
-                fragments.add(currentFragment.toString().trim());
+            if (estimatedTokens >= MAX_TOKENS_PER_FRAGMENT / 2) {
+                String fragment = currentFragment.toString().trim();
+                fragments.add(fragment);
+                System.out.println("Created fragment with " + fragment.length() + " chars, approx. " +
+                                  estimateTokens(fragment) + " tokens");
+
                 currentFragment = new StringBuilder();
+                estimatedTokens = 0;
             }
         }
 
         // Add any remaining content
         if (currentFragment.length() > 0) {
-            fragments.add(currentFragment.toString().trim());
+            String fragment = currentFragment.toString().trim();
+            fragments.add(fragment);
+            System.out.println("Created final fragment with " + fragment.length() + " chars, approx. " +
+                              estimateTokens(fragment) + " tokens");
         }
 
         return fragments;
+    }
+
+    /**
+     * Estimate the number of tokens in a text string
+     * This is a simple approximation based on character count
+     * @param text The text to estimate tokens for
+     * @return Estimated token count
+     */
+    private int estimateTokens(String text) {
+        if (text == null || text.isEmpty()) {
+            return 0;
+        }
+
+        // Simple approximation: 1 token ≈ 4 characters for English text
+        return (int) Math.ceil((double) text.length() / CHARS_PER_TOKEN);
     }
 
     /**
@@ -406,6 +551,7 @@ public class DocumentProcessor {
         String[] sentences = paragraph.split("\\. ");
 
         StringBuilder currentFragment = new StringBuilder();
+        int estimatedTokens = 0;
 
         for (String sentence : sentences) {
             // Add period back since it was removed by the split
@@ -413,19 +559,48 @@ public class DocumentProcessor {
                 sentence = sentence + ". ";
             }
 
-            // If adding this sentence would exceed the max size, start a new fragment
-            if (currentFragment.length() + sentence.length() > MAX_FRAGMENT_SIZE) {
-                fragments.add(currentFragment.toString().trim());
-                currentFragment = new StringBuilder();
+            // Estimate tokens in this sentence
+            int sentenceTokens = estimateTokens(sentence);
+
+            // If adding this sentence would exceed the token limit, start a new fragment
+            if (estimatedTokens + sentenceTokens > MAX_TOKENS_PER_FRAGMENT) {
+                if (currentFragment.length() > 0) {
+                    String fragment = currentFragment.toString().trim();
+                    fragments.add(fragment);
+                    System.out.println("Created sentence fragment with " + fragment.length() + " chars, approx. " +
+                                      estimateTokens(fragment) + " tokens");
+
+                    currentFragment = new StringBuilder();
+                    estimatedTokens = 0;
+                }
+
+                // If the sentence itself is extremely large, we might need to split it further
+                // This is a rare case, but we handle it by truncating
+                if (sentenceTokens > MAX_TOKENS_PER_FRAGMENT) {
+                    System.out.println("Warning: Very long sentence detected (" + sentenceTokens + " tokens), truncating");
+                    // Split the sentence into chunks that fit within token limit
+                    int maxChars = MAX_TOKENS_PER_FRAGMENT * CHARS_PER_TOKEN;
+                    for (int i = 0; i < sentence.length(); i += maxChars) {
+                        int endIndex = Math.min(i + maxChars, sentence.length());
+                        String chunk = sentence.substring(i, endIndex);
+                        fragments.add(chunk);
+                        System.out.println("Created truncated fragment with " + chunk.length() + " chars");
+                    }
+                    continue;
+                }
             }
 
             // Add the sentence to the current fragment
             currentFragment.append(sentence);
+            estimatedTokens += sentenceTokens;
         }
 
         // Add any remaining content
         if (currentFragment.length() > 0) {
-            fragments.add(currentFragment.toString().trim());
+            String fragment = currentFragment.toString().trim();
+            fragments.add(fragment);
+            System.out.println("Created final sentence fragment with " + fragment.length() + " chars, approx. " +
+                              estimateTokens(fragment) + " tokens");
         }
     }
 
