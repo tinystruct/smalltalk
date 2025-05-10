@@ -69,3 +69,25 @@ CREATE TABLE IF NOT EXISTS chat_history (
 -- Create indexes for chat_history
 CREATE INDEX idx_meeting_code ON chat_history(meeting_code);
 CREATE INDEX idx_chat_created_at ON chat_history(created_at);
+
+-- Create table for user-specific system prompts
+CREATE TABLE IF NOT EXISTS user_prompts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    system_prompt TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Add index for faster lookups by user_id
+CREATE INDEX idx_user_prompts_id ON user_prompts(id);
+CREATE INDEX idx_user_prompts_user_id ON user_prompts(user_id);
+
+-- SQLite doesn't support ON UPDATE CURRENT_TIMESTAMP, so we'll need to use triggers
+CREATE TRIGGER IF NOT EXISTS update_user_prompts_timestamp
+AFTER UPDATE ON user_prompts
+FOR EACH ROW
+BEGIN
+    UPDATE user_prompts SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
