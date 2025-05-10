@@ -7,19 +7,18 @@ import custom.ai.StabilityAI;
 import custom.objects.ChatHistory;
 import custom.objects.DocumentFragment;
 import custom.objects.User;
-import custom.util.AuthenticationService;
-import custom.util.ConversationHistoryManager;
-import custom.util.DocumentProcessor;
-import custom.util.DocumentQA;
-import custom.util.EmbeddingManager;
-import custom.util.SessionVariableManager;
+import custom.util.*;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
+
 import org.tinystruct.application.Context;
 import org.tinystruct.application.SharedVariables;
 import org.tinystruct.data.FileEntity;
-import org.tinystruct.data.component.*;
+import org.tinystruct.data.component.Builder;
+import org.tinystruct.data.component.Builders;
+import org.tinystruct.data.component.Row;
+import org.tinystruct.data.component.Table;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
@@ -40,14 +39,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static custom.ai.OpenAI.*;
-import static org.tinystruct.http.Constants.HTTP_HOST;
+import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
@@ -81,9 +79,24 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             configureSecurity();
             initializeAIServices();
             setupEventHandling();
+
+            // Actions are registered using annotations
         } catch (Exception e) {
             throw new ApplicationRuntimeException("Failed to initialize smalltalk: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Get the default system prompt as JSON
+     * This is used by the settings page to reset to the default prompt
+     *
+     * @return JSON with the default prompt
+     */
+    @Action("smalltalk/default-prompt")
+    public String getDefaultPrompt(Request request, Response response) {
+        Builder builder = new Builder();
+        builder.put("default_prompt", getDefaultSystemPrompt());
+        return builder.toString();
     }
 
     private void initializeBasicSettings() {
@@ -579,7 +592,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     contextualQuery.append("\nAnd you answered: ").append(truncatedAssistantMessage);
 
                     totalContextAdded++;
-                    System.out.println("Added context pair #" + (i+1) + " from conversation history to query");
+                    System.out.println("Added context pair #" + (i + 1) + " from conversation history to query");
                 }
             }
         }
@@ -599,7 +612,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 String assistantMessage = pair[1];
 
                 if (userMessage != null && !userMessage.isEmpty() &&
-                    assistantMessage != null && !assistantMessage.isEmpty()) {
+                        assistantMessage != null && !assistantMessage.isEmpty()) {
 
                     // Add all messages regardless of length, but truncate very long messages
                     String truncatedUserMessage = userMessage;
@@ -618,7 +631,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                     contextualQuery.append("\nAnd you answered: ").append(truncatedAssistantMessage);
 
                     totalContextAdded++;
-                    System.out.println("Added context pair #" + (i+1) + " from session variable history to query");
+                    System.out.println("Added context pair #" + (i + 1) + " from session variable history to query");
                 }
             }
         }
@@ -654,7 +667,65 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return payload;
     }
 
-    private String getSystemPrompt() {
+    /**
+     * Get the system prompt for the current user
+     * If the user has a custom prompt, use that, otherwise use the default prompt
+     *
+     * @return The system prompt to use
+     */
+    public String getSystemPrompt() {
+        // Default system prompt
+        String defaultPrompt = "I am an AI assistant specialized in IT. If you enter any Linux command, " +
+                "I will execute it and display the result as you would see in a terminal. " +
+                "I always consider the full context of our conversation to provide the most relevant answers. " +
+                "This includes both our conversation history and any relevant documents that have been uploaded. " +
+                "When I find information in uploaded documents that's relevant to your question, I will: " +
+                "1. Use that information as my primary source for answering " +
+                "2. Cite the specific document I'm referencing " +
+                "3. Synthesize information from multiple documents if needed " +
+                "4. Maintain continuity with our previous conversation " +
+                "If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any " +
+                "reference content you can provide or a URL I can reference. " +
+                "I will always prioritize context from our conversation and uploaded documents over my general knowledge.";
+
+        try {
+            // Try to get the current user
+            Context context = this.getContext();
+            if (context != null) {
+                Request request = (Request) context.getAttribute(HTTP_REQUEST);
+                if (request != null) {
+                    Response response = (Response) context.getAttribute(HTTP_RESPONSE);
+                    if(request.getSession().getAttribute("user_id") == null){
+                        response.setStatus(ResponseStatus.UNAUTHORIZED);
+                        return "{ \"error\": \"authentication_required\" }";
+                    }
+
+                    String userId = request.getSession().getAttribute("user_id").toString();
+                    User user = AuthenticationService.getCurrentUser(userId);
+                    if (user != null) {
+                        // Try to get the user's custom prompt
+                        custom.objects.UserPrompt userPrompt = custom.util.UserPromptService.getUserPrompt(user.getId());
+                        if (userPrompt != null) {
+                            return userPrompt.getSystemPrompt();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting user's custom prompt: " + e.getMessage());
+            // Fall back to default prompt
+        }
+
+        return defaultPrompt;
+    }
+
+    /**
+     * Get the default system prompt
+     * This is used by the settings page to show the default prompt
+     *
+     * @return The default system prompt
+     */
+    public String getDefaultSystemPrompt() {
         return "I am an AI assistant specialized in IT. If you enter any Linux command, " +
                 "I will execute it and display the result as you would see in a terminal. " +
                 "I always consider the full context of our conversation to provide the most relevant answers. " +
@@ -748,8 +819,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Check if API key is configured
         String API_KEY = getConfiguration().get(CONFIG_OPENAI_API_KEY);
         if (API_KEY == null || API_KEY.trim().isEmpty() ||
-            API_KEY.equals("your_openai_api_key_here") ||
-            API_KEY.equals("$_OPENAI_API_KEY")) {
+                API_KEY.equals("your_openai_api_key_here") ||
+                API_KEY.equals("$_OPENAI_API_KEY")) {
 
             // Try to get from environment variable
             String envApiKey = System.getenv("OPENAI_API_KEY");
@@ -1302,12 +1373,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             DocumentProcessor processor = new DocumentProcessor();
             List<DocumentFragment> fragments = processor.processDocument(
-                filePath,
-                mimeType.trim(),
-                userId,
-                title,
-                description,
-                true  // Public by default
+                    filePath,
+                    mimeType.trim(),
+                    userId,
+                    title,
+                    description,
+                    true  // Public by default
             );
 
             System.out.println("Successfully processed document into " + fragments.size() + " fragments");
@@ -1684,7 +1755,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             builder.put("email", user.getEmail() != null ? user.getEmail() : "");
             builder.put("fullName", user.getFullName() != null ? user.getFullName() : "");
             builder.put("lastLogin", user.getLastLogin() != null ? format.format(user.getLastLogin()) : "");
-            builder.put("isActive",user.getIsActive());
+            builder.put("isActive", user.getIsActive());
 
             return builder.toString();
         } catch (ApplicationException e) {

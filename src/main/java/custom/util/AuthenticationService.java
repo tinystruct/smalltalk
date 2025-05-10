@@ -3,6 +3,7 @@ package custom.util;
 import custom.objects.User;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Table;
+import org.tinystruct.http.Session;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -217,5 +218,34 @@ public class AuthenticationService {
             service = new AuthenticationService();
         }
         return service;
+    }
+
+    /**
+     * Get the current authenticated user from the request
+     *
+     * @param userId@return The authenticated user, or null if not authenticated
+     * @throws ApplicationException if an error occurs
+     */
+    public static User getCurrentUser(String userId) throws ApplicationException {
+        try {
+            if (userId == null) {
+                System.err.println("Cannot get current user: user_id attribute is null");
+                return null;
+            }
+
+            // Get user by ID
+            String userIdStr = userId.toString();
+            User user = getInstance().findUserById(userIdStr);
+
+            if (user == null) {
+                System.err.println("Cannot get current user: user not found with ID " + userIdStr);
+                return null;
+            }
+
+            return user;
+        } catch (Exception e) {
+            System.err.println("Error getting current user: " + e.getMessage());
+            throw new ApplicationException("Error getting current user: " + e.getMessage(), e);
+        }
     }
 }
