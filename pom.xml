@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>1.5.5</version>
+            <version>1.6.7</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.groovy/groovy -->
         <dependency>
@@ -45,7 +45,7 @@
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>
-            <version>2.3.4</version>
+            <version>2.5.9</version>
         </dependency>
     </dependencies>
     <build>
