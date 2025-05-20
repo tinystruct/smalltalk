@@ -83,11 +83,11 @@
             background-color: #22272e;
         }
 
-        #list ul li.even, #list ul li.chat-gpt {
+        #list ul li.even, #list ul li.chat-gpt, #list ul li.pre-wrapper.even {
             background: #e7e7e7;
         }
 
-        #list.dark-green ul li.even, #list.light-green ul li.even, #list.dark-green ul li.chat-gpt, #list.light-green ul li.chat-gpt {
+        #list.dark-green ul li.even, #list.light-green ul li.even, #list.dark-green ul li.chat-gpt, #list.light-green ul li.chat-gpt, #list.dark-green ul li.pre-wrapper.even, #list.light-green ul li.pre-wrapper.even {
             background: #033300;
         }
 
@@ -533,6 +533,68 @@
             word-wrap: break-word !important; /* Internet Explorer 5.5+ */
         }
 
+        /* Styling for streaming messages */
+        .typing-indicator {
+            display: inline-block;
+            position: relative;
+            padding: 0.5em;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .typing-indicator::after {
+            content: '...';
+            animation: typing 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        @keyframes typing {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
+
+        /* ChatGPT toggle button styles */
+        .chatgpt-toggle-wrapper {
+            position: absolute;
+            right: 50px;
+            bottom: 10px;
+            z-index: 1;
+        }
+
+        .chatgpt-toggle {
+            display: inline-block;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .chatgpt-toggle input {
+            display: none;
+        }
+
+        .chatgpt-toggle-label {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            color: #666;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .chatgpt-toggle input:checked + .chatgpt-toggle-label {
+            background-color: #10a37f; /* ChatGPT green color */
+            color: white;
+        }
+
         ul#messages .content ul {
 
         }
@@ -890,9 +952,13 @@
     <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/marked.min.js"></script>
     <script type="text/javascript" src="/scripts/highlight/highlight.min.js"></script>
+    <script type="text/javascript" src="/scripts/sse-client.js"></script>
+    <script type="text/javascript" src="/scripts/smalltalk-sse.js"></script>
 
     <script type="text/javascript">
         //<![CDATA[
+        // Initialize the application
+
         var timer = new Timer(.5, function () {
         });
         var old_title = document.title;
@@ -982,6 +1048,10 @@
                     dataType: 'json',
                     success: function(response) {
                         console.log('Login successful:', response);
+                        // Set a flag to indicate we just logged in - use localStorage for persistence across page reloads
+                        localStorage.setItem('justLoggedIn', 'true');
+                        localStorage.setItem('loginTimestamp', Date.now().toString());
+
                         // Hide login form and show chat interface
                         $('#auth-forms').hide();
                         $('#chat-interface').show();
@@ -989,6 +1059,7 @@
                         $('#current-username').text(response.username);
                         struct.save("user", response.username);
                         command("greeting");
+
                         // Reload the page to ensure everything is properly initialized
                         window.location.reload();
                     },
@@ -1068,16 +1139,60 @@
 
         function update($data) {
             if (typeof ($data.message) != 'undefined') {
-                placeholder = document.createElement('li');
-                placeholder.setAttribute('class', 'content');
-                placeholder.setAttribute('class', 'pre-wrapper');
-                placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
-                $('#messages').append(placeholder);
+                let placeholder;
+                let isNewElement = true;
+
+                // Check if this is a streaming update (has ID and streaming flag)
+                if ($data.id && ($data.streaming === true || $data.incremental === true)) {
+                    // Look for an existing element with this ID
+                    const existingElement = document.querySelector(`#messages li[data-message-id="${$data.id}"]`);
+                    if (existingElement) {
+                        // Use the existing element
+                        placeholder = existingElement;
+                        isNewElement = false;
+                        console.log('Updating existing message element with ID:', $data.id);
+                    }
+                }
+
+                // If no existing element was found, create a new one
+                if (isNewElement) {
+                    placeholder = document.createElement('li');
+                    placeholder.setAttribute('class', 'pre-wrapper');
+
+                    // Add data-message-id attribute for streaming updates
+                    if ($data.id) {
+                        placeholder.setAttribute('data-message-id', $data.id);
+                        console.log('Created message element with ID:', $data.id);
+                    } else {
+                        // Generate a unique ID if none is provided
+                        const uniqueId = 'msg_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000);
+                        placeholder.setAttribute('data-message-id', uniqueId);
+                        console.log('Created message element with generated ID:', uniqueId);
+                    }
+
+                    placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
+                    $('#messages').append(placeholder);
+                }
 
                 $text = $data.message;
 
                 if ($data.user == 'ChatGPT') {
-                    placeholder.innerHTML += "<span class='content'>";
+                    if (isNewElement) {
+                        // For new elements, append the content span
+                        placeholder.innerHTML += "<span class='content'>";
+                    } else {
+                        // For existing elements, update more carefully to preserve structure
+                        const existingContent = placeholder.querySelector('.content');
+                        if (existingContent) {
+                            // Clear the existing content
+                            existingContent.innerHTML = '';
+                        } else {
+                            // If no content span exists, create one
+                            const contentSpan = document.createElement('span');
+                            contentSpan.className = 'content';
+                            placeholder.appendChild(contentSpan);
+                        }
+                    }
 
                     // Check if the message contains PlantUML images
                     if ($text.indexOf("<placeholder-image>") >= 0) {
@@ -1118,10 +1233,14 @@
                         animation_timer.setAction(function () {
                             if (k < $tmp.length) {
                                 c = $tmp.charAt(k++);
+
+                                // Get the content span
+                                const contentSpan = placeholder.querySelector('.content') || placeholder;
+
                                 if (c == '\n')
-                                    placeholder.innerHTML += "  \n";
+                                    contentSpan.innerHTML += "  \n";
                                 else
-                                    placeholder.innerHTML += c;
+                                    contentSpan.innerHTML += c;
 
                                 if (c == ',') {
                                     this.setInterval(0.1);
@@ -1136,8 +1255,9 @@
                         animation_timer.start().complete(function () {
                             this.stop();
                             placeholder.innerHTML += "</span>";
-                            $(placeholder).removeClass('pre-wrapper');
-                            $(placeholder).addClass('chat-gpt');
+                            // Keep the pre-wrapper class to maintain consistent styling
+                            // $(placeholder).removeClass('pre-wrapper');
+                            // $(placeholder).addClass('chat-gpt');
 
                             // Parse the markdown content
                             var content = placeholder.textContent;
@@ -1202,10 +1322,14 @@
                         animation_timer.setAction(function () {
                             if (k < $tmp.length) {
                                 c = $tmp.charAt(k++);
+
+                                // Get the content span
+                                const contentSpan = placeholder.querySelector('.content') || placeholder;
+
                                 if (c == '\n')
-                                    placeholder.innerHTML += "  \n";
+                                    contentSpan.innerHTML += "  \n";
                                 else
-                                    placeholder.innerHTML += c;
+                                    contentSpan.innerHTML += c;
 
                                 if (c == ',') {
                                     this.setInterval(0.1);
@@ -1221,13 +1345,30 @@
                         animation_timer.start().complete(function () {
                             this.stop();
                             placeholder.innerHTML += "</span>";
-                            $(placeholder).removeClass('pre-wrapper');
-                            $(placeholder).addClass('chat-gpt');
+                            // Keep the pre-wrapper class to maintain consistent styling
+                            // $(placeholder).removeClass('pre-wrapper');
+                            // $(placeholder).addClass('chat-gpt');
                             placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
                         });
                     }
                 } else {
-                    placeholder.innerHTML += "<span class='content'>" + $data.message + "</span>";
+                    if (isNewElement) {
+                        // For new elements, append the content span
+                        placeholder.innerHTML += "<span class='content'>" + $data.message + "</span>";
+                    } else {
+                        // For existing elements, update more carefully to preserve structure
+                        let contentSpan = placeholder.querySelector('.content');
+                        if (contentSpan) {
+                            // Update the existing content
+                            contentSpan.innerHTML = $data.message;
+                        } else {
+                            // If no content span exists, create one
+                            contentSpan = document.createElement('span');
+                            contentSpan.className = 'content';
+                            contentSpan.innerHTML = $data.message;
+                            placeholder.appendChild(contentSpan);
+                        }
+                    }
                 }
                 $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
 
@@ -1336,8 +1477,14 @@
 
         function save() {
             $message = $("#text").html();
+            if (!$message || $message.trim() === '') return;
+
             image = "";
-            if ($("#topic").text().toLowerCase().indexOf("@chatgpt") != -1) {
+
+            // Check if ChatGPT mode is enabled via the toggle button
+            const chatGPTMode = localStorage.getItem('chatgpt-mode') === 'enabled';
+
+            if (chatGPTMode) {
                 $message = "@ChatGPT " + $("#text").text() + "\n";
 
                 $("#text").find("img").each(function () {
@@ -1345,16 +1492,24 @@
                 });
             }
 
+            // Clear input field immediately for better UX
+            $("#text").html('');
+
             $.ajax({
                 type: "POST",
                 url: "[%LINK:talk/save%]",
                 dataType: "json",
-                data: {text: $message, time: new Date().getTime(), image: image}
+                data: {
+                    text: $message,
+                    time: new Date().getTime(),
+                    image: image,
+                    stream: chatGPTMode ? "true" : "false" // Enable streaming for ChatGPT messages
+                }
             }).done(function (msg) {
-                $("#text").html('');
+                // Input already cleared
+            }).fail(function(error) {
+                console.error('Failed to save message:', error);
             });
-
-            // $("li").even().addClass("even);
         }
 
         var is_running = false;
@@ -1418,6 +1573,27 @@
             setupLoginForm();
             setupRegisterForm();
             setupLogout();
+
+            // Check if we should use SSE or fall back to the original implementation
+            if (typeof SSEClient !== 'undefined') {
+                const meetingURL = "{%meeting_update_url%}";
+
+                // Extract the part after '?q='
+                const queryString = meetingURL.split('?q=')[1];
+
+                // Use regex to find the UUID (meeting code)
+                const match = queryString.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+                const meetingCode = match ? match[0] : null;
+
+                // Use it
+                if (meetingCode) {
+                    window.smallTalk = new SmallTalkSSE(meetingCode);
+                } else {
+                    console.error("Meeting code not found in the given URL.");
+                }
+            } else {
+                console.warn('SSE client not available, falling back to original implementation');
+            }
 
             $("#button").click(function () {
                 save();
@@ -1507,8 +1683,40 @@
                 }
             });
 
-            if (!$("#topic").text()) {
+            // Check if we need to show the topic modal
+            // Only show it if the user hasn't set a topic before and this isn't a page reload after login
+            const hasJustLoggedIn = localStorage.getItem('justLoggedIn') === 'true';
+            const loginTimestamp = parseInt(localStorage.getItem('loginTimestamp') || '0');
+            const currentTime = Date.now();
+            const isRecentLogin = (currentTime - loginTimestamp) < 10000; // Within 10 seconds of login
+
+            console.log('Topic check - Has topic:', !!$("#topic").text(), 'Just logged in:', hasJustLoggedIn, 'Recent login:', isRecentLogin);
+
+            if (!$("#topic").text() && !(hasJustLoggedIn && isRecentLogin)) {
                 $("#topic_modal").modal();
+            } else {
+                console.log('Skipping topic dialog - Topic exists or user just logged in');
+            }
+
+            // Clear the login flag after a delay to ensure it persists through page load
+            setTimeout(function() {
+                localStorage.removeItem('justLoggedIn');
+                localStorage.removeItem('loginTimestamp');
+                console.log('Login flags cleared');
+            }, 15000); // Clear after 15 seconds
+
+            // Setup ChatGPT toggle button
+            $("#chatgpt-toggle").change(function(event) {
+                localStorage.setItem('chatgpt-mode', event.target.checked ? 'enabled' : 'disabled');
+                updateChatGPTToggleState();
+            });
+
+            // Initialize toggle state from localStorage
+            updateChatGPTToggleState();
+
+            function updateChatGPTToggleState() {
+                const chatGPTMode = localStorage.getItem('chatgpt-mode') || 'disabled';
+                $("#chatgpt-toggle").prop('checked', chatGPTMode === 'enabled');
             }
 
             $("#link").click(function () {
@@ -2074,6 +2282,12 @@
                             <div class="file-preview-list"></div>
                         </div>
                         <div class="upload-progress"></div>
+                    </div>
+                    <div class="chatgpt-toggle-wrapper">
+                        <label class="chatgpt-toggle" title="Toggle ChatGPT mode">
+                            <input type="checkbox" id="chatgpt-toggle" />
+                            <span class="chatgpt-toggle-label">AI</span>
+                        </label>
                     </div>
                 </div>
                 <span class="arrowbox">

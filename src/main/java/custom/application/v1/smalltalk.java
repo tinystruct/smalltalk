@@ -227,6 +227,27 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return this.take(sessionId);
     }
 
+    @Action("talk/stream")
+    public void stream(String sessionId, Request request, Response response) throws ApplicationException {
+        response.addHeader(Header.CONTENT_TYPE.name(), "text/event-stream");
+        response.addHeader(Header.CACHE_CONTROL.name(), "no-cache");
+        response.addHeader(Header.CONNECTION.name(), "keep-alive");
+        response.addHeader("X-Accel-Buffering", "no");
+
+        // 临时调试：直接推送一条 SSE 消息，使用 writeAndFlush
+/*
+        String sseMsg = "data: {\"message\":\"SSE 测试消息\",\"sessionId\":\"" + sessionId + "\"}\n\n";
+        response.writeAndFlush(sseMsg.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+*/
+
+        // 保持连接不关闭（可选：等待一段时间）
+//         try { Thread.sleep(30000); } catch (InterruptedException e) {}
+
+        // 生产环境请恢复如下代码
+         SSEPushManager manager = SSEPushManager.getInstance();
+         manager.register(sessionId, response);
+    }
+
     @Action("talk/matrix")
     public String matrix(String meetingCode, Request request, Response response) throws ApplicationException {
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
@@ -318,6 +339,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Action("talk/save")
     public String save(Request request, Response response) {
         try {
+            // Extract all necessary data from the request immediately
             final Object meetingCode = request.getSession().getAttribute("meeting_code");
             if (meetingCode == null) {
                 response.setStatus(ResponseStatus.BAD_REQUEST);
@@ -343,12 +365,20 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 return "{ \"error\": \"empty_message\" }";
             }
 
+            // Extract all parameters we need before any async operations
+            final Object userAttr = request.getSession().getAttribute("user");
+            final String user = userAttr != null ? userAttr.toString() : "Anonymous";
+            final String image = request.getParameter("image");
+            final String streamParam = request.getParameter("stream");
+            final boolean isStreaming = streamParam != null && streamParam.equals("true");
+            final String meetingCodeStr = meetingCode.toString();
+
+            // Create the message builder
             final Builder builder = new Builder();
-            builder.put("user", request.getSession().getAttribute("user"));
+            builder.put("user", user);
             builder.put("time", format.format(new Date()));
             builder.put("session_id", sessionId);
 
-            String image = request.getParameter("image");
             if (image != null && !image.isEmpty()) {
                 builder.put("message", filter(message) + "<img src=\"" + image + "\" />");
             } else {
@@ -357,42 +387,125 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             if (message.contains("@" + CHAT_GPT)) {
                 final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
-                return this.save(meetingCode, builder, () -> {
+
+                // Use a separate thread for processing to avoid request object issues
+                Thread processingThread = new Thread(() -> {
                     try {
-                        processChatGPTResponse(request, meetingCode, sessionId, finalMessage, image);
+                        processChatGPTResponseAsync(isStreaming, meetingCodeStr, sessionId, finalMessage, image);
                     } catch (Exception e) {
                         System.err.println("Error processing ChatGPT response: " + e.getMessage());
-                        sendErrorMessage(meetingCode, sessionId, e.getMessage());
+                        sendErrorMessage(meetingCodeStr, sessionId, e.getMessage());
                     }
                 });
+
+                // Start the thread after saving the user's message
+                this.save(meetingCodeStr, builder);
+                processingThread.start();
+
+                return "{ \"status\": \"ok\", \"processing\": true }";
             }
 
-            return this.save(meetingCode, builder);
+            return this.save(meetingCodeStr, builder);
         } catch (Exception e) {
             System.err.println("Error saving message: " + e.getMessage());
+            e.printStackTrace();
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
             return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
         }
     }
 
+    /**
+     * Process ChatGPT response with request object - use this method only in synchronous contexts
+     * where the request object is still valid
+     */
     private void processChatGPTResponse(Request request, Object meetingCode, String sessionId,
                                         String message, String image) throws ApplicationException {
-        final Builder data = new Builder();
-        data.put("user", CHAT_GPT);
-        data.put("session_id", sessionId);
-        data.put("time", format.format(new Date()));
+        // Extract streaming parameter before starting any async operations
+        // to avoid accessing the request object after it's recycled
+        String streamParam = request.getParameter("stream");
+        boolean isStreaming = streamParam != null && streamParam.equals("true");
 
-        try {
-            String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
-            if (response == null || response.trim().isEmpty()) {
-                throw new ApplicationException("Empty response from chat service");
+        // Use the async version that doesn't need the request object
+        processChatGPTResponseAsync(isStreaming, meetingCode, sessionId, message, image);
+    }
+
+    /**
+     * Process ChatGPT response without request object - safe to use in asynchronous contexts
+     * where the request object might be recycled
+     */
+    private void processChatGPTResponseAsync(boolean isStreaming, Object meetingCode, String sessionId,
+                                           String message, String image) throws ApplicationException {
+        // Convert meetingCode to string to avoid potential issues with object references
+        final String meetingCodeStr = meetingCode.toString();
+
+        if (isStreaming) {
+            // For streaming, start in a separate thread
+            String messageId = UUID.randomUUID().toString();
+
+            // Send initial message to indicate streaming has started
+            final Builder initialData = new Builder();
+            initialData.put("user", CHAT_GPT);
+            initialData.put("session_id", sessionId);
+            initialData.put("time", format.format(new Date()));
+            initialData.put("id", messageId);
+            initialData.put("message", "<span class='typing-indicator'>Thinking...</span>");
+            initialData.put("streaming", true);
+            initialData.put("final", false);
+            initialData.put("incremental", true); // Flag to indicate this is an incremental update
+            save(meetingCodeStr, initialData);
+
+            // Start streaming in a separate thread
+            // Don't reference the request object in this thread
+            new Thread(() -> {
+                try {
+                    streamGPTResponse(message, sessionId, meetingCodeStr, messageId, image);
+                } catch (Exception e) {
+                    System.err.println("Error streaming ChatGPT response: " + e.getMessage());
+                    e.printStackTrace();
+
+                    // Create an error response
+                    final Builder errorBuilder = new Builder();
+                    errorBuilder.put("user", CHAT_GPT);
+                    errorBuilder.put("time", format.format(new Date()));
+                    errorBuilder.put("session_id", sessionId);
+                    errorBuilder.put("id", messageId);
+                    errorBuilder.put("message", "Sorry, I encountered an error processing your request. Please try again later.");
+                    errorBuilder.put("status", "error");
+                    errorBuilder.put("streaming", true);
+                    errorBuilder.put("final", true);
+                    errorBuilder.put("incremental", true); // Flag to indicate this is an incremental update
+
+                    // Save the error response
+                    try {
+                        save(meetingCodeStr, errorBuilder);
+                    } catch (Exception ex) {
+                        System.err.println("Error saving error response: " + ex.getMessage());
+                    }
+                }
+            }).start();
+        } else {
+            // Non-streaming response (original behavior)
+            final Builder data = new Builder();
+            data.put("user", CHAT_GPT);
+            data.put("session_id", sessionId);
+            data.put("time", format.format(new Date()));
+            data.put("id", UUID.randomUUID().toString());
+
+            try {
+                String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
+                if (response == null || response.trim().isEmpty()) {
+                    throw new ApplicationException("Empty response from chat service");
+                }
+                data.put("message", filter(response));
+                data.put("final", true);
+            } catch (Exception e) {
+                data.put("message", "Error: " + e.getMessage());
+                data.put("status", "error");
+                data.put("final", true);
             }
-            data.put("message", filter(response));
-        } catch (Exception e) {
-            data.put("message", "Error: " + e.getMessage());
-        }
 
-        save(meetingCode, data);
+            save(meetingCodeStr, data);
+        }
     }
 
     private void sendErrorMessage(Object meetingCode, String sessionId, String errorMessage) {
@@ -401,10 +514,116 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             data.put("user", CHAT_GPT);
             data.put("session_id", sessionId);
             data.put("time", format.format(new Date()));
+            data.put("id", UUID.randomUUID().toString());
             data.put("message", "Error: " + errorMessage);
+            data.put("status", "error");
+            data.put("final", true);
             save(meetingCode, data);
         } catch (Exception e) {
             System.err.println("Failed to send error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Stream a GPT response in chunks to provide a more responsive user experience
+     * Uses the OpenAI streaming API for real-time responses
+     *
+     * @param message The user's message
+     * @param sessionId The session ID
+     * @param meetingCode The meeting code
+     * @param messageId The unique ID for this message exchange
+     * @param image Optional image data
+     * @throws ApplicationException If an error occurs
+     */
+    private void streamGPTResponse(String message, String sessionId, String meetingCode, String messageId, String image)
+            throws ApplicationException {
+        try {
+            // Create the chat context with previous messages
+            Context context = new ApplicationContext();
+
+            // Set up the API request
+            Builder payload = createChatGPTPayload(sessionId, message);
+            payload.put("stream", true); // Enable streaming
+
+            // Get the OpenAI service
+            OpenAI openAI = (OpenAI) ApplicationManager.get(OpenAI.class.getName());
+            if (openAI == null) {
+                throw new ApplicationException("OpenAI service not available");
+            }
+
+            // Process the streaming response
+            StringBuilder fullResponse = new StringBuilder();
+
+            // Start streaming from OpenAI API
+            openAI.streamChatCompletion(payload, chunk -> {
+                try {
+                    if (chunk != null && chunk.get("choices") != null) {
+                        Builders choices = (Builders) chunk.get("choices");
+                        if (!choices.isEmpty()) {
+                            Builder choice = choices.get(0);
+                            if (choice.get("delta") != null) {
+                                Builder delta = (Builder) choice.get("delta");
+                                if (delta.get("content") != null) {
+                                    String content = delta.get("content").toString();
+
+                                    // Append the content to the full response with proper spacing
+                                    // Add a space before the content if needed to ensure words are separated
+                                    if (fullResponse.length() > 0 &&
+                                        !Character.isWhitespace(fullResponse.charAt(fullResponse.length() - 1)) &&
+                                        !content.isEmpty() &&
+                                        !Character.isWhitespace(content.charAt(0)) &&
+                                        !isPunctuation(content.charAt(0))) {
+                                        fullResponse.append(' ');
+                                    }
+                                    fullResponse.append(content);
+
+                                    // Send the chunk to the client
+                                    final Builder chunkData = new Builder();
+                                    chunkData.put("user", CHAT_GPT);
+                                    chunkData.put("session_id", sessionId);
+                                    chunkData.put("time", format.format(new Date()));
+                                    chunkData.put("id", messageId);
+                                    chunkData.put("message", content);
+                                    chunkData.put("streaming", true);
+                                    chunkData.put("final", false);
+                                    chunkData.put("chunk", content);
+                                    chunkData.put("incremental", true); // Flag to indicate this is an incremental update
+                                    save(meetingCode, chunkData);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error processing streaming chunk: " + e.getMessage());
+                }
+            });
+
+            // Send a final chunk to indicate the end of streaming
+            final Builder finalChunkData = new Builder();
+            finalChunkData.put("user", CHAT_GPT);
+            finalChunkData.put("session_id", sessionId);
+            finalChunkData.put("time", format.format(new Date()));
+            finalChunkData.put("id", messageId);
+            finalChunkData.put("message", ""); // Empty message for the final chunk
+            finalChunkData.put("streaming", true);
+            finalChunkData.put("final", true); // Set the final flag to true
+            finalChunkData.put("incremental", true);
+            save(meetingCode, finalChunkData);
+
+            // Get the raw response for storage
+            String rawResponse = fullResponse.toString();
+
+            // Store conversation history - use the raw response for storage to preserve original formatting
+            ConversationHistoryManager.addMessagePair(sessionId, message, rawResponse);
+            SessionVariableManager.addMessagePair(sessionId, message, rawResponse);
+
+            // Save to chat history database
+            saveChatHistory(meetingCode, sessionId, message, rawResponse);
+
+        } catch (Exception e) {
+            System.err.println("Error in streamGPTResponse: " + e.getMessage());
+            e.printStackTrace();
+            throw new ApplicationException("Error streaming GPT response: " + e.getMessage(), e);
         }
     }
 
@@ -1513,6 +1732,41 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return text;
     }
 
+    /**
+     * Format a streaming response to ensure proper spacing between words
+     *
+     * @param rawResponse The raw response from the API
+     * @return A properly formatted response with correct spacing
+     */
+    private String formatStreamingResponse(String rawResponse) {
+        if (rawResponse == null || rawResponse.isEmpty()) {
+            return "";
+        }
+
+        // Use regex to add spaces between words that are incorrectly joined
+        String formattedResponse = rawResponse
+            // Add space between lowercase and uppercase (camelCase separation)
+            .replaceAll("([a-z])([A-Z])", "$1 $2")
+            // Add space between letter and number
+            .replaceAll("([a-zA-Z])([0-9])", "$1 $2")
+            // Add space between number and letter
+            .replaceAll("([0-9])([a-zA-Z])", "$1 $2")
+            // Add space after punctuation if not followed by a space
+            .replaceAll("([.,!?;:])([^\\s])", "$1 $2");
+
+        return formattedResponse;
+    }
+
+    /**
+     * Check if a character is a punctuation mark
+     *
+     * @param c The character to check
+     * @return true if the character is a punctuation mark, false otherwise
+     */
+    private boolean isPunctuation(char c) {
+        return c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':' || c == '-' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '"' || c == '\'' || c == '`';
+    }
+
     @Override
     public void onSessionEvent(SessionEvent event) {
         switch (event.getType()) {
@@ -1598,6 +1852,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
+    /**
+     * Save a chat message to the history database using a Builder
+     *
+     * @param builder The message builder containing all message data
+     * @param meetingCode The meeting code
+     * @throws ApplicationException If an error occurs
+     */
     private void saveChatHistory(Builder builder, String meetingCode) throws ApplicationException {
         ChatHistory history = new ChatHistory();
         history.setMeetingCode(meetingCode);
@@ -1628,10 +1889,45 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
+    /**
+     * Save a chat message pair to the history database
+     *
+     * @param meetingCode The meeting code
+     * @param sessionId The session ID
+     * @param userMessage The user's message
+     * @param assistantMessage The assistant's response
+     * @throws ApplicationException If an error occurs
+     */
+    private void saveChatHistory(String meetingCode, String sessionId, String userMessage, String assistantMessage) throws ApplicationException {
+        try {
+            // First, save the assistant's message
+            ChatHistory assistantHistory = new ChatHistory();
+            assistantHistory.setMeetingCode(meetingCode);
+            assistantHistory.setUserName(CHAT_GPT);
+            assistantHistory.setMessage(assistantMessage);
+            assistantHistory.setSessionId(sessionId);
+            assistantHistory.setMessageType("TEXT");
+            assistantHistory.setCreatedAt(format.format(new Date()));
+            assistantHistory.append();
+
+            // Log the save operation
+            System.out.println("Saved assistant message to chat history for meeting " + meetingCode);
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to save chat history: " + e.getMessage(), e);
+        }
+    }
+
     private String save(String meetingCode, Builder data) {
         Queue<Builder> queue = this.groups.get(meetingCode);
         if (queue != null) {
-            queue.add(data);
+            // Use offer instead of add to handle the case when the queue is full
+            boolean added = queue.offer(data);
+            if (!added) {
+                System.err.println("Warning: Message queue is full for meeting code " + meetingCode + ". Message not added.");
+                // Still save to chat history even if the queue is full
+            }
+
+            SSEPushManager.getInstance().push(data.get("session_id").toString(), data.toString());
 
             // Automatically save to chat history database
             try {

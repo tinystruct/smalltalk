@@ -10,9 +10,15 @@ import org.tinystruct.net.URLResponse;
 import org.tinystruct.system.annotation.Action;
 import org.tinystruct.transfer.http.upload.ContentDisposition;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.function.Consumer;
 
 public class OpenAI extends AbstractApplication implements Provider {
     public static final String API_ENDPOINT = "https://openrouter.ai/api";
@@ -111,6 +117,122 @@ public class OpenAI extends AbstractApplication implements Provider {
             throw new ApplicationException(e.getMessage(), e.getCause());
         } catch (ApplicationException e) {
             throw e;
+        }
+    }
+
+    /**
+     * Stream chat completion responses from OpenAI API
+     *
+     * @param payload The request payload
+     * @param chunkHandler A consumer function to handle each chunk of the response
+     * @throws ApplicationException If an error occurs during the API call
+     */
+    public void streamChatCompletion(Builder payload, Consumer<Builder> chunkHandler) throws ApplicationException {
+        if (payload == null) {
+            throw new ApplicationException("Payload is required for streaming");
+        }
+
+        // Ensure stream parameter is set to true
+        if (payload.get("stream") == null || !payload.get("stream").toString().equals("true")) {
+            payload.put("stream", true);
+        }
+
+        String API_URL = getConfiguration().get("openai.api_endpoint");
+        if (API_URL == null || API_URL.trim().isEmpty()) {
+            API_URL = API_ENDPOINT;
+        }
+
+        API_URL = API_URL + CHAT_COMPLETIONS;
+
+        // Get API key from configuration or environment variable
+        String API_KEY = getConfiguration().get("openai.api_key");
+
+        // Check if API key is configured or using placeholder
+        if (API_KEY == null || API_KEY.trim().isEmpty() ||
+            API_KEY.equals("your_openai_api_key_here") ||
+            API_KEY.equals("$_OPENAI_API_KEY")) {
+
+            // Try to get from environment variable
+            String envApiKey = System.getenv("OPENAI_API_KEY");
+            if (envApiKey != null && !envApiKey.trim().isEmpty()) {
+                // Use the environment variable
+                API_KEY = envApiKey;
+                System.out.println("Using OpenAI API key from environment variable");
+            } else {
+                throw new ApplicationException("OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
+            }
+        }
+
+        HttpURLConnection connection = null;
+        try {
+            // Create connection
+            URL url = new URL(API_URL);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "text/event-stream");
+            connection.setRequestProperty("Authorization", "Bearer " + API_KEY);
+            connection.setRequestProperty("Referer", "https://github.com/tinystruct/smalltalk");
+            connection.setRequestProperty("User-Agent", "Smalltalk/1.0.0");
+            connection.setDoOutput(true);
+            connection.setChunkedStreamingMode(0);
+
+            // Send request
+            connection.getOutputStream().write(payload.toString().getBytes(StandardCharsets.UTF_8));
+
+            // Check response code
+            int responseCode = connection.getResponseCode();
+            if (responseCode != 200) {
+                throw new ApplicationException("Failed to stream from OpenAI API: HTTP error code " + responseCode);
+            }
+
+            // Process streaming response
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                StringBuilder eventData = new StringBuilder();
+
+                while ((line = reader.readLine()) != null) {
+                    // Skip empty lines
+                    if (line.trim().isEmpty()) {
+                        // End of event, process the data if we have any
+                        if (eventData.length() > 0) {
+                            String data = eventData.toString().trim();
+                            if (data.startsWith("data: ")) {
+                                data = data.substring(6).trim();
+
+                                // Skip [DONE] message
+                                if (data.equals("[DONE]")) {
+                                    continue;
+                                }
+
+                                try {
+                                    // Parse the JSON data
+                                    Builder chunkBuilder = new Builder();
+                                    chunkBuilder.parse(data);
+
+                                    // Pass the chunk to the handler
+                                    chunkHandler.accept(chunkBuilder);
+                                } catch (Exception e) {
+                                    System.err.println("Error parsing chunk: " + e.getMessage());
+                                    System.err.println("Raw chunk data: " + data);
+                                }
+                            }
+
+                            // Reset for next event
+                            eventData.setLength(0);
+                        }
+                    } else if (line.startsWith("data: ")) {
+                        // Accumulate data lines
+                        eventData.append(line).append("\n");
+                    }
+                }
+            }
+        } catch (IOException e) {
+            throw new ApplicationException("Error streaming from OpenAI API: " + e.getMessage(), e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 
