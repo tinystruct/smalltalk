@@ -953,7 +953,6 @@
     <script type="text/javascript" src="/scripts/marked.min.js"></script>
     <script type="text/javascript" src="/scripts/highlight/highlight.min.js"></script>
     <script type="text/javascript" src="/scripts/sse-client.js"></script>
-    <script type="text/javascript" src="/scripts/smalltalk-sse.js"></script>
 
     <script type="text/javascript">
         //<![CDATA[
@@ -1575,25 +1574,24 @@
             setupLogout();
 
             // Check if we should use SSE or fall back to the original implementation
-            if (typeof SSEClient !== 'undefined') {
-                const meetingURL = "{%meeting_update_url%}";
 
-                // Extract the part after '?q='
-                const queryString = meetingURL.split('?q=')[1];
+            const meetingURL = "{%meeting_update_url%}";
 
-                // Use regex to find the UUID (meeting code)
-                const match = queryString.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
-                const meetingCode = match ? match[0] : null;
+            // Extract the part after '?q='
+            const queryString = meetingURL.split('?q=')[1];
 
-                // Use it
-                if (meetingCode) {
-                    window.smallTalk = new SmallTalkSSE(meetingCode);
-                } else {
-                    console.error("Meeting code not found in the given URL.");
-                }
+            // Use regex to find the UUID (meeting code)
+            const match = queryString.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+            const meetingCode = match ? match[0] : null;
+
+            // Use it
+            if (meetingCode) {
+                window.smallTalk = new SSEClient();
+                window.smallTalk.connect(meetingCode);
             } else {
-                console.warn('SSE client not available, falling back to original implementation');
+                console.error("Meeting code not found in the given URL.");
             }
+
 
             $("#button").click(function () {
                 save();
