@@ -9,22 +9,22 @@ class SSEClient {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 2000; // Start with 2 seconds
         this.messageHandlers = {};
-        this.sessionId = null;
+        this.meetingCode = null;
         this.connected = false;
         this.pendingMessages = {}; // Store streaming messages by ID
     }
 
     /**
      * Initialize the SSE connection
-     * @param {string} sessionId - The session ID
+     * @param {string} meetingCode - The meeting Code
      */
-    connect(sessionId) {
+    connect(meetingCode) {
         if (this.eventSource) {
             this.disconnect();
         }
 
-        this.sessionId = sessionId;
-        const url = `/?q=talk/stream/${sessionId}`;
+        this.meetingCode = meetingCode;
+        const url = `/?q=talk/stream/${meetingCode}`;
 
         try {
             this.eventSource = new EventSource(url);
@@ -86,7 +86,7 @@ class SSEClient {
                     console.error('Browser is offline');
                 }
                 // 打印响应状态码（需在 Network 面板查看）
-                // 建议：在 Network 面板找到 /talk/stream/{sessionId}，确认响应头和状态码
+                // 建议：在 Network 面板找到 /talk/stream/{meetingCode}，确认响应头和状态码
 
                 this.connected = false;
 
@@ -96,7 +96,7 @@ class SSEClient {
                     console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
                     setTimeout(() => {
-                        this.connect(this.sessionId);
+                        this.connect(this.meetingCode);
                     }, delay);
                 } else {
                     console.error('Max reconnect attempts reached, giving up');
@@ -118,7 +118,7 @@ class SSEClient {
      * keeping the connection open for streaming
      */
     pollForNextMessage() {
-        if (!this.connected || !this.sessionId) return;
+        if (!this.connected || !this.meetingCode) return;
 
         // Use a timeout to avoid overwhelming the server
         setTimeout(() => {
