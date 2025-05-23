@@ -143,6 +143,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             try {
                 Reforward reforward = new Reforward(request, response);
                 reforward.setDefault("/?q=talk");
+                this.setVariable("show_login", "false"); // session based
                 return (smalltalk) reforward.forward();
             } catch (Exception e) {
                 // Continue to login page if redirect fails
@@ -164,6 +165,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             try {
                 Reforward reforward = new Reforward(request, response);
                 reforward.setDefault("/?q=login");
+                this.setVariable("show_login", "true"); // session based
                 return reforward.forward();
             } catch (Exception e) {
                 throw new ApplicationException("Failed to redirect to login page: " + e.getMessage(), e);
@@ -224,28 +226,19 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/update")
     public String update(String sessionId) throws ApplicationException {
-        return this.take(sessionId);
+        return "";//this.take(sessionId);
     }
 
     @Action("talk/stream")
-    public void stream(String sessionId, Request request, Response response) throws ApplicationException {
+    public void stream(String meetingCode, Request request, Response response) throws ApplicationException {
+        // Set SSE headers
         response.addHeader(Header.CONTENT_TYPE.name(), "text/event-stream");
-        response.addHeader(Header.CACHE_CONTROL.name(), "no-cache");
+        response.addHeader(Header.CACHE_CONTROL.name(), "no-cache, no-transform");
         response.addHeader(Header.CONNECTION.name(), "keep-alive");
         response.addHeader("X-Accel-Buffering", "no");
 
-        // 临时调试：直接推送一条 SSE 消息，使用 writeAndFlush
-/*
-        String sseMsg = "data: {\"message\":\"SSE 测试消息\",\"sessionId\":\"" + sessionId + "\"}\n\n";
-        response.writeAndFlush(sseMsg.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-*/
-
-        // 保持连接不关闭（可选：等待一段时间）
-//         try { Thread.sleep(30000); } catch (InterruptedException e) {}
-
-        // 生产环境请恢复如下代码
-         SSEPushManager manager = SSEPushManager.getInstance();
-         manager.register(sessionId, response);
+        // Register with SSE manager
+        SSEPushManager.getInstance().register(request.getSession().getId(), response, this.groups.get(meetingCode));
     }
 
     @Action("talk/matrix")
@@ -1927,7 +1920,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 // Still save to chat history even if the queue is full
             }
 
-            SSEPushManager.getInstance().push(data.get("session_id").toString(), data.toString());
+            // Send message using SSE
+            SSEPushManager.getInstance().push(data.get("session_id").toString(), data);
 
             // Automatically save to chat history database
             try {
