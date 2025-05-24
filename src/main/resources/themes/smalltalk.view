@@ -1392,8 +1392,18 @@
                     } else {
                         // Regular ChatGPT message - use markdown
                         requestAnimationFrame(() => {
+                            // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
-                            contentSpan.innerHTML = marked.parse($text, markedOptions);
+                            $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
+      .replace(/\\`/g, '`');        // Fix backticks if escaped
+                            // Then parse markdown and update HTML
+                            const parsedContent = marked.parse($text, markedOptions);
+                            contentSpan.innerHTML = parsedContent;
+                            
+                            // Apply syntax highlighting to code blocks
+                            contentSpan.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
                         });
                     }
                 } else if ($data.user === 'System') {
@@ -1407,8 +1417,18 @@
                     
                     const contentSpan = placeholder.querySelector('.content') || placeholder;
                     requestAnimationFrame(() => {
+                        // First set the raw text content to preserve newlines
                         contentSpan.textContent = $text;
-                        contentSpan.innerHTML = marked.parse($text, markedOptions);
+                        $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
+      .replace(/\\`/g, '`');        // Fix backticks if escaped
+                        // Then parse markdown and update HTML
+                        const parsedContent = marked.parse($text, markedOptions);
+                        contentSpan.innerHTML = parsedContent;
+                        
+                        // Apply syntax highlighting to code blocks
+                        contentSpan.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
                     });
                 }
 
