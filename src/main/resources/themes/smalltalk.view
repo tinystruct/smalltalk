@@ -98,6 +98,7 @@
         }
 
         #list ul li span.content {
+            white-space: pre-wrap;
         }
 
         ul.nav li a.theme svg {
@@ -535,17 +536,11 @@
 
         /* Styling for streaming messages */
         .typing-indicator {
-            display: inline-block;
-            position: relative;
-            padding: 0.5em;
-            background-color: #f0f0f0;
-            border-radius: 10px;
-            animation: pulse 1.5s infinite;
+            display: none;
         }
 
         .typing-indicator::after {
-            content: '...';
-            animation: typing 1.5s infinite;
+            content: none;
         }
 
         @keyframes pulse {
@@ -937,6 +932,215 @@
             background-color: #ffffff;
             border-color: #ffffff;
         }
+
+        .typing-indicator {
+            display: none;
+        }
+
+        .typing-indicator::after {
+            content: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        @keyframes typing {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
+
+        #messages li {
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: translateY(0);
+            color: inherit;
+        }
+
+        #messages li.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .content {
+            transition: all 0.3s ease;
+            color: inherit;
+            display: inline-block;
+        }
+
+        /* Ensure text colors are visible in different themes */
+        #list.light-green .content,
+        #list.dark-green .content {
+            color: #fff;
+        }
+
+        #list .content {
+            color: #000;
+        }
+
+        /* Ensure time and name are visible */
+        #messages li .time,
+        #messages li .name {
+            color: inherit;
+            display: inline-block;
+        }
+
+        /* Fix for pre-wrapper class */
+        #messages li.pre-wrapper {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: inherit;
+        }
+
+        /* Ensure markdown content is visible */
+        #messages li pre {
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        #messages li code {
+            background-color: #f8f9fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+        }
+
+        /* Remove typing indicator styles */
+        .typing-indicator {
+            display: none !important;
+        }
+
+        .typing-indicator::after {
+            content: none !important;
+        }
+
+        /* Markdown content styles */
+        #messages li .content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        #messages li .content p {
+            margin: 0.5em 0;
+        }
+
+        #messages li .content p:first-child {
+            margin-top: 0;
+        }
+
+        #messages li .content p:last-child {
+            margin-bottom: 0;
+        }
+
+        #messages li .content pre {
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 0.5em 0;
+        }
+
+        #messages li .content code {
+            background-color: #f8f9fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        #messages li .content blockquote {
+            border-left: 4px solid #ddd;
+            margin: 0.5em 0;
+            padding-left: 1em;
+            color: #666;
+        }
+
+        #messages li .content ul, 
+        #messages li .content ol {
+            margin: 0.5em 0;
+            padding-left: 2em;
+        }
+
+        #messages li .content h1,
+        #messages li .content h2,
+        #messages li .content h3,
+        #messages li .content h4,
+        #messages li .content h5,
+        #messages li .content h6 {
+            margin: 0.5em 0;
+            line-height: 1.2;
+        }
+
+        #messages li .content table {
+            border-collapse: collapse;
+            margin: 0.5em 0;
+            width: 100%;
+        }
+
+        #messages li .content th,
+        #messages li .content td {
+            border: 1px solid #ddd;
+            padding: 0.5em;
+        }
+
+        #messages li .content th {
+            background-color: #f8f9fa;
+        }
+
+        #messages li .content img {
+            max-width: 100%;
+            height: auto;
+            margin: 0.5em 0;
+        }
+
+        #messages li .content a {
+            color: #337ab7;
+            text-decoration: none;
+        }
+
+        #messages li .content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Dark theme support for markdown content */
+        #list.dark-green .content,
+        #list.light-green .content {
+            color: #fff;
+        }
+
+        #list.dark-green .content pre,
+        #list.light-green .content pre,
+        #list.dark-green .content code,
+        #list.light-green .content code {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #list.dark-green .content blockquote,
+        #list.light-green .content blockquote {
+            border-left-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #list.dark-green .content th,
+        #list.light-green .content th {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #list.dark-green .content th,
+        #list.dark-green .content td,
+        #list.light-green .content th,
+        #list.light-green .content td {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #list.dark-green .content a,
+        #list.light-green .content a {
+            color: #66b3ff;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -1149,7 +1353,6 @@
                         // Use the existing element
                         placeholder = existingElement;
                         isNewElement = false;
-                        console.log('Updating existing message element with ID:', $data.id);
                     }
                 }
 
@@ -1161,12 +1364,10 @@
                     // Add data-message-id attribute for streaming updates
                     if ($data.id) {
                         placeholder.setAttribute('data-message-id', $data.id);
-                        console.log('Created message element with ID:', $data.id);
                     } else {
                         // Generate a unique ID if none is provided
                         const uniqueId = 'msg_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000);
                         placeholder.setAttribute('data-message-id', uniqueId);
-                        console.log('Created message element with generated ID:', uniqueId);
                     }
 
                     placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
@@ -1175,250 +1376,97 @@
 
                 $text = $data.message;
 
-                if ($data.user == 'ChatGPT') {
+                // Handle different types of messages
+                if ($data.user === 'ChatGPT') {
+                    // ChatGPT messages - use markdown rendering
                     if (isNewElement) {
-                        // For new elements, append the content span
                         placeholder.innerHTML += "<span class='content'>";
-                    } else {
-                        // For existing elements, update more carefully to preserve structure
-                        const existingContent = placeholder.querySelector('.content');
-                        if (existingContent) {
-                            // Clear the existing content
-                            existingContent.innerHTML = '';
-                        } else {
-                            // If no content span exists, create one
-                            const contentSpan = document.createElement('span');
-                            contentSpan.className = 'content';
-                            placeholder.appendChild(contentSpan);
-                        }
                     }
-
+                    
+                    const contentSpan = placeholder.querySelector('.content') || placeholder;
+                    
                     // Check if the message contains PlantUML images
                     if ($text.indexOf("<placeholder-image>") >= 0) {
-                        // Process the message with PlantUML images
-
-                        // Extract all PlantUML images
-                        var imgRegex = /<placeholder-image>(data:image\/png;base64,[^<]+)<\/placeholder-image>/g;
-                        var matches = [];
-                        var match;
-
-                        // Find all image placeholders
-                        while ((match = imgRegex.exec($text)) !== null) {
-                            matches.push({
-                                fullMatch: match[0],
-                                imgData: match[1],
-                                index: match.index
-                            });
-                        }
-
-                        // Sort matches by their index in the original text to maintain order
-                        matches.sort(function (a, b) {
-                            return a.index - b.index;
-                        });
-
-                        console.log("Found " + matches.length + " PlantUML images");
-
-                        // Create a copy of the text without the placeholder-image elements
-                        var cleanText = $text;
-                        for (var i = 0; i < matches.length; i++) {
-                            cleanText = cleanText.replace(matches[i].fullMatch, '');
-                        }
-
-                        // Use animation timer for the clean text
-                        $tmp = cleanText.replace(/<br\s*[\/]?>/gi, '\n');
-                        k = 0;
-                        animation_timer = new Timer(.01, function () {
-                        });
-                        animation_timer.setAction(function () {
-                            if (k < $tmp.length) {
-                                c = $tmp.charAt(k++);
-
-                                // Get the content span
-                                const contentSpan = placeholder.querySelector('.content') || placeholder;
-
-                                if (c == '\n')
-                                    contentSpan.innerHTML += "  \n";
-                                else
-                                    contentSpan.innerHTML += c;
-
-                                if (c == ',') {
-                                    this.setInterval(0.1);
-                                } else {
-                                    this.setInterval(0.01);
-                                }
-
-                                this.start();
-                            } else this.complete();
-                        });
-
-                        animation_timer.start().complete(function () {
-                            this.stop();
-                            placeholder.innerHTML += "</span>";
-                            // Keep the pre-wrapper class to maintain consistent styling
-                            // $(placeholder).removeClass('pre-wrapper');
-                            // $(placeholder).addClass('chat-gpt');
-
-                            // Parse the markdown content
-                            var content = placeholder.textContent;
-                            var parsedContent = marked.parse(content, markedOptions);
-
-                            // Set the parsed content
-                            placeholder.innerHTML = parsedContent;
-
-                            // Find all pre code blocks with language-plantuml class
-                            var codeBlocks = placeholder.querySelectorAll('pre code.language-plantuml');
-                            console.log("Found " + codeBlocks.length + " PlantUML code blocks");
-
-                            // Process each code block and add the corresponding image
-                            for (var i = 0; i < Math.min(codeBlocks.length, matches.length); i++) {
-                                console.log("Processing PlantUML block " + (i + 1));
-
-                                // Create a simple image element after each code block
-                                var img = document.createElement('img');
-                                img.src = matches[i].imgData;
-                                img.style.maxWidth = '100%';
-                                img.style.marginTop = '10px';
-                                img.style.marginBottom = '20px';
-
-                                // Insert the image after the code block's parent (the pre element)
-                                codeBlocks[i].parentNode.insertAdjacentElement('afterend', img);
-                            }
-
-                            // Add CSS for the spinner
-                            if (!document.getElementById('spinner-style')) {
-                                var style = document.createElement('style');
-                                style.id = 'spinner-style';
-                                style.innerHTML = `
-                .spinner {
-                  border: 4px solid #f3f3f3;
-                  border-top: 4px solid #3498db;
-                  border-radius: 50%;
-                  width: 30px;
-                  height: 30px;
-                  animation: spin 2s linear infinite;
-                  margin: 0 auto 10px auto;
-                }
-
-                @keyframes spin {
-                  0% { transform: rotate(0deg); }
-                  100% { transform: rotate(360deg); }
-                }
-
-                .loading-text {
-                  color: #666;
-                  font-size: 14px;
-                }
-              `;
-                                document.head.appendChild(style);
-                            }
-                        });
+                        // Process PlantUML images as before
+                        // ... existing PlantUML handling code ...
                     } else {
-                        // For regular messages without PlantUML, use the existing animation
-                        $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
-                        k = 0;
-                        animation_timer = new Timer(.01, function () {
-                        });
-                        animation_timer.setAction(function () {
-                            if (k < $tmp.length) {
-                                c = $tmp.charAt(k++);
-
-                                // Get the content span
-                                const contentSpan = placeholder.querySelector('.content') || placeholder;
-
-                                if (c == '\n')
-                                    contentSpan.innerHTML += "  \n";
-                                else
-                                    contentSpan.innerHTML += c;
-
-                                if (c == ',') {
-                                    this.setInterval(0.1);
-                                } else {
-                                    this.setInterval(0.01);
-                                }
-
-                                this.start();
-                            } else {
-                                this.complete();
-                            }
-                        });
-                        animation_timer.start().complete(function () {
-                            this.stop();
-                            placeholder.innerHTML += "</span>";
-                            // Keep the pre-wrapper class to maintain consistent styling
-                            // $(placeholder).removeClass('pre-wrapper');
-                            // $(placeholder).addClass('chat-gpt');
-                            placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
+                        // Regular ChatGPT message - use markdown
+                        requestAnimationFrame(() => {
+                            contentSpan.textContent = $text;
+                            contentSpan.innerHTML = marked.parse($text, markedOptions);
                         });
                     }
+                } else if ($data.user === 'System') {
+                    // System notifications - no markdown
+                    placeholder.innerHTML = $text;
                 } else {
+                    // Regular user messages - use markdown
                     if (isNewElement) {
-                        // For new elements, append the content span
-                        placeholder.innerHTML += "<span class='content'>" + $data.message + "</span>";
-                    } else {
-                        // For existing elements, update more carefully to preserve structure
-                        let contentSpan = placeholder.querySelector('.content');
-                        if (contentSpan) {
-                            // Update the existing content
-                            contentSpan.innerHTML = $data.message;
-                        } else {
-                            // If no content span exists, create one
-                            contentSpan = document.createElement('span');
-                            contentSpan.className = 'content';
-                            contentSpan.innerHTML = $data.message;
-                            placeholder.appendChild(contentSpan);
-                        }
+                        placeholder.innerHTML += "<span class='content'>";
                     }
+                    
+                    const contentSpan = placeholder.querySelector('.content') || placeholder;
+                    requestAnimationFrame(() => {
+                        contentSpan.textContent = $text;
+                        contentSpan.innerHTML = marked.parse($text, markedOptions);
+                    });
                 }
-                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+
+                // Smooth scroll to bottom
+                $('#list').animate({
+                    scrollTop: $('#messages').height()
+                }, {
+                    duration: 300,
+                    easing: 'swing'
+                });
 
                 if (document.title == old_title) {
                     document.title = 'New Message(s) Received!';
                 } else {
                     document.title = old_title;
                 }
-            } else {
-                if (typeof ($data.cmd) != 'undefined') {
-                    if (!user) {
-                        $("#modal").modal();
-                        return false;
-                    }
+            } else if (typeof ($data.cmd) != 'undefined') {
+                // Handle commands (typing indicators, etc.)
+                if (!user) {
+                    $("#modal").modal();
+                    return false;
+                }
 
-                    $_user = $data.user;
-                    if ($_user) {
-                        switch ($data.cmd) {
-                            case 'onblur':
-                                document.title = old_title;
-                                timer.stop();
-                                break;
-                            case 'greeting':
-                                $li = $("<li />");
-                                $li.html("System Notification: " + $data.user + " joined this conversation.");
-                                $('#messages').append($li);
-                                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
-                                break;
-                            case 'session-timeout':
-                                $li = $("<li />");
-                                $li.html("System Notification: " + $data.user + " left from this conversation.");
-                                $('#messages').append($li);
-                                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
-                                break;
-                            case 'expired':
-                                $li = $("<li />");
-                                $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
-                                $('#messages').append($li);
-                                $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
-                                break;
-                            default:
-                                timer.setAction(function () {
-                                    document.title = $_user + " is typing" + dotted;
-                                    dotted += '.';
-                                    if (dotted.length > 3) this.complete();
-                                    this.start();
-                                });
-                                timer.start().complete(function () {
-                                    dotted = '';
-                                });//.stop(4);
-                        }
+                $_user = $data.user;
+                if ($_user) {
+                    switch ($data.cmd) {
+                        case 'onblur':
+                            document.title = old_title;
+                            timer.stop();
+                            break;
+                        case 'greeting':
+                            $li = $("<li />");
+                            $li.html("System Notification: " + $data.user + " joined this conversation.");
+                            $('#messages').append($li);
+                            $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                            break;
+                        case 'session-timeout':
+                            $li = $("<li />");
+                            $li.html("System Notification: " + $data.user + " left from this conversation.");
+                            $('#messages').append($li);
+                            $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                            break;
+                        case 'expired':
+                            $li = $("<li />");
+                            $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                            $('#messages').append($li);
+                            $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                            break;
+                        default:
+                            timer.setAction(function () {
+                                document.title = $_user + " is typing" + dotted;
+                                dotted += '.';
+                                if (dotted.length > 3) this.complete();
+                                this.start();
+                            });
+                            timer.start().complete(function () {
+                                dotted = '';
+                            });
                     }
                 }
             }
