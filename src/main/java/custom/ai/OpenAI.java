@@ -196,9 +196,9 @@ public class OpenAI extends AbstractApplication implements Provider {
                     if (line.trim().isEmpty()) {
                         // End of event, process the data if we have any
                         if (eventData.length() > 0) {
-                            String data = eventData.toString().trim();
+                            String data = eventData.toString();
                             if (data.startsWith("data: ")) {
-                                data = data.substring(6).trim();
+                                data = data.substring(6);
 
                                 // Skip [DONE] message
                                 if (data.equals("[DONE]")) {
