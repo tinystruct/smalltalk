@@ -16,6 +16,352 @@
 
     <!-- Custom styles for this template -->
     <style type="text/css">
+        /* Base styles */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            line-height: 1.5;
+            color: #374151;
+            background-color: #f9fafb;
+        }
+
+        /* Navbar styles */
+        .navbar-default {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .navbar-brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        /* Chat container styles */
+        #list {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            margin: 1rem 0;
+            max-height: 600px;
+        }
+
+        /* Message styles */
+        #messages li {
+            padding: 0.75rem 0;
+            font-size: 0.9375rem;
+            line-height: 1.5;
+        }
+
+        #messages li .time {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        #messages li .name {
+            font-weight: 600;
+            color: #111827;
+            margin-right: 0.5rem;
+        }
+
+        #messages li .content {
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        /* ChatGPT message styles */
+        #messages li.chat-gpt {
+            background-color: #f9fafb;
+        }
+
+        #messages li.chat-gpt .content {
+            color: #111827;
+        }
+
+        /* Markdown content styles */
+        #messages li .content p {
+            margin: 0.75rem 0;
+        }
+
+        #messages li .content p:first-child {
+            margin-top: 0;
+        }
+
+        #messages li .content p:last-child {
+            margin-bottom: 0;
+        }
+
+        #messages li .content pre {
+            background-color: #1f2937;
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+            margin: 0.75rem 0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        #messages li .content code {
+            background-color: #f3f4f6;
+            color: #111827;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        #messages li .content pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+            font-size: inherit;
+        }
+
+        #messages li .content blockquote {
+            border-left: 4px solid #e5e7eb;
+            margin: 0.75rem 0;
+            padding: 0.5rem 0 0.5rem 1rem;
+            color: #6b7280;
+        }
+
+        #messages li .content ul,
+        #messages li .content ol {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+        }
+
+        #messages li .content li {
+            margin: 0.25rem 0;
+        }
+
+        #messages li .content h1,
+        #messages li .content h2,
+        #messages li .content h3,
+        #messages li .content h4,
+        #messages li .content h5,
+        #messages li .content h6 {
+            margin: 1rem 0 0.5rem;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #111827;
+        }
+
+        #messages li .content h1 { font-size: 1.5rem; }
+        #messages li .content h2 { font-size: 1.25rem; }
+        #messages li .content h3 { font-size: 1.125rem; }
+        #messages li .content h4 { font-size: 1rem; }
+        #messages li .content h5 { font-size: 0.875rem; }
+        #messages li .content h6 { font-size: 0.75rem; }
+
+        #messages li .content table {
+            border-collapse: collapse;
+            margin: 0.75rem 0;
+            width: 100%;
+            font-size: 0.875rem;
+        }
+
+        #messages li .content th,
+        #messages li .content td {
+            border: 1px solid #e5e7eb;
+            padding: 0.5rem;
+        }
+
+        #messages li .content th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+
+        #messages li .content img {
+            max-width: 100%;
+            height: auto;
+            margin: 0.75rem 0;
+            border-radius: 0.375rem;
+        }
+
+        #messages li .content a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        #messages li .content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Input area styles */
+        #sender {
+            background: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-top: 1rem;
+        }
+
+        .text {
+            padding: 1rem;
+            min-height: 60px;
+            font-size: 0.9375rem;
+            color: #374151;
+            border: none;
+            outline: none;
+            background: transparent;
+        }
+
+        #text {
+            min-height: 40px;
+            padding: 0.75rem;
+            font-size: 0.9375rem;
+            color: #374151;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        #button {
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #button:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Dark theme support */
+        #list.dark-green,
+        #list.light-green {
+            background: #1f2937;
+            border-color: #374151;
+        }
+
+        #list.dark-green .content,
+        #list.light-green .content {
+            color: #e5e7eb;
+        }
+
+        #list.dark-green .content pre,
+        #list.light-green .content pre {
+            background-color: #111827;
+        }
+
+        #list.dark-green .content code,
+        #list.light-green .content code {
+            background-color: #374151;
+            color: #e5e7eb;
+        }
+
+        #list.dark-green .content blockquote,
+        #list.light-green .content blockquote {
+            border-left-color: #4b5563;
+            color: #9ca3af;
+        }
+
+        #list.dark-green .content th,
+        #list.light-green .content th {
+            background-color: #374151;
+        }
+
+        #list.dark-green .content th,
+        #list.dark-green .content td,
+        #list.light-green .content th,
+        #list.light-green .content td {
+            border-color: #4b5563;
+        }
+
+        #list.dark-green .content a,
+        #list.light-green .content a {
+            color: #60a5fa;
+        }
+
+        /* ChatGPT toggle button styles */
+        .chatgpt-toggle-wrapper {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 1;
+        }
+
+        .chatgpt-toggle {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .chatgpt-toggle input {
+            display: none;
+        }
+
+        .chatgpt-toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #f3f4f6;
+            color: #6b7280;
+            font-size: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        .chatgpt-toggle-label i {
+            font-size: 0.875rem;
+            transition: transform 0.2s ease;
+        }
+
+        .chatgpt-toggle input:checked + .chatgpt-toggle-label {
+            background-color: #10a37f;
+            color: #ffffff;
+        }
+
+        .chatgpt-toggle input:checked + .chatgpt-toggle-label i {
+            transform: scale(1.1);
+        }
+
+        .chatgpt-toggle:hover .chatgpt-toggle-label {
+            background-color: #e5e7eb;
+        }
+
+        .chatgpt-toggle input:checked:hover + .chatgpt-toggle-label {
+            background-color: #0d8c6d;
+        }
+
+        /* System notification styles */
+        #messages li:has(.system-notification) {
+            background-color: #f3f4f6;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #list {
+                max-height: 400px;
+            }
+
+            #messages li {
+                font-size: 0.875rem;
+            }
+
+            #text {
+                font-size: 0.875rem;
+            }
+        }
+
         #list ::-moz-selection {
             background: #2583AD;
         }
@@ -559,15 +905,17 @@
         /* ChatGPT toggle button styles */
         .chatgpt-toggle-wrapper {
             position: absolute;
-            right: 50px;
+            left: 10px;
             bottom: 10px;
             z-index: 1;
         }
 
         .chatgpt-toggle {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
             cursor: pointer;
             user-select: none;
+            margin-bottom: 0;
         }
 
         .chatgpt-toggle input {
@@ -575,19 +923,37 @@
         }
 
         .chatgpt-toggle-label {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background-color: #e0e0e0;
-            color: #666;
-            font-weight: bold;
-            font-size: 12px;
-            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #f3f4f6;
+            color: #6b7280;
+            font-size: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        .chatgpt-toggle-label i {
+            font-size: 0.875rem;
+            transition: transform 0.2s ease;
         }
 
         .chatgpt-toggle input:checked + .chatgpt-toggle-label {
-            background-color: #10a37f; /* ChatGPT green color */
-            color: white;
+            background-color: #10a37f;
+            color: #ffffff;
+        }
+
+        .chatgpt-toggle input:checked + .chatgpt-toggle-label i {
+            transform: scale(1.1);
+        }
+
+        .chatgpt-toggle:hover .chatgpt-toggle-label {
+            background-color: #e5e7eb;
+        }
+
+        .chatgpt-toggle input:checked:hover + .chatgpt-toggle-label {
+            background-color: #0d8c6d;
         }
 
         ul#messages .content ul {
@@ -2352,7 +2718,10 @@
                     <div class="chatgpt-toggle-wrapper">
                         <label class="chatgpt-toggle" title="Toggle ChatGPT mode">
                             <input type="checkbox" id="chatgpt-toggle" />
-                            <span class="chatgpt-toggle-label">AI</span>
+                            <span class="chatgpt-toggle-label">
+                                <i class="fas fa-brain"></i>
+                                <span>AI</span>
+                            </span>
                         </label>
                     </div>
                 </div>
