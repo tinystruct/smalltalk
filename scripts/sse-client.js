@@ -12,6 +12,8 @@ class SSEClient {
         this.meetingCode = null;
         this.connected = false;
         this.pendingMessages = {}; // Store streaming messages by ID
+        this.messageQueue = new Map(); // Queue for message updates
+        this.updateInterval = null; // Interval for smooth updates
     }
 
     /**
@@ -32,6 +34,9 @@ class SSEClient {
             this.connected = true;
             this.reconnectAttempts = 0;
             console.log('SSE Connection established');
+
+            // Start the update interval for smooth rendering
+            this.startUpdateInterval();
 
             // Message received
             this.eventSource.onmessage = (event) => {
@@ -78,6 +83,7 @@ class SSEClient {
                 });
                 
                 this.connected = false;
+                this.stopUpdateInterval();
 
                 if (this.reconnectAttempts < this.maxReconnectAttempts) {
                     this.reconnectAttempts++;
@@ -110,6 +116,43 @@ class SSEClient {
     }
 
     /**
+     * Start the update interval for smooth rendering
+     */
+    startUpdateInterval() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+        
+        this.updateInterval = setInterval(() => {
+            this.processMessageQueue();
+        }, 50); // Update every 50ms for smooth rendering
+    }
+
+    /**
+     * Stop the update interval
+     */
+    stopUpdateInterval() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+            this.updateInterval = null;
+        }
+    }
+
+    /**
+     * Process the message queue and update the UI
+     */
+    processMessageQueue() {
+        if (this.messageQueue.size === 0) return;
+
+        for (const [messageId, messageData] of this.messageQueue) {
+            if (typeof update === 'function') {
+                update(messageData);
+            }
+            this.messageQueue.delete(messageId);
+        }
+    }
+
+    /**
      * Handle streaming messages
      * @param {Object} data - The message data
      */
@@ -131,17 +174,14 @@ class SSEClient {
                 incremental: data.incremental || false
             };
 
-            // Call update with initial message
-            console.log('Sending initial message to update:', this.pendingMessages[messageId]);
-            if (typeof update === 'function') {
-                update(this.pendingMessages[messageId]);
-            }
+            // Queue initial message
+            this.messageQueue.set(messageId, { ...this.pendingMessages[messageId] });
         }
 
         // Handle incremental updates
         if (data.incremental && data.message) {
             // For incremental updates, append the new content
-            this.pendingMessages[messageId].message += " " + data.message;
+            this.pendingMessages[messageId].message += data.message;
         } else if (data.message) {
             // For non-incremental updates, use the complete message
             this.pendingMessages[messageId].message = data.message;
@@ -150,20 +190,23 @@ class SSEClient {
         // Update incremental flag
         this.pendingMessages[messageId].incremental = data.incremental || false;
 
-        // Call update with the updated message
-        const updateData = {
+        // Queue the updated message
+        this.messageQueue.set(messageId, {
             ...this.pendingMessages[messageId],
             streaming: true
-        };
-        console.log('Sending updated message to update:', updateData);
-        if (typeof update === 'function') {
-            update(updateData);
-        }
+        });
 
         // If this is the final message, mark it as final
         if (data.final) {
             console.log('Message is final, marking as complete:', messageId);
             this.pendingMessages[messageId].final = true;
+            
+            // Queue final update
+            this.messageQueue.set(messageId, {
+                ...this.pendingMessages[messageId],
+                streaming: true
+            });
+
             // Clean up the pending message after a delay
             setTimeout(() => {
                 console.log('Cleaning up completed message:', messageId);
@@ -176,6 +219,7 @@ class SSEClient {
      * Disconnect the SSE connection
      */
     disconnect() {
+        this.stopUpdateInterval();
         if (this.eventSource) {
             console.log('Disconnecting SSE connection');
             this.eventSource.close();
