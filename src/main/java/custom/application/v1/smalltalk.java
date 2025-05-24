@@ -8,6 +8,7 @@ import custom.objects.ChatHistory;
 import custom.objects.DocumentFragment;
 import custom.objects.User;
 import custom.util.*;
+import custom.util.SSEPushManager;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
@@ -40,6 +41,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -225,20 +227,55 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/update")
-    public String update(String sessionId) throws ApplicationException {
+    public String update(String sessionId, Response response, Request request) throws ApplicationException {
         return "";//this.take(sessionId);
     }
 
     @Action("talk/stream")
-    public void stream(String meetingCode, Request request, Response response) throws ApplicationException {
+    public void stream(String meetingCode, Request request, Response response) throws ApplicationException, IOException {
         // Set SSE headers
         response.addHeader(Header.CONTENT_TYPE.name(), "text/event-stream");
         response.addHeader(Header.CACHE_CONTROL.name(), "no-cache, no-transform");
         response.addHeader(Header.CONNECTION.name(), "keep-alive");
         response.addHeader("X-Accel-Buffering", "no");
 
-        // Register with SSE manager
-        SSEPushManager.getInstance().register(request.getSession().getId(), response, this.groups.get(meetingCode));
+        // Get the session ID
+        String sessionId = request.getSession().getId();
+        
+        // Get the message queue for this meeting and convert to BlockingQueue if needed
+        Queue<Builder> queue = this.groups.get(meetingCode);
+        BlockingQueue<Builder> messageQueue = queue instanceof BlockingQueue ? 
+            (BlockingQueue<Builder>) queue : 
+            new ArrayBlockingQueue<>(DEFAULT_MESSAGE_POOL_SIZE, true);
+        
+        // Register with SSE manager and get the client
+        custom.util.SSEClient client = SSEPushManager.getInstance().register(sessionId, response, messageQueue);
+        if (client == null) {
+            throw new ApplicationException("Failed to register SSE client");
+        }
+        
+        // Send initial heartbeat to establish connection
+        Builder heartbeat = new Builder();
+        heartbeat.put("type", "heartbeat");
+        heartbeat.put("time", format.format(new Date()));
+        SSEPushManager.getInstance().push(sessionId, heartbeat);
+
+        // Keep the connection open and monitor for completion
+        try {
+            while (client.isActive()) {
+                // Sleep briefly to prevent tight loop
+                Thread.sleep(1000);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ApplicationException("Stream interrupted: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ApplicationException("Error in stream: " + e.getMessage(), e);
+        } finally {
+            // Clean up when the connection is closed
+            client.close();
+            SSEPushManager.getInstance().remove(sessionId);
+        }
     }
 
     @Action("talk/matrix")
@@ -249,7 +286,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             BufferedImage qrImage = Matrix.toQRImage(this.getLink("talk/join") + "/" + meetingCode, 100, 100);
             return "data:image/png;base64," + Matrix.getBase64Image(qrImage);
         }
-
         return "";
     }
 
@@ -559,15 +595,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                                 if (delta.get("content") != null) {
                                     String content = delta.get("content").toString();
 
-                                    // Append the content to the full response with proper spacing
-                                    // Add a space before the content if needed to ensure words are separated
-                                    if (fullResponse.length() > 0 &&
-                                        !Character.isWhitespace(fullResponse.charAt(fullResponse.length() - 1)) &&
-                                        !content.isEmpty() &&
-                                        !Character.isWhitespace(content.charAt(0)) &&
-                                        !isPunctuation(content.charAt(0))) {
-                                        fullResponse.append(' ');
-                                    }
                                     fullResponse.append(content);
 
                                     // Send the chunk to the client
@@ -1913,15 +1940,14 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private String save(String meetingCode, Builder data) {
         Queue<Builder> queue = this.groups.get(meetingCode);
         if (queue != null) {
-            // Use offer instead of add to handle the case when the queue is full
-            boolean added = queue.offer(data);
-            if (!added) {
-                System.err.println("Warning: Message queue is full for meeting code " + meetingCode + ". Message not added.");
-                // Still save to chat history even if the queue is full
-            }
-
             // Send message using SSE
-            SSEPushManager.getInstance().push(data.get("session_id").toString(), data);
+            String sessionId = data.get("session_id") != null ? data.get("session_id").toString() : null;
+            if (sessionId != null) {
+                SSEPushManager.getInstance().push(sessionId, data);
+            } else {
+                // If no session ID, broadcast to all clients in the meeting
+                SSEPushManager.getInstance().broadcast(data);
+            }
 
             // Automatically save to chat history database
             try {
