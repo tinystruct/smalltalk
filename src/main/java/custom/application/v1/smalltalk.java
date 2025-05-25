@@ -8,7 +8,6 @@ import custom.objects.ChatHistory;
 import custom.objects.DocumentFragment;
 import custom.objects.User;
 import custom.util.*;
-import custom.util.SSEPushManager;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
@@ -21,6 +20,8 @@ import org.tinystruct.data.component.Row;
 import org.tinystruct.data.component.Table;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
+import org.tinystruct.http.SSEClient;
+import org.tinystruct.http.SSEPushManager;
 import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
@@ -266,7 +267,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             new ArrayBlockingQueue<>(DEFAULT_MESSAGE_POOL_SIZE, true);
         
         // Register with SSE manager and get the client
-        custom.util.SSEClient client = SSEPushManager.getInstance().register(sessionId, response, messageQueue);
+        SSEClient client = SSEPushManager.getInstance().register(sessionId, response, messageQueue);
         if (client == null) {
             throw new ApplicationException("Failed to register SSE client");
         }
