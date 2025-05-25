@@ -20,6 +20,7 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
             line-height: 1.5;
+            font-size: 120%;
             color: #374151;
             background-color: #f9fafb;
         }
@@ -338,13 +339,71 @@
         }
 
         /* System notification styles */
-        #messages li:has(.system-notification) {
+        #messages li.system-notification {
             background-color: #f3f4f6;
-            padding: 0.5rem 0.75rem;
+            padding: 0.75rem 1rem;
             border-radius: 0.375rem;
             margin: 0.5rem 0;
             font-size: 0.875rem;
             color: #6b7280;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        #messages li.system-notification.user-joined {
+            border-left-color: #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        #messages li.system-notification.user-left {
+            border-left-color: #F44336;
+            background-color: rgba(244, 67, 54, 0.1);
+        }
+
+        #messages li.system-notification.meeting-status {
+            border-left-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        #messages li.system-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #messages li.system-notification .notification-icon {
+            font-size: 1rem;
+        }
+
+        #messages li.system-notification .notification-text {
+            flex-grow: 1;
+        }
+
+        #messages li.system-notification .notification-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        /* Dark theme support for notifications */
+        #list.dark-green li.system-notification,
+        #list.light-green li.system-notification {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e5e7eb;
+        }
+
+        #list.dark-green li.system-notification.user-joined,
+        #list.light-green li.system-notification.user-joined {
+            background-color: rgba(76, 175, 80, 0.2);
+        }
+
+        #list.dark-green li.system-notification.user-left,
+        #list.light-green li.system-notification.user-left {
+            background-color: rgba(244, 67, 54, 0.2);
+        }
+
+        #list.dark-green li.system-notification.meeting-status,
+        #list.light-green li.system-notification.meeting-status {
+            background-color: rgba(33, 150, 243, 0.2);
         }
 
         /* Responsive adjustments */
@@ -1657,6 +1716,12 @@
                 // Clear previous errors
                 $('#register-error').hide().text('');
 
+                // Validate email
+                if (!email || !isValidEmail(email)) {
+                    $('#register-error').text('Please enter a valid email address.').show();
+                    return;
+                }
+
                 // Send registration request
                 $.ajax({
                     url: '/?q=auth/register',
@@ -1688,6 +1753,12 @@
                     }
                 });
             });
+        }
+
+        // Add email validation function
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
         }
 
         // Handle logout
@@ -1725,8 +1796,7 @@
                 // If no existing element was found, create a new one
                 if (isNewElement) {
                     placeholder = document.createElement('li');
-                    placeholder.setAttribute('class', 'pre-wrapper');
-
+                    
                     // Add data-message-id attribute for streaming updates
                     if ($data.id) {
                         placeholder.setAttribute('data-message-id', $data.id);
@@ -1736,32 +1806,103 @@
                         placeholder.setAttribute('data-message-id', uniqueId);
                     }
 
-                    placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
+                    // Handle system notifications
+                    if ($data.type === 'system') {
+                        placeholder.classList.add('system-notification');
+                        
+                        // Add specific classes based on event type
+                        if ($data.event === 'user_joined') {
+                            placeholder.classList.add('user-joined');
+                        } else if ($data.event === 'user_left') {
+                            placeholder.classList.add('user-left');
+                        } else if ($data.event === 'meeting_status') {
+                            placeholder.classList.add('meeting-status');
+                        }
+
+                        // Create notification content structure
+                        const content = document.createElement('div');
+                        content.className = 'notification-content';
+
+                        // Add icon based on event type
+                        const icon = document.createElement('i');
+                        icon.className = 'notification-icon fas';
+                        if ($data.event === 'user_joined') {
+                            icon.classList.add('fa-user-plus');
+                        } else if ($data.event === 'user_left') {
+                            icon.classList.add('fa-user-minus');
+                        } else if ($data.event === 'meeting_status') {
+                            icon.classList.add('fa-info-circle');
+                        }
+                        content.appendChild(icon);
+
+                        // Add notification text
+                        const text = document.createElement('div');
+                        text.className = 'notification-text';
+                        text.textContent = $data.message;
+                        content.appendChild(text);
+
+                        // Add timestamp
+                        const time = document.createElement('div');
+                        time.className = 'notification-time';
+                        time.textContent = $data.time;
+                        content.appendChild(time);
+
+                        placeholder.appendChild(content);
+                    } else {
+                        // Regular message
+                        placeholder.setAttribute('class', 'pre-wrapper');
+                        placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
+                    }
+
                     $('#messages').append(placeholder);
                 }
 
-                $text = $data.message;
+                // Handle message content
+                if ($data.type !== 'system') {
+                    $text = $data.message;
 
-                // Handle different types of messages
-                if ($data.user === 'ChatGPT') {
-                    // ChatGPT messages - use markdown rendering
-                    if (isNewElement) {
-                        placeholder.innerHTML += "<span class='content'>";
-                    }
-                    
-                    const contentSpan = placeholder.querySelector('.content') || placeholder;
-                    
-                    // Check if the message contains PlantUML images
-                    if ($text.indexOf("<placeholder-image>") >= 0) {
-                        // Process PlantUML images as before
-                        // ... existing PlantUML handling code ...
+                    // Handle different types of messages
+                    if ($data.user === 'ChatGPT') {
+                        // ChatGPT messages - use markdown rendering
+                        if (isNewElement) {
+                            placeholder.innerHTML += "<span class='content'>";
+                        }
+                        
+                        const contentSpan = placeholder.querySelector('.content') || placeholder;
+                        
+                        // Check if the message contains PlantUML images
+                        if ($text.indexOf("<placeholder-image>") >= 0) {
+                            // Process PlantUML images as before
+                            // ... existing PlantUML handling code ...
+                        } else {
+                            // Regular ChatGPT message - use markdown
+                            requestAnimationFrame(() => {
+                                // First set the raw text content to preserve newlines
+                                contentSpan.textContent = $text;
+                                $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
+                                            .replace(/\\`/g, '`');        // Fix backticks if escaped
+                                // Then parse markdown and update HTML
+                                const parsedContent = marked.parse($text, markedOptions);
+                                contentSpan.innerHTML = parsedContent;
+                                
+                                // Apply syntax highlighting to code blocks
+                                contentSpan.querySelectorAll('pre code').forEach((block) => {
+                                    hljs.highlightElement(block);
+                                });
+                            });
+                        }
                     } else {
-                        // Regular ChatGPT message - use markdown
+                        // Regular user messages - use markdown
+                        if (isNewElement) {
+                            placeholder.innerHTML += "<span class='content'>";
+                        }
+                        
+                        const contentSpan = placeholder.querySelector('.content') || placeholder;
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
                             $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
-      .replace(/\\`/g, '`');        // Fix backticks if escaped
+                                        .replace(/\\`/g, '`');        // Fix backticks if escaped
                             // Then parse markdown and update HTML
                             const parsedContent = marked.parse($text, markedOptions);
                             contentSpan.innerHTML = parsedContent;
@@ -1772,30 +1913,6 @@
                             });
                         });
                     }
-                } else if ($data.user === 'System') {
-                    // System notifications - no markdown
-                    placeholder.innerHTML = $text;
-                } else {
-                    // Regular user messages - use markdown
-                    if (isNewElement) {
-                        placeholder.innerHTML += "<span class='content'>";
-                    }
-                    
-                    const contentSpan = placeholder.querySelector('.content') || placeholder;
-                    requestAnimationFrame(() => {
-                        // First set the raw text content to preserve newlines
-                        contentSpan.textContent = $text;
-                        $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
-      .replace(/\\`/g, '`');        // Fix backticks if escaped
-                        // Then parse markdown and update HTML
-                        const parsedContent = marked.parse($text, markedOptions);
-                        contentSpan.innerHTML = parsedContent;
-                        
-                        // Apply syntax highlighting to code blocks
-                        contentSpan.querySelectorAll('pre code').forEach((block) => {
-                            hljs.highlightElement(block);
-                        });
-                    });
                 }
 
                 // Smooth scroll to bottom
@@ -2668,8 +2785,9 @@
                                 <input type="password" class="form-control" id="register-password" placeholder="Password">
                             </div>
                             <div class="form-group">
-                                <label for="register-email">Email (optional)</label>
-                                <input type="email" class="form-control" id="register-email" placeholder="Email">
+                                <label for="register-email">Email</label>
+                                <input type="email" class="form-control" id="register-email" placeholder="Email" required>
+                                <small class="form-text text-muted">Email is required and must be unique.</small>
                             </div>
                             <div class="form-group">
                                 <label for="register-fullname">Full Name (optional)</label>

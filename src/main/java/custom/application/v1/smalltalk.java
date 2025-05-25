@@ -12,7 +12,6 @@ import custom.util.SSEPushManager;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
-
 import org.tinystruct.application.Context;
 import org.tinystruct.application.SharedVariables;
 import org.tinystruct.data.FileEntity;
@@ -94,7 +93,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      *
      * @return JSON with the default prompt
      */
-    @Action("smalltalk/default-prompt")
+    @Action("default-prompt")
     public String getDefaultPrompt(Request request, Response response) {
         Builder builder = new Builder();
         builder.put("default_prompt", getDefaultSystemPrompt());
@@ -139,16 +138,34 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     @Action("login")
     public smalltalk loginPage(Request request, Response response) {
-        // If user is already logged in, redirect to chat
+        // If user is already logged in, check for pending meeting code
         Object userId = request.getSession().getAttribute("user_id");
         if (userId != null) {
-            try {
-                Reforward reforward = new Reforward(request, response);
-                reforward.setDefault("/?q=talk");
-                this.setVariable("show_login", "false"); // session based
-                return (smalltalk) reforward.forward();
-            } catch (Exception e) {
-                // Continue to login page if redirect fails
+            Object pendingMeetingCode = request.getSession().getAttribute("pending_meeting_code");
+            if (pendingMeetingCode != null) {
+                try {
+                    // Clear the pending meeting code
+                    request.getSession().removeAttribute("pending_meeting_code");
+                    // Set the actual meeting code
+                    request.getSession().setAttribute("meeting_code", pendingMeetingCode);
+                    // Redirect to talk page
+                    Reforward reforward = new Reforward(request, response);
+                    reforward.setDefault("/?q=talk");
+                    this.setVariable("show_login", "false");
+                    return (smalltalk) reforward.forward();
+                } catch (Exception e) {
+                    // Continue to login page if redirect fails
+                }
+            } else {
+                // No pending meeting, redirect to talk
+                try {
+                    Reforward reforward = new Reforward(request, response);
+                    reforward.setDefault("/?q=talk");
+                    this.setVariable("show_login", "false");
+                    return (smalltalk) reforward.forward();
+                } catch (Exception e) {
+                    // Continue to login page if redirect fails
+                }
             }
         }
 
@@ -294,22 +311,37 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Check if user is authenticated
         Object userId = request.getSession().getAttribute("user_id");
         if (userId == null) {
-            // Redirect to login page
-            response.setStatus(ResponseStatus.UNAUTHORIZED);
-            return "Please login to join a meeting.";
+            // Store the meeting code in session for redirect after login
+            request.getSession().setAttribute("pending_meeting_code", meetingCode);
+            
+            // Redirect to login page with a message
+            try {
+                Reforward reforward = new Reforward(request, response);
+                reforward.setDefault("/?q=login");
+                this.setVariable("show_login", "true");
+                this.setVariable("login_message", "Please login to join the meeting");
+                return reforward.forward();
+            } catch (Exception e) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
+                return "{ \"error\": \"authentication_required\", \"message\": \"Please login to join the meeting\" }";
+            }
         }
 
         if (!isValidMeetingCode(meetingCode)) {
             response.setStatus(ResponseStatus.NOT_FOUND);
-            return "Invalid meeting code.";
+            return "{ \"error\": \"invalid_meeting\", \"message\": \"Invalid meeting code\" }";
         }
 
+        // Clear any pending meeting code
+        request.getSession().removeAttribute("pending_meeting_code");
+        
+        // Set the meeting code and redirect to talk page
         request.getSession().setAttribute("meeting_code", meetingCode);
         try {
             return redirectToTalk(request, response);
         } catch (ApplicationException e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
-            return "Error redirecting to talk page: " + e.getMessage();
+            return "{ \"error\": \"redirect_failed\", \"message\": \"Error redirecting to talk page: " + e.getMessage() + "\" }";
         }
     }
 
@@ -339,6 +371,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         } else {
             this.setVariable("meeting_code", meetingCode.toString());
             this.setVariable("meeting_url", this.getLink("talk/join", null) + "/" + meetingCode + "&lang=" + this.getLocale().toLanguageTag());
+            
+            // Notify other users about the new user joining
+            notifyUserJoined(meetingCode.toString(), name);
         }
 
         return name;
@@ -355,14 +390,86 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 return "{ \"error\": \"missing user\" }";
             }
 
-            Builder builder = new Builder();
-            builder.put("user", request.getSession().getAttribute("user"));
-            builder.put("cmd", request.getParameter("cmd"));
-
-            return this.save(meetingCode, builder);
+            String cmd = request.getParameter("cmd");
+            if (cmd != null) {
+                switch (cmd.toLowerCase()) {
+                    case "list_users":
+                        return listUsersInMeeting(meetingCode.toString());
+                    case "meeting_info":
+                        return getMeetingInfo(meetingCode.toString());
+                    default:
+                        Builder builder = new Builder();
+                        builder.put("user", request.getSession().getAttribute("user"));
+                        builder.put("cmd", cmd);
+                        return this.save(meetingCode, builder);
+                }
+            }
         }
         response.setStatus(ResponseStatus.UNAUTHORIZED);
         return "{ \"error\": \"expired\" }";
+    }
+
+    private String listUsersInMeeting(String meetingCode) {
+        try {
+            Set<String> sessionIds = sessions.get(meetingCode);
+            if (sessionIds == null) {
+                return "{ \"error\": \"invalid_meeting\" }";
+            }
+
+            Builders users = new Builders();
+            for (String sessionId : sessionIds) {
+                Session session = SessionManager.getInstance().getSession(sessionId);
+                if (session != null) {
+                    String username = (String) session.getAttribute("username");
+                    if (username == null) {
+                        username = (String) session.getAttribute("user");
+                    }
+                    if (username != null) {
+                        Builder user = new Builder();
+                        user.put("username", username);
+                        user.put("session_id", sessionId);
+                        users.add(user);
+                    }
+                }
+            }
+
+            Builder response = new Builder();
+            response.put("type", "system");
+            response.put("event", "user_list");
+            response.put("users", users);
+            return response.toString();
+        } catch (Exception e) {
+            System.err.println("Error listing users: " + e.getMessage());
+            return "{ \"error\": \"internal_error\" }";
+        }
+    }
+
+    private String getMeetingInfo(String meetingCode) {
+        try {
+            Set<String> sessionIds = sessions.get(meetingCode);
+            if (sessionIds == null) {
+                return "{ \"error\": \"invalid_meeting\" }";
+            }
+
+            Builder info = new Builder();
+            info.put("type", "system");
+            info.put("event", "meeting_info");
+            info.put("meeting_code", meetingCode);
+            info.put("user_count", sessionIds.size());
+            info.put("created_at", format.format(new Date()));
+            
+            // Get meeting topic if available
+            SharedVariables sharedVariables = SharedVariables.getInstance(meetingCode);
+            Variable<?> topic = sharedVariables.getVariable(meetingCode);
+            if (topic != null) {
+                info.put("topic", topic.getValue().toString());
+            }
+
+            return info.toString();
+        } catch (Exception e) {
+            System.err.println("Error getting meeting info: " + e.getMessage());
+            return "{ \"error\": \"internal_error\" }";
+        }
     }
 
     @Action("talk/save")
@@ -597,7 +704,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                                     fullResponse.append(content);
 
-                                    // Send the chunk to the client
+                                    // Send the chunk to all users in the meeting
                                     final Builder chunkData = new Builder();
                                     chunkData.put("user", CHAT_GPT);
                                     chunkData.put("session_id", sessionId);
@@ -633,9 +740,17 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             // Get the raw response for storage
             String rawResponse = fullResponse.toString();
 
-            // Store conversation history - use the raw response for storage to preserve original formatting
+            // Store conversation history using our manager
             ConversationHistoryManager.addMessagePair(sessionId, message, rawResponse);
-            SessionVariableManager.addMessagePair(sessionId, message, rawResponse);
+            System.out.println("Stored conversation history for session " + sessionId);
+
+            // Also store in session variables using the dedicated manager
+            try {
+                SessionVariableManager.addMessagePair(sessionId, message, rawResponse);
+            } catch (Exception e) {
+                System.err.println("Error storing conversation in session variables: " + e.getMessage());
+                // Continue execution even if variable storage fails
+            }
 
             // Save to chat history database
             saveChatHistory(meetingCode, sessionId, message, rawResponse);
@@ -1787,6 +1902,82 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':' || c == '-' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '"' || c == '\'' || c == '`';
     }
 
+    private void notifyUserJoined(String meetingCode, String username) {
+        try {
+            final Builder builder = new Builder();
+            builder.put("user", "System");
+            builder.put("time", format.format(new Date()));
+            builder.put("message", username + " has joined the meeting");
+            builder.put("type", "system");
+            builder.put("event", "user_joined");
+            builder.put("username", username);
+            builder.put("timestamp", System.currentTimeMillis());
+            builder.put("color", "#4CAF50"); // Green color for join messages
+            save(meetingCode, builder);
+            
+            // Enhanced logging
+            System.out.println("=== User Join Notification ===");
+            System.out.println("Meeting: " + meetingCode);
+            System.out.println("User: " + username);
+            System.out.println("Time: " + format.format(new Date()));
+            System.out.println("===========================");
+        } catch (Exception e) {
+            System.err.println("Error sending join notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void notifyUserLeft(String meetingCode, String username) {
+        try {
+            final Builder builder = new Builder();
+            builder.put("user", "System");
+            builder.put("time", format.format(new Date()));
+            builder.put("message", username + " has left the meeting");
+            builder.put("type", "system");
+            builder.put("event", "user_left");
+            builder.put("username", username);
+            builder.put("timestamp", System.currentTimeMillis());
+            builder.put("color", "#F44336"); // Red color for leave messages
+            save(meetingCode, builder);
+            
+            // Enhanced logging
+            System.out.println("=== User Leave Notification ===");
+            System.out.println("Meeting: " + meetingCode);
+            System.out.println("User: " + username);
+            System.out.println("Time: " + format.format(new Date()));
+            System.out.println("===========================");
+        } catch (Exception e) {
+            System.err.println("Error sending leave notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void notifyMeetingStatus(String meetingCode, String status, String details) {
+        try {
+            final Builder builder = new Builder();
+            builder.put("user", "System");
+            builder.put("time", format.format(new Date()));
+            builder.put("message", details);
+            builder.put("type", "system");
+            builder.put("event", "meeting_status");
+            builder.put("status", status);
+            builder.put("timestamp", System.currentTimeMillis());
+            builder.put("color", "#2196F3"); // Blue color for status messages
+            save(meetingCode, builder);
+            
+            // Enhanced logging
+            System.out.println("=== Meeting Status Update ===");
+            System.out.println("Meeting: " + meetingCode);
+            System.out.println("Status: " + status);
+            System.out.println("Details: " + details);
+            System.out.println("Time: " + format.format(new Date()));
+            System.out.println("===========================");
+        } catch (Exception e) {
+            System.err.println("Error sending meeting status notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onSessionEvent(SessionEvent event) {
         switch (event.getType()) {
@@ -1808,25 +1999,50 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             meetingCode = generateMeetingCode();
             event.getSession().setAttribute("meeting_code", meetingCode);
             dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
+            
+            // Notify about new meeting creation
+            notifyMeetingStatus(meetingCode.toString(), "created", "New meeting created");
         }
 
         final String sessionId = event.getSession().getId();
         initializeSessionQueue(sessionId);
+
+        // Notify other users about the new user
+        String username = (String) event.getSession().getAttribute("username");
+        if (username == null) {
+            username = (String) event.getSession().getAttribute("user");
+        }
+        if (username != null) {
+            notifyUserJoined(meetingCode.toString(), username);
+            // Update meeting status
+            notifyMeetingStatus(meetingCode.toString(), "user_joined", 
+                "User " + username + " joined the meeting. Total users: " + 
+                (sessions.get(meetingCode) != null ? sessions.get(meetingCode).size() : 1));
+        }
     }
 
     private String generateMeetingCode() {
         return UUID.randomUUID().toString();
     }
 
-    private void initializeSessionQueue(String sessionId) {
-        if (!this.list.containsKey(sessionId)) {
-            this.list.put(sessionId, new ArrayDeque<Builder>());
-        }
-    }
-
     private void handleSessionDestroyed(SessionEvent event) {
         String sessionId = event.getSession().getId();
         Object meetingCode = event.getSession().getAttribute("meeting_code");
+
+        // Notify other users about the user leaving
+        String username = (String) event.getSession().getAttribute("username");
+        if (username == null) {
+            username = (String) event.getSession().getAttribute("user");
+        }
+        if (username != null && meetingCode != null) {
+            notifyUserLeft(meetingCode.toString(), username);
+            
+            // Update meeting status
+            Set<String> remainingUsers = sessions.get(meetingCode);
+            int remainingCount = remainingUsers != null ? remainingUsers.size() - 1 : 0;
+            notifyMeetingStatus(meetingCode.toString(), "user_left", 
+                "User " + username + " left the meeting. Remaining users: " + remainingCount);
+        }
 
         // Clean up conversation history
         ConversationHistoryManager.clearConversationHistory(sessionId);
@@ -1835,6 +2051,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         if (meetingCode != null) {
             cleanupSession(event.getSession(), meetingCode.toString());
+        }
+    }
+
+    private void initializeSessionQueue(String sessionId) {
+        if (!this.list.containsKey(sessionId)) {
+            this.list.put(sessionId, new ArrayDeque<Builder>());
         }
     }
 
@@ -1940,13 +2162,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private String save(String meetingCode, Builder data) {
         Queue<Builder> queue = this.groups.get(meetingCode);
         if (queue != null) {
-            // Send message using SSE
-            String sessionId = data.get("session_id") != null ? data.get("session_id").toString() : null;
-            if (sessionId != null) {
-                SSEPushManager.getInstance().push(sessionId, data);
-            } else {
-                // If no session ID, broadcast to all clients in the meeting
-                SSEPushManager.getInstance().broadcast(data);
+            // Get all sessions in this meeting
+            Set<String> sessionIds = this.sessions.get(meetingCode);
+            if (sessionIds != null) {
+                // Broadcast to all sessions in the meeting
+                for (String sessionId : sessionIds) {
+                    SSEPushManager.getInstance().push(sessionId, data);
+                }
             }
 
             // Automatically save to chat history database
@@ -2003,42 +2225,95 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     @Action("auth/register")
     public String register(Request request, Response response) throws ApplicationException {
-        String username = request.getParameter("username");
-        String password = request.getParameter("password");
-        String email = request.getParameter("email");
-        String fullName = request.getParameter("fullName");
-
-        // Validate required fields
-        if (username == null || username.trim().isEmpty() || password == null || password.trim().isEmpty()) {
-            response.setStatus(ResponseStatus.BAD_REQUEST);
-            return "{ \"error\": \"missing_required_fields\", \"message\": \"Username and password are required\" }";
-        }
-
         try {
-            // Register the user
-            AuthenticationService authService = AuthenticationService.getInstance();
-            User user = authService.registerUser(username, password, email, fullName);
+            String username = request.getParameter("username");
+            String password = request.getParameter("password");
+            String email = request.getParameter("email");
+            String fullName = request.getParameter("fullName");
 
-            // Set user in session
-            request.getSession().setAttribute("user_id", user.getId());
-            request.getSession().setAttribute("username", user.getUsername());
+            // Validate required fields
+            if (username == null || username.trim().isEmpty()) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"missing_username\", \"message\": \"Username is required\" }";
+            }
 
-            // Return success response
-            Builder builder = new Builder();
-            builder.put("id", user.getId());
-            builder.put("username", user.getUsername());
-            builder.put("email", user.getEmail() != null ? user.getEmail() : "");
-            builder.put("fullName", user.getFullName() != null ? user.getFullName() : "");
-            builder.put("createdAt", format.format(user.getCreatedAt()));
+            if (password == null || password.trim().isEmpty()) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"missing_password\", \"message\": \"Password is required\" }";
+            }
 
-            return builder.toString();
-        } catch (ApplicationException e) {
-            response.setStatus(ResponseStatus.BAD_REQUEST);
-            return "{ \"error\": \"registration_failed\", \"message\": \"" + e.getMessage() + "\" }";
+            if (email == null || email.trim().isEmpty()) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"missing_email\", \"message\": \"Email is required\" }";
+            }
+
+            // Validate email format
+            if (!isValidEmail(email)) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"invalid_email\", \"message\": \"Invalid email format\" }";
+            }
+
+            // Check if username already exists
+            if (userExists(username)) {
+                response.setStatus(ResponseStatus.CONFLICT);
+                return "{ \"error\": \"username_exists\", \"message\": \"Username already exists\" }";
+            }
+
+            // Check if email already exists
+            if (emailExists(email)) {
+                response.setStatus(ResponseStatus.CONFLICT);
+                return "{ \"error\": \"email_exists\", \"message\": \"Email already registered\" }";
+            }
+
+            // Create user
+            createUser(username, password, email, fullName);
+
+            // Set session attributes
+            request.getSession().setAttribute("user_id", username);
+            request.getSession().setAttribute("username", username);
+
+            return "{ \"success\": true, \"username\": \"" + username + "\" }";
         } catch (Exception e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
-            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+            return "{ \"error\": \"registration_failed\", \"message\": \"Registration failed: " + e.getMessage() + "\" }";
         }
+    }
+
+    private boolean isValidEmail(String email) {
+        // Basic email validation regex
+        String emailRegex = "^[A-Za-z0-9+_.-]+@(.+)$";
+        return email != null && email.matches(emailRegex);
+    }
+
+    private boolean userExists(String username) {
+        try {
+            User user = AuthenticationService.getInstance().findUserByUsername(username);
+            return user != null;
+        } catch (ApplicationException e) {
+            System.err.println("Error checking username existence: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean emailExists(String email) {
+        try {
+            User user = AuthenticationService.getInstance().findUserByEmail(email);
+            return user != null;
+        } catch (ApplicationException e) {
+            System.err.println("Error checking email existence: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void createUser(String username, String password, String email, String fullName) throws ApplicationException {
+        AuthenticationService.getInstance().registerUser(username, password, email, fullName);
+    }
+
+    private String hashPassword(String password) {
+        // Implement proper password hashing here
+        // For example, using BCrypt:
+        // return BCrypt.hashpw(password, BCrypt.gensalt());
+        return password; // Replace with proper hashing in production
     }
 
     /**
@@ -2088,6 +2363,21 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     @Action("auth/logout")
     public String logout(Request request, Response response) {
+        // Get user info before clearing session
+        String username = (String) request.getSession().getAttribute("username");
+        Object meetingCode = request.getSession().getAttribute("meeting_code");
+
+        // Send user left notification if in a meeting
+        if (username != null && meetingCode != null) {
+            notifyUserLeft(meetingCode.toString(), username);
+            
+            // Update meeting status
+            Set<String> remainingUsers = sessions.get(meetingCode);
+            int remainingCount = remainingUsers != null ? remainingUsers.size() - 1 : 0;
+            notifyMeetingStatus(meetingCode.toString(), "user_left", 
+                "User " + username + " left the meeting. Remaining users: " + remainingCount);
+        }
+
         // Clear user session
         request.getSession().removeAttribute("user_id");
         request.getSession().removeAttribute("username");
@@ -2134,6 +2424,5 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
         }
     }
-
 
 }
