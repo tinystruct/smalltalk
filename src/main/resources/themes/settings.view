@@ -139,7 +139,7 @@
                         if (confirm('Are you sure you want to reset to the default system prompt?')) {
                             // Get the default prompt from smalltalk
                             $.ajax({
-                                url: '/?q=smalltalk/default-prompt',
+                                url: '/?q=default-prompt',
                                 type: 'GET',
                                 success: function(defaultPrompt) {
                                     $('#system-prompt').val(defaultPrompt.default_prompt);
