@@ -1566,6 +1566,189 @@
         #list.light-green .content a {
             color: #66b3ff;
         }
+
+        /* Chat History Modal Styles */
+        .chat-history-container {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .chat-history-filters {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .chat-history-filters .form-group {
+            margin-bottom: 10px;
+        }
+
+        .chat-history-list {
+            padding: 15px;
+        }
+
+        #chat-history-messages {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #chat-history-messages li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #chat-history-messages li .time {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        #chat-history-messages li .name {
+            font-weight: 600;
+            color: #111827;
+            margin-right: 0.5rem;
+        }
+
+        #chat-history-messages li .content {
+            color: #374151;
+            margin-top: 5px;
+        }
+
+        #chat-history-messages li.system-notification {
+            background-color: #f3f4f6;
+            border-left: 4px solid #6b7280;
+        }
+
+        #chat-history-messages li.user-joined {
+            background-color: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4CAF50;
+        }
+
+        #chat-history-messages li.user-left {
+            background-color: rgba(244, 67, 54, 0.1);
+            border-left: 4px solid #F44336;
+        }
+
+        #chat-history-messages li.meeting-status {
+            background-color: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid #2196F3;
+        }
+
+        .meetings-list {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .meetings-list h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        #user-meetings {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #user-meetings li {
+            padding: 10px;
+            margin-bottom: 5px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #user-meetings li:hover {
+            background-color: #f0f0f0;
+            border-color: #ccc;
+        }
+
+        #user-meetings li.active {
+            background-color: #e3f2fd;
+            border-color: #2196F3;
+        }
+
+        #user-meetings .meeting-code {
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        #user-meetings .meeting-time {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        #user-meetings .meeting-preview {
+            font-size: 0.9em;
+            color: #444;
+            margin-top: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .meetings-list {
+            padding: 15px;
+        }
+
+        .meetings-list h4 {
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        #user-meetings {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #user-meetings li {
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #user-meetings li:hover {
+            background-color: #f8f9fa;
+            border-color: #2196F3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #user-meetings .meeting-code {
+            font-weight: 600;
+            color: #2196F3;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        #user-meetings .meeting-time {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        #user-meetings .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-style: italic;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -2460,6 +2643,8 @@
                             break;
                         case 'chat history':
                             // Show chat history
+                            loadChatHistory();
+                            $('#chat_history_modal').modal('show');
                             break;
                     }
                 }
@@ -2677,6 +2862,160 @@
                 }
                 originalSave();
             };
+
+            // Chat History Functions
+            function loadChatHistory() {
+                $.ajax({
+                    url: '/?q=talk/history',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        const historyList = $('#chat-history-messages');
+                        historyList.empty();
+
+                        if (Array.isArray(response)) {
+                            response.forEach(function(msg) {
+                                const li = $('<li></li>');
+                                
+                                // Add appropriate classes based on message type
+                                if (msg.type === 'system') {
+                                    li.addClass('system-notification');
+                                    if (msg.event === 'user_joined') {
+                                        li.addClass('user-joined');
+                                    } else if (msg.event === 'user_left') {
+                                        li.addClass('user-left');
+                                    } else if (msg.event === 'meeting_status') {
+                                        li.addClass('meeting-status');
+                                    }
+                                }
+
+                                // Add message content
+                                li.append(`<span class="time">${msg.time}</span>`);
+                                li.append(`<span class="name">${msg.user}</span>`);
+                                li.append(`<div class="content">${msg.message}</div>`);
+
+                                // Add image if present
+                                if (msg.image) {
+                                    const img = $('<img>').attr('src', msg.image);
+                                    li.find('.content').append(img);
+                                }
+
+                                historyList.append(li);
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Failed to load chat history:', error);
+                        alert('Failed to load chat history. Please try again.');
+                    }
+                });
+            }
+
+            // Setup chat history filters
+            $('#history-date-filter').on('change', function() {
+                filterChatHistory();
+            });
+
+            $('#history-user-filter').on('input', function() {
+                filterChatHistory();
+            });
+
+            function filterChatHistory() {
+                const dateFilter = $('#history-date-filter').val();
+                const userFilter = $('#history-user-filter').val().toLowerCase();
+
+                $('#chat-history-messages li').each(function() {
+                    const $li = $(this);
+                    const time = $li.find('.time').text();
+                    const user = $li.find('.name').text().toLowerCase();
+                    let show = true;
+
+                    if (dateFilter) {
+                        const messageDate = new Date(time).toISOString().split('T')[0];
+                        if (messageDate !== dateFilter) {
+                            show = false;
+                        }
+                    }
+
+                    if (userFilter && !user.includes(userFilter)) {
+                        show = false;
+                    }
+
+                    $li.toggle(show);
+                });
+            }
+
+            // Export chat history
+            $('#export-history').on('click', function() {
+                const history = [];
+                $('#chat-history-messages li').each(function() {
+                    const $li = $(this);
+                    history.push({
+                        time: $li.find('.time').text(),
+                        user: $li.find('.name').text(),
+                        message: $li.find('.content').text()
+                    });
+                });
+
+                const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'chat-history.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            function loadUserMeetings() {
+                $.ajax({
+                    url: '/?q=talk/user-meetings',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        const meetingsList = $('#user-meetings');
+                        meetingsList.empty();
+
+                        if (Array.isArray(response) && response.length > 0) {
+                            response.forEach(function(meeting) {
+                                const li = $('<li></li>');
+                                li.append(`<div class="meeting-code">Meeting: ${meeting.meetingCode}</div>`);
+                                li.append(`<div class="meeting-time">Last activity: ${meeting.lastMessageTime}</div>`);
+                                
+                                // Add click handler to copy meeting code
+                                li.click(function() {
+                                    navigator.clipboard.writeText(meeting.meetingCode)
+                                        .then(() => {
+                                            // Show temporary success message
+                                            const originalText = $(this).find('.meeting-code').text();
+                                            $(this).find('.meeting-code').text('Copied to clipboard!');
+                                            setTimeout(() => {
+                                                $(this).find('.meeting-code').text(originalText);
+                                            }, 2000);
+                                        })
+                                        .catch(err => {
+                                            console.error('Failed to copy meeting code:', err);
+                                        });
+                                });
+                                
+                                meetingsList.append(li);
+                            });
+                        } else {
+                            meetingsList.append('<li class="empty-state">No meetings found</li>');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Failed to load user meetings:', error);
+                        $('#user-meetings').html('<li class="empty-state">Failed to load meetings</li>');
+                    }
+                });
+            }
+
+            // Update the chat history modal show handler
+            $('#chat_history_modal').on('show.bs.modal', function() {
+                loadUserMeetings();
+            });
         });
         //]]>
     </script>
@@ -2888,6 +3227,32 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-primary" id="topic_submit">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat History Modal -->
+<div class="modal fade" id="chat_history_modal" tabindex="-1" role="dialog" aria-labelledby="chatHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true"></span></button>
+                <h4 class="modal-title" id="chatHistoryModalLabel">Chat History</h4>
+            </div>
+            <div class="modal-body">
+                <div class="chat-history-container">
+                    <div class="meetings-list">
+                        <h4>Your Meetings</h4>
+                        <ul id="user-meetings" class="list-group">
+                            <!-- Dynamically populated -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

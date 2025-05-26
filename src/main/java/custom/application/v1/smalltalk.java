@@ -309,41 +309,60 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/join")
     public Object join(String meetingCode, Request request, Response response) throws ApplicationException {
-        // Check if user is authenticated
-        Object userId = request.getSession().getAttribute("user_id");
-        if (userId == null) {
-            // Store the meeting code in session for redirect after login
-            request.getSession().setAttribute("pending_meeting_code", meetingCode);
+        if (!isValidMeetingCode(meetingCode)) {
+            response.setStatus(ResponseStatus.BAD_REQUEST);
+            return "{ \"error\": \"invalid_meeting_code\" }";
+        }
+
+        // Get the session ID
+        String sessionId = request.getSession().getId();
+        
+        // Store meeting code in session
+        request.getSession().setAttribute("meeting_code", meetingCode);
+
+        // Add session to meeting group
+        Set<String> sessionIds = this.sessions.get(meetingCode);
+        if (sessionIds == null) {
+            sessionIds = new HashSet<>();
+            this.sessions.put(meetingCode, sessionIds);
+        }
+        sessionIds.add(sessionId);
+
+        // Initialize session queue
+        initializeSessionQueue(sessionId);
+
+        // Get username from session
+        String username = (String) request.getSession().getAttribute("username");
+        if (username != null) {
+            // Notify others that user joined
+            notifyUserJoined(meetingCode, username);
             
-            // Redirect to login page with a message
+            // Load chat history
             try {
-                Reforward reforward = new Reforward(request, response);
-                reforward.setDefault("/?q=login");
-                this.setVariable("show_login", "true");
-                this.setVariable("login_message", "Please login to join the meeting");
-                return reforward.forward();
+                ChatHistory history = new ChatHistory();
+                Table messages = history.findWith("WHERE meeting_code = ? ORDER BY created_at ASC", new Object[]{meetingCode});
+                
+                // Send each historical message to the new user
+                for (Row row : messages) {
+                    ChatHistory msg = new ChatHistory();
+                    msg.setData(row);
+                    Builder builder = new Builder();
+                    builder.put("userId", msg.getUserId());
+                    builder.put("time", msg.getCreatedAt());
+                    builder.put("message", msg.getMessage());
+                    builder.put("type", msg.getMessageType());
+                    if (msg.getImageUrl() != null && !msg.getImageUrl().isEmpty()) {
+                        builder.put("image", msg.getImageUrl());
+                    }
+                    SSEPushManager.getInstance().push(sessionId, builder);
+                }
             } catch (Exception e) {
-                response.setStatus(ResponseStatus.UNAUTHORIZED);
-                return "{ \"error\": \"authentication_required\", \"message\": \"Please login to join the meeting\" }";
+                System.err.println("Error loading chat history: " + e.getMessage());
+                // Continue even if history loading fails
             }
         }
 
-        if (!isValidMeetingCode(meetingCode)) {
-            response.setStatus(ResponseStatus.NOT_FOUND);
-            return "{ \"error\": \"invalid_meeting\", \"message\": \"Invalid meeting code\" }";
-        }
-
-        // Clear any pending meeting code
-        request.getSession().removeAttribute("pending_meeting_code");
-        
-        // Set the meeting code and redirect to talk page
-        request.getSession().setAttribute("meeting_code", meetingCode);
-        try {
-            return redirectToTalk(request, response);
-        } catch (ApplicationException e) {
-            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
-            return "{ \"error\": \"redirect_failed\", \"message\": \"Error redirecting to talk page: " + e.getMessage() + "\" }";
-        }
+        return redirectToTalk(request, response);
     }
 
     private boolean isValidMeetingCode(String meetingCode) {
@@ -502,9 +521,25 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 return "{ \"error\": \"empty_message\" }";
             }
 
+            // Get user ID from session
+            Object userIdObj = request.getSession().getAttribute("user_id");
+            if (userIdObj == null) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
+                return "{ \"error\": \"user_not_authenticated\" }";
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"invalid_user_id\" }";
+            }
+
             // Extract all parameters we need before any async operations
-            final Object userAttr = request.getSession().getAttribute("user");
-            final String user = userAttr != null ? userAttr.toString() : "Anonymous";
+            final String username = (String) request.getSession().getAttribute("username");
+            final String user = username != null ? username : "Anonymous";
             final String image = request.getParameter("image");
             final String streamParam = request.getParameter("stream");
             final boolean isStreaming = streamParam != null && streamParam.equals("true");
@@ -513,6 +548,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             // Create the message builder
             final Builder builder = new Builder();
             builder.put("user", user);
+            builder.put("user_id", userId);
             builder.put("time", format.format(new Date()));
             builder.put("session_id", sessionId);
 
@@ -528,7 +564,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 // Use a separate thread for processing to avoid request object issues
                 Thread processingThread = new Thread(() -> {
                     try {
-                        processChatGPTResponseAsync(isStreaming, meetingCodeStr, sessionId, finalMessage, image);
+                        processChatGPTResponseAsync(request, isStreaming, meetingCodeStr, sessionId, finalMessage, image);
                     } catch (Exception e) {
                         System.err.println("Error processing ChatGPT response: " + e.getMessage());
                         sendErrorMessage(meetingCodeStr, sessionId, e.getMessage());
@@ -557,91 +593,36 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      */
     private void processChatGPTResponse(Request request, Object meetingCode, String sessionId,
                                         String message, String image) throws ApplicationException {
-        // Extract streaming parameter before starting any async operations
-        // to avoid accessing the request object after it's recycled
-        String streamParam = request.getParameter("stream");
-        boolean isStreaming = streamParam != null && streamParam.equals("true");
-
-        // Use the async version that doesn't need the request object
-        processChatGPTResponseAsync(isStreaming, meetingCode, sessionId, message, image);
+        try {
+            String rawResponse = chatGPT(sessionId, message, image);
+            if (rawResponse != null) {
+                // Save to chat history database
+                saveChatHistory(meetingCode.toString(), sessionId, message, rawResponse, request);
+            }
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to process ChatGPT response: " + e.getMessage());
+        }
     }
 
     /**
      * Process ChatGPT response without request object - safe to use in asynchronous contexts
      * where the request object might be recycled
      */
-    private void processChatGPTResponseAsync(boolean isStreaming, Object meetingCode, String sessionId,
+    private void processChatGPTResponseAsync(Request request, boolean isStreaming, Object meetingCode, String sessionId,
                                            String message, String image) throws ApplicationException {
-        // Convert meetingCode to string to avoid potential issues with object references
-        final String meetingCodeStr = meetingCode.toString();
-
-        if (isStreaming) {
-            // For streaming, start in a separate thread
-            String messageId = UUID.randomUUID().toString();
-
-            // Send initial message to indicate streaming has started
-            final Builder initialData = new Builder();
-            initialData.put("user", CHAT_GPT);
-            initialData.put("session_id", sessionId);
-            initialData.put("time", format.format(new Date()));
-            initialData.put("id", messageId);
-            initialData.put("message", "<span class='typing-indicator'>Thinking...</span>");
-            initialData.put("streaming", true);
-            initialData.put("final", false);
-            initialData.put("incremental", true); // Flag to indicate this is an incremental update
-            save(meetingCodeStr, initialData);
-
-            // Start streaming in a separate thread
-            // Don't reference the request object in this thread
-            new Thread(() -> {
-                try {
-                    streamGPTResponse(message, sessionId, meetingCodeStr, messageId, image);
-                } catch (Exception e) {
-                    System.err.println("Error streaming ChatGPT response: " + e.getMessage());
-                    e.printStackTrace();
-
-                    // Create an error response
-                    final Builder errorBuilder = new Builder();
-                    errorBuilder.put("user", CHAT_GPT);
-                    errorBuilder.put("time", format.format(new Date()));
-                    errorBuilder.put("session_id", sessionId);
-                    errorBuilder.put("id", messageId);
-                    errorBuilder.put("message", "Sorry, I encountered an error processing your request. Please try again later.");
-                    errorBuilder.put("status", "error");
-                    errorBuilder.put("streaming", true);
-                    errorBuilder.put("final", true);
-                    errorBuilder.put("incremental", true); // Flag to indicate this is an incremental update
-
-                    // Save the error response
-                    try {
-                        save(meetingCodeStr, errorBuilder);
-                    } catch (Exception ex) {
-                        System.err.println("Error saving error response: " + ex.getMessage());
-                    }
+        try {
+            if (isStreaming) {
+                String messageId = UUID.randomUUID().toString();
+                streamGPTResponse(message, sessionId, meetingCode.toString(), messageId, image);
+            } else {
+                String rawResponse = chatGPT(sessionId, message, image);
+                if (rawResponse != null) {
+                    // Save to chat history database
+                    saveChatHistory(meetingCode.toString(), sessionId, message, rawResponse, request);
                 }
-            }).start();
-        } else {
-            // Non-streaming response (original behavior)
-            final Builder data = new Builder();
-            data.put("user", CHAT_GPT);
-            data.put("session_id", sessionId);
-            data.put("time", format.format(new Date()));
-            data.put("id", UUID.randomUUID().toString());
-
-            try {
-                String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
-                if (response == null || response.trim().isEmpty()) {
-                    throw new ApplicationException("Empty response from chat service");
-                }
-                data.put("message", filter(response));
-                data.put("final", true);
-            } catch (Exception e) {
-                data.put("message", "Error: " + e.getMessage());
-                data.put("status", "error");
-                data.put("final", true);
             }
-
-            save(meetingCodeStr, data);
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to process ChatGPT response: " + e.getMessage());
         }
     }
 
@@ -675,9 +656,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private void streamGPTResponse(String message, String sessionId, String meetingCode, String messageId, String image)
             throws ApplicationException {
         try {
-            // Create the chat context with previous messages
-            Context context = new ApplicationContext();
-
             // Set up the API request
             Builder payload = createChatGPTPayload(sessionId, message);
             payload.put("stream", true); // Enable streaming
@@ -754,10 +732,18 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             }
 
             // Save to chat history database
-            saveChatHistory(meetingCode, sessionId, message, rawResponse);
+            Builder messageBuilder = new Builder();
+            messageBuilder.put("user", CHAT_GPT);
+            messageBuilder.put("user_id", 0);
+            messageBuilder.put("session_id", sessionId);
+            messageBuilder.put("time", format.format(new Date()));
+            messageBuilder.put("id", messageId);
+            messageBuilder.put("message", rawResponse);
+            messageBuilder.put("streaming", true);
+            messageBuilder.put("final", true);
 
+            saveChatHistory(messageBuilder, meetingCode);
         } catch (Exception e) {
-            System.err.println("Error in streamGPTResponse: " + e.getMessage());
             e.printStackTrace();
             throw new ApplicationException("Error streaming GPT response: " + e.getMessage(), e);
         }
@@ -1907,6 +1893,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         try {
             final Builder builder = new Builder();
             builder.put("user", "System");
+            builder.put("user_id", -1);
             builder.put("time", format.format(new Date()));
             builder.put("message", username + " has joined the meeting");
             builder.put("type", "system");
@@ -1932,6 +1919,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         try {
             final Builder builder = new Builder();
             builder.put("user", "System");
+            builder.put("user_id", -1);
             builder.put("time", format.format(new Date()));
             builder.put("message", username + " has left the meeting");
             builder.put("type", "system");
@@ -1957,6 +1945,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         try {
             final Builder builder = new Builder();
             builder.put("user", "System");
+            builder.put("user_id", -1);
             builder.put("time", format.format(new Date()));
             builder.put("message", details);
             builder.put("type", "system");
@@ -2103,32 +2092,32 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      * @throws ApplicationException If an error occurs
      */
     private void saveChatHistory(Builder builder, String meetingCode) throws ApplicationException {
-        ChatHistory history = new ChatHistory();
-        history.setMeetingCode(meetingCode);
-
-        // Safely handle user field which might be null
-        Object user = builder.get("user");
-        history.setUserName(user != null ? user.toString() : "System");
-
-        // Safely handle message field which might be null
-        Object message = builder.get("message");
-        if (message != null) {
-            history.setMessage(message.toString());
-        } else {
-            // If message is null, check if there's a cmd field
-            Object cmd = builder.get("cmd");
-            history.setMessage(cmd != null ? "Command: " + cmd.toString() : "No message");
-        }
-
-        history.setSessionId(builder.get("session_id") != null ? builder.get("session_id").toString() : "");
-        history.setMessageType(builder.get("image") != null ? "IMAGE" : "TEXT");
-        history.setImageUrl(builder.get("image") != null ? builder.get("image").toString() : null);
-        history.setCreatedAt(format.format(new Date()));
-
         try {
-            history.append();
+            // Get user ID from builder
+            Object userIdObj = builder.get("user_id");
+            if (userIdObj == null) {
+                throw new ApplicationException("User ID not found in message");
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                throw new ApplicationException("Invalid user ID format");
+            }
+
+            // Save user message
+            ChatHistory userHistory = new ChatHistory();
+            userHistory.setMeetingCode(meetingCode);
+            userHistory.setUserId(userId);
+            userHistory.setMessage(builder.get("message").toString());
+            userHistory.setSessionId(builder.get("session_id").toString());
+            userHistory.setMessageType("user");
+            userHistory.setCreatedAt(builder.get("time").toString());
+            userHistory.append();
         } catch (Exception e) {
-            throw new ApplicationException("Failed to save chat history: " + e.getMessage(), e);
+            throw new ApplicationException("Failed to save chat history: " + e.getMessage());
         }
     }
 
@@ -2141,22 +2130,43 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      * @param assistantMessage The assistant's response
      * @throws ApplicationException If an error occurs
      */
-    private void saveChatHistory(String meetingCode, String sessionId, String userMessage, String assistantMessage) throws ApplicationException {
+    private void saveChatHistory(String meetingCode, String sessionId, String userMessage, String assistantMessage, Request request) throws ApplicationException {
         try {
-            // First, save the assistant's message
+            // Get user ID from session
+            Object userIdObj = request.getSession().getAttribute("user_id");
+            if (userIdObj == null) {
+                throw new ApplicationException("User ID not found in session");
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                throw new ApplicationException("Invalid user ID format");
+            }
+
+            // Save user message
+            ChatHistory userHistory = new ChatHistory();
+            userHistory.setMeetingCode(meetingCode);
+            userHistory.setUserId(userId);
+            userHistory.setMessage(userMessage);
+            userHistory.setSessionId(sessionId);
+            userHistory.setMessageType("user");
+            userHistory.setCreatedAt(format.format(new Date()));
+            userHistory.append();
+
+            // Save assistant message
             ChatHistory assistantHistory = new ChatHistory();
             assistantHistory.setMeetingCode(meetingCode);
-            assistantHistory.setUserName(CHAT_GPT);
+            assistantHistory.setUserId(0); // System/assistant messages use ID 0
             assistantHistory.setMessage(assistantMessage);
             assistantHistory.setSessionId(sessionId);
-            assistantHistory.setMessageType("TEXT");
+            assistantHistory.setMessageType("assistant");
             assistantHistory.setCreatedAt(format.format(new Date()));
             assistantHistory.append();
-
-            // Log the save operation
-            System.out.println("Saved assistant message to chat history for meeting " + meetingCode);
         } catch (Exception e) {
-            throw new ApplicationException("Failed to save chat history: " + e.getMessage(), e);
+            throw new ApplicationException("Failed to save chat history: " + e.getMessage());
         }
     }
 
@@ -2189,35 +2199,29 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     @Action("talk/history")
     public String getChatHistory(Request request, Response response) throws ApplicationException {
-        final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (meetingCode == null) {
-            response.setStatus(ResponseStatus.BAD_REQUEST);
-            return "{ \"error\": \"missing_meeting_code\" }";
-        }
-
         try {
-            ChatHistory history = new ChatHistory();
-            Table messages = history.find("meeting_code = ?", new Object[]{meetingCode.toString()});
-
-            Builders builders = new Builders();
-            for (Row row : messages) {
-                ChatHistory msg = new ChatHistory();
-                msg.setData(row);
-                Builder builder = new Builder();
-                builder.put("user", msg.getUserName());
-                builder.put("time", msg.getCreatedAt());
-                builder.put("message", msg.getMessage());
-                builder.put("type", msg.getMessageType());
-                if (msg.getImageUrl() != null && !msg.getImageUrl().isEmpty()) {
-                    builder.put("image", msg.getImageUrl());
-                }
-                builders.add(builder);
+            String meetingCode = request.getParameter("meetingCode");
+            if (meetingCode == null || meetingCode.isEmpty()) {
+                throw new ApplicationException("Meeting code is required");
             }
 
+            List<ChatHistory> history = ChatHistory.getChatHistory(meetingCode);
+            Builders builders = new Builders();
+            for (ChatHistory entry : history) {
+                Builder builder = new Builder();
+                builder.put("id", entry.getId());
+                builder.put("meetingCode", entry.getMeetingCode());
+                builder.put("userId", entry.getUserId());
+                builder.put("message", entry.getMessage());
+                builder.put("sessionId", entry.getSessionId());
+                builder.put("messageType", entry.getMessageType());
+                builder.put("imageUrl", entry.getImageUrl());
+                builder.put("createdAt", entry.getCreatedAt());
+                builders.add(builder);
+            }
             return builders.toString();
         } catch (Exception e) {
-            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
-            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+            throw new ApplicationException("Failed to get chat history: " + e.getMessage());
         }
     }
 
@@ -2267,11 +2271,11 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             }
 
             // Create user
-            createUser(username, password, email, fullName);
+            User user = createUser(username, password, email, fullName);
 
             // Set session attributes
-            request.getSession().setAttribute("user_id", username);
-            request.getSession().setAttribute("username", username);
+            request.getSession().setAttribute("user_id", user.getId());
+            request.getSession().setAttribute("username", user.getUsername());
 
             return "{ \"success\": true, \"username\": \"" + username + "\" }";
         } catch (Exception e) {
@@ -2306,8 +2310,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         }
     }
 
-    private void createUser(String username, String password, String email, String fullName) throws ApplicationException {
-        AuthenticationService.getInstance().registerUser(username, password, email, fullName);
+    private User createUser(String username, String password, String email, String fullName) throws ApplicationException {
+        return AuthenticationService.getInstance().registerUser(username, password, email, fullName);
     }
 
     private String hashPassword(String password) {
@@ -2423,6 +2427,37 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         } catch (Exception e) {
             response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
             return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    @Action("talk/user-meetings")
+    public String getUserMeetings(Request request, Response response) throws ApplicationException {
+        try {
+            // Get user ID from session
+            Object userIdObj = request.getSession().getAttribute("user_id");
+            if (userIdObj == null) {
+                throw new ApplicationException("User ID not found in session");
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                throw new ApplicationException("Invalid user ID format");
+            }
+
+            List<ChatHistory> meetings = ChatHistory.getUserMeetings(userId);
+            Builders builders = new Builders();
+            for (ChatHistory meeting : meetings) {
+                Builder builder = new Builder();
+                builder.put("meetingCode", meeting.getMeetingCode());
+                builder.put("lastMessageTime", meeting.getCreatedAt());
+                builders.add(builder);
+            }
+            return builders.toString();
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to get user meetings: " + e.getMessage());
         }
     }
 
