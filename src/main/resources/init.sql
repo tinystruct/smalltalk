@@ -1,4 +1,3 @@
-
 DROP TABLE IF EXISTS users;
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,7 +39,7 @@ CREATE TABLE IF NOT EXISTS document_fragments (
 CREATE INDEX idx_document_id ON document_fragments(document_id);
 CREATE INDEX idx_fragment_index ON document_fragments(fragment_index);
 CREATE INDEX idx_created_at ON document_fragments(created_at);
-CREATE INDEX idx_user_id ON document_fragments(user_id);
+CREATE INDEX idx_fragment_user_id ON document_fragments(user_id);
 CREATE INDEX idx_is_public ON document_fragments(is_public);
 
 DROP TABLE IF EXISTS document_embeddings;
@@ -59,7 +58,7 @@ DROP TABLE IF EXISTS chat_history;
 CREATE TABLE IF NOT EXISTS chat_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     meeting_code VARCHAR(255) NOT NULL,
-    user_name VARCHAR(255),
+    user_id INTEGER NOT NULL,
     message TEXT,
     session_id VARCHAR(255),
     message_type VARCHAR(50),
@@ -68,8 +67,10 @@ CREATE TABLE IF NOT EXISTS chat_history (
 );
 -- Create indexes for chat_history
 CREATE INDEX idx_meeting_code ON chat_history(meeting_code);
+CREATE INDEX idx_chat_history_user_id ON chat_history(user_id);
 CREATE INDEX idx_chat_created_at ON chat_history(created_at);
 
+DROP TABLE IF EXISTS user_prompts;
 -- Create table for user-specific system prompts
 CREATE TABLE IF NOT EXISTS user_prompts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -90,4 +91,4 @@ AFTER UPDATE ON user_prompts
 FOR EACH ROW
 BEGIN
     UPDATE user_prompts SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
-END;
+END
