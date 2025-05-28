@@ -2063,7 +2063,9 @@
                                 // First set the raw text content to preserve newlines
                                 contentSpan.textContent = $text;
                                 $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
-                                            .replace(/\\`/g, '`');        // Fix backticks if escaped
+                                            .replace(/\\`/g, '`')
+                                            .replace(/\\'/g, '\'')
+                                            .replace(/\\"/g, '"');        // Fix backticks if escaped
                                 // Then parse markdown and update HTML
                                 const parsedContent = marked.parse($text, markedOptions);
                                 contentSpan.innerHTML = parsedContent;
@@ -2561,6 +2563,7 @@
                                 <li><i class="fas fa-cog"></i> Settings</li>
                                 <li><i class="fas fa-book"></i> Libraries</li>
                                 <li><i class="fas fa-history"></i> Chat History</li>
+                                <li class="admin-only" style="display: none;"><i class="fas fa-shield-alt"></i> Management</li>
                             </ul>
                             <div class="sidebar-section">
                                 <h3>Online Users</h3>
@@ -2645,6 +2648,10 @@
                             // Show chat history
                             loadChatHistory();
                             $('#chat_history_modal').modal('show');
+                            break;
+                        case 'management':
+                            // Navigate to management page
+                            window.location.href = '/?q=management';
                             break;
                     }
                 }
@@ -3016,6 +3023,28 @@
             $('#chat_history_modal').on('show.bs.modal', function() {
                 loadUserMeetings();
             });
+
+            // Check if user is admin and show/hide management menu
+            function checkAdminStatus() {
+                $.ajax({
+                    url: '/?q=auth/profile',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.isAdmin) {
+                            $('.admin-only').show();
+                        } else {
+                            $('.admin-only').hide();
+                        }
+                    },
+                    error: function() {
+                        $('.admin-only').hide();
+                    }
+                });
+            }
+
+            // Call checkAdminStatus when user logs in
+            checkAdminStatus();
         });
         //]]>
     </script>

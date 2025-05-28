@@ -630,6 +630,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         try {
             final Builder data = new Builder();
             data.put("user", CHAT_GPT);
+            data.put("user_id", 0);
             data.put("session_id", sessionId);
             data.put("time", format.format(new Date()));
             data.put("id", UUID.randomUUID().toString());
@@ -686,6 +687,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                                     // Send the chunk to all users in the meeting
                                     final Builder chunkData = new Builder();
                                     chunkData.put("user", CHAT_GPT);
+                                    chunkData.put("user_id", 0);
                                     chunkData.put("session_id", sessionId);
                                     chunkData.put("time", format.format(new Date()));
                                     chunkData.put("id", messageId);
@@ -707,6 +709,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             // Send a final chunk to indicate the end of streaming
             final Builder finalChunkData = new Builder();
             finalChunkData.put("user", CHAT_GPT);
+            finalChunkData.put("user_id", 0);
             finalChunkData.put("session_id", sessionId);
             finalChunkData.put("time", format.format(new Date()));
             finalChunkData.put("id", messageId);

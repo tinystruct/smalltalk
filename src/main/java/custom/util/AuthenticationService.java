@@ -1,23 +1,18 @@
 package custom.util;
 
 import custom.objects.User;
+import org.mindrot.jbcrypt.BCrypt;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Table;
 import org.tinystruct.http.Session;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.Date;
 
 /**
  * Service for handling user authentication, registration, and password management.
  */
 public class AuthenticationService {
-    private static final int SALT_LENGTH = 16;
-    private static final String HASH_ALGORITHM = "SHA-256";
+    private static final int BCRYPT_WORKLOAD = 12; // Recommended workload factor for BCrypt
 
     /**
      * Register a new user
@@ -146,63 +141,26 @@ public class AuthenticationService {
     }
 
     /**
-     * Hash a password with a random salt
+     * Hash a password using BCrypt
      *
      * @param password Plain text password
-     * @return Hashed password with salt
+     * @return BCrypt hashed password
      */
     private String hashPassword(String password) {
-        try {
-            // Generate a random salt
-            SecureRandom random = new SecureRandom();
-            byte[] salt = new byte[SALT_LENGTH];
-            random.nextBytes(salt);
-
-            // Hash the password with the salt
-            MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
-            md.update(salt);
-            byte[] hashedPassword = md.digest(password.getBytes(StandardCharsets.UTF_8));
-
-            // Combine salt and hashed password
-            byte[] combined = new byte[salt.length + hashedPassword.length];
-            System.arraycopy(salt, 0, combined, 0, salt.length);
-            System.arraycopy(hashedPassword, 0, combined, salt.length, hashedPassword.length);
-
-            // Encode as Base64 string
-            return Base64.getEncoder().encodeToString(combined);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Failed to hash password: " + e.getMessage(), e);
-        }
+        return BCrypt.hashpw(password, BCrypt.gensalt(BCRYPT_WORKLOAD));
     }
 
     /**
-     * Verify a password against a hashed password
+     * Verify a password against a BCrypt hash
      *
      * @param password       Plain text password
-     * @param hashedPassword Hashed password with salt
+     * @param hashedPassword BCrypt hashed password
      * @return True if the password matches, false otherwise
      */
     private boolean verifyPassword(String password, String hashedPassword) {
         try {
-            // Decode the combined salt and hash
-            byte[] combined = Base64.getDecoder().decode(hashedPassword);
-
-            // Extract the salt
-            byte[] salt = new byte[SALT_LENGTH];
-            System.arraycopy(combined, 0, salt, 0, salt.length);
-
-            // Hash the password with the extracted salt
-            MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
-            md.update(salt);
-            byte[] hashedInput = md.digest(password.getBytes(StandardCharsets.UTF_8));
-
-            // Extract the original hash
-            byte[] originalHash = new byte[combined.length - salt.length];
-            System.arraycopy(combined, salt.length, originalHash, 0, originalHash.length);
-
-            // Compare the hashes
-            return MessageDigest.isEqual(hashedInput, originalHash);
-        } catch (NoSuchAlgorithmException | IllegalArgumentException e) {
+            return BCrypt.checkpw(password, hashedPassword);
+        } catch (IllegalArgumentException e) {
             return false;
         }
     }
@@ -223,7 +181,8 @@ public class AuthenticationService {
     /**
      * Get the current authenticated user from the request
      *
-     * @param userId@return The authenticated user, or null if not authenticated
+     * @param userId User ID
+     * @return The authenticated user, or null if not authenticated
      * @throws ApplicationException if an error occurs
      */
     public static User getCurrentUser(String userId) throws ApplicationException {
