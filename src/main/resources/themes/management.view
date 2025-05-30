@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content=""/>
+    <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
+    <title>Small Talk - Management</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+    <!-- Bootstrap core CSS -->
+    <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
+
+    <!-- Custom styles for this template -->
+    <style type="text/css">
+        body {
+            padding-top: 40px;
+            padding-bottom: 40px;
+            background-color: #f5f5f5;
+        }
+
+        .management-container {
+            margin-top: 50px;
+        }
+
+        .user-card {
+            margin-bottom: 20px;
+        }
+
+        .user-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .user-meta {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .user-status {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+
+        .back-link {
+            margin-bottom: 20px;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .status-inactive {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .status-pending {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .action-buttons {
+            margin-top: 10px;
+        }
+
+        .action-buttons .btn {
+            margin-right: 5px;
+        }
+
+        /* Password toggle button styles */
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: #333;
+        }
+
+        .password-field-wrapper {
+            position: relative;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="management-container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>User Management</h1>
+                <p>Manage users and their permissions.</p>
+
+                <div class="back-link">
+                    <a href="/?q=talk" class="btn btn-default"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+                    <button class="btn btn-primary" data-toggle="modal" data-target="#addUserModal">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </button>
+                </div>
+
+                <!-- Add User Modal -->
+                <div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModalLabel">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                <h4 class="modal-title" id="addUserModalLabel">Add New User</h4>
+                            </div>
+                            <div class="modal-body">
+                                <form id="addUserForm">
+                                    <div class="form-group">
+                                        <label for="username">Username</label>
+                                        <input type="text" class="form-control" id="username" placeholder="Enter username" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" class="form-control" id="email" placeholder="Enter email" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="password">Password</label>
+                                        <div class="password-field-wrapper">
+                                            <input type="password" class="form-control" id="password" placeholder="Enter password" required>
+                                            <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="fullName">Full Name</label>
+                                        <input type="text" class="form-control" id="fullName" placeholder="Enter full name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Role</label>
+                                        <div class="radio">
+                                            <label>
+                                                <input type="radio" name="role" id="roleUser" value="user" checked>
+                                                User
+                                            </label>
+                                        </div>
+                                        <div class="radio">
+                                            <label>
+                                                <input type="radio" name="role" id="roleAdmin" value="admin">
+                                                Administrator
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-success" id="addUserSuccess" style="display: none;"></div>
+                                    <div class="alert alert-danger" id="addUserError" style="display: none;"></div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" id="addUserButton">Add User</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs" id="userTabs">
+                    <li class="active"><a href="#activeUsers" data-toggle="tab">Active Users</a></li>
+                    <li><a href="#inactiveUsers" data-toggle="tab">Inactive Users</a></li>
+                    <li><a href="#pendingUsers" data-toggle="tab">Pending Users</a></li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- Active Users Tab -->
+                    <div class="tab-pane active" id="activeUsers">
+                        <div class="row" id="activeUsersList">
+                            <div class="col-md-12">
+                                <p class="text-center" id="activeUsersLoading">Loading active users...</p>
+                                <p class="text-center" id="activeUsersEmpty" style="display: none;">No active users found.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inactive Users Tab -->
+                    <div class="tab-pane" id="inactiveUsers">
+                        <div class="row" id="inactiveUsersList">
+                            <div class="col-md-12">
+                                <p class="text-center" id="inactiveUsersLoading">Loading inactive users...</p>
+                                <p class="text-center" id="inactiveUsersEmpty" style="display: none;">No inactive users found.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Users Tab -->
+                    <div class="tab-pane" id="pendingUsers">
+                        <div class="row" id="pendingUsersList">
+                            <div class="col-md-12">
+                                <p class="text-center" id="pendingUsersLoading">Loading pending users...</p>
+                                <p class="text-center" id="pendingUsersEmpty" style="display: none;">No pending users found.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
+<script type="text/javascript" src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Password toggle functionality
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Make togglePassword function globally available
+        window.togglePassword = togglePassword;
+
+        // Check if user is admin
+        $.ajax({
+            url: '/?q=auth/profile',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (!response.isAdmin) {
+                    // Redirect to chat if not admin
+                    window.location.href = '/?q=talk';
+                    return;
+                }
+
+                // Load users
+                loadActiveUsers();
+                loadInactiveUsers();
+                loadPendingUsers();
+            },
+            error: function() {
+                // Redirect to login if not authenticated
+                window.location.href = '/?q=login';
+            }
+        });
+
+        // Handle add user form submission
+        $('#addUserButton').click(function() {
+            var username = $('#username').val();
+            var email = $('#email').val();
+            var password = $('#password').val();
+            var fullName = $('#fullName').val();
+            var role = $('input[name="role"]:checked').val();
+
+            // Validate form
+            if (!username || !email || !password) {
+                $('#addUserError').text('Please fill in all required fields').show();
+                $('#addUserSuccess').hide();
+                return;
+            }
+
+            // Send request
+            $.ajax({
+                url: '/?q=management/add-user',
+                type: 'POST',
+                data: {
+                    username: username,
+                    email: email,
+                    password: password,
+                    fullName: fullName,
+                    role: role
+                },
+                dataType: 'json',
+                success: function(response) {
+                    // Show success message
+                    $('#addUserSuccess').text('User added successfully').show();
+                    $('#addUserError').hide();
+
+                    // Reset form
+                    $('#addUserForm')[0].reset();
+
+                    // Reload users and close modal after a short delay
+                    setTimeout(function() {
+                        $('#addUserModal').modal('hide');
+                        loadActiveUsers();
+                        loadInactiveUsers();
+                        loadPendingUsers();
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    // Show error message
+                    var errorMessage = 'Failed to add user';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    $('#addUserError').text(errorMessage).show();
+                    $('#addUserSuccess').hide();
+                }
+            });
+        });
+
+        // Load active users
+        function loadActiveUsers() {
+            $.ajax({
+                url: '/?q=management/active-users',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $('#activeUsersLoading').hide();
+
+                    if (!response.users || response.users.length === 0) {
+                        $('#activeUsersEmpty').show();
+                    } else {
+                        renderUsers(response.users, 'activeUsersList', 'active');
+                    }
+                },
+                error: function() {
+                    $('#activeUsersLoading').hide();
+                    $('#activeUsersList').html('<div class="col-md-12"><p class="text-danger">Error loading users. Please try again later.</p></div>');
+                }
+            });
+        }
+
+        // Load inactive users
+        function loadInactiveUsers() {
+            $.ajax({
+                url: '/?q=management/inactive-users',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $('#inactiveUsersLoading').hide();
+
+                    if (!response.users || response.users.length === 0) {
+                        $('#inactiveUsersEmpty').show();
+                    } else {
+                        renderUsers(response.users, 'inactiveUsersList', 'inactive');
+                    }
+                },
+                error: function() {
+                    $('#inactiveUsersLoading').hide();
+                    $('#inactiveUsersList').html('<div class="col-md-12"><p class="text-danger">Error loading users. Please try again later.</p></div>');
+                }
+            });
+        }
+
+        // Load pending users
+        function loadPendingUsers() {
+            $.ajax({
+                url: '/?q=management/pending-users',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $('#pendingUsersLoading').hide();
+
+                    if (!response.users || response.users.length === 0) {
+                        $('#pendingUsersEmpty').show();
+                    } else {
+                        renderUsers(response.users, 'pendingUsersList', 'pending');
+                    }
+                },
+                error: function() {
+                    $('#pendingUsersLoading').hide();
+                    $('#pendingUsersList').html('<div class="col-md-12"><p class="text-danger">Error loading users. Please try again later.</p></div>');
+                }
+            });
+        }
+
+        // Handle user actions
+        $(document).on('click', '.user-action', function() {
+            var action = $(this).data('action');
+            var userId = $(this).data('user-id');
+            var userName = $(this).data('user-name');
+
+            switch(action) {
+                case 'activate':
+                    if (confirm('Are you sure you want to activate ' + userName + '?')) {
+                        updateUserStatus(userId, 'active');
+                    }
+                    break;
+                case 'deactivate':
+                    if (confirm('Are you sure you want to deactivate ' + userName + '?')) {
+                        updateUserStatus(userId, 'inactive');
+                    }
+                    break;
+                case 'delete':
+                    if (confirm('Are you sure you want to delete ' + userName + '? This action cannot be undone.')) {
+                        deleteUser(userId);
+                    }
+                    break;
+                case 'promote':
+                    if (confirm('Are you sure you want to promote ' + userName + ' to administrator?')) {
+                        updateUserRole(userId, 'admin');
+                    }
+                    break;
+                case 'demote':
+                    if (confirm('Are you sure you want to demote ' + userName + ' to regular user?')) {
+                        updateUserRole(userId, 'user');
+                    }
+                    break;
+            }
+        });
+
+        // Update user status
+        function updateUserStatus(userId, status) {
+            $.ajax({
+                url: '/?q=management/update-status',
+                type: 'POST',
+                data: {
+                    userId: userId,
+                    status: status
+                },
+                dataType: 'json',
+                success: function(response) {
+                    // Reload all user lists
+                    loadActiveUsers();
+                    loadInactiveUsers();
+                    loadPendingUsers();
+                },
+                error: function(xhr) {
+                    var errorMessage = 'Failed to update user status';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        // Update user role
+        function updateUserRole(userId, role) {
+            $.ajax({
+                url: '/?q=management/update-role',
+                type: 'POST',
+                data: {
+                    userId: userId,
+                    role: role
+                },
+                dataType: 'json',
+                success: function(response) {
+                    // Reload all user lists
+                    loadActiveUsers();
+                    loadInactiveUsers();
+                    loadPendingUsers();
+                },
+                error: function(xhr) {
+                    var errorMessage = 'Failed to update user role';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        // Delete user
+        function deleteUser(userId) {
+            $.ajax({
+                url: '/?q=management/delete-user',
+                type: 'POST',
+                data: {
+                    userId: userId
+                },
+                dataType: 'json',
+                success: function(response) {
+                    // Reload all user lists
+                    loadActiveUsers();
+                    loadInactiveUsers();
+                    loadPendingUsers();
+                },
+                error: function(xhr) {
+                    var errorMessage = 'Failed to delete user';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    alert(errorMessage);
+                }
+            });
+        }
+
+        // Render users to the specified container
+        function renderUsers(users, containerId, status) {
+            var container = $('#' + containerId);
+            container.empty();
+
+            users.forEach(function(user) {
+                var col = $('<div class="col-md-4"></div>');
+                var card = $('<div class="panel panel-default user-card"></div>');
+                var cardBody = $('<div class="panel-body"></div>');
+
+                // Add user info
+                cardBody.append('<h4 class="user-title">' + user.username + '</h4>');
+                cardBody.append('<p class="user-meta">Email: ' + user.email + '</p>');
+                if (user.fullName) {
+                    cardBody.append('<p class="user-meta">Name: ' + user.fullName + '</p>');
+                }
+                cardBody.append('<p class="user-meta">Role: ' + (user.isAdmin ? 'Administrator' : 'User') + '</p>');
+                cardBody.append('<p class="user-meta">Joined: ' + new Date(user.createdAt).toLocaleString() + '</p>');
+
+                // Add status badge
+                var statusClass = status === 'active' ? 'status-active' : 
+                                status === 'inactive' ? 'status-inactive' : 'status-pending';
+                cardBody.append('<span class="status-badge ' + statusClass + '">' + 
+                              status.charAt(0).toUpperCase() + status.slice(1) + '</span>');
+
+                // Add action buttons
+                var btnContainer = $('<div class="action-buttons"></div>');
+
+                // Add appropriate action buttons based on status
+                if (status === 'active') {
+                    btnContainer.append('<button class="btn btn-warning btn-sm user-action" data-action="deactivate" ' +
+                                     'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Deactivate</button>');
+                } else if (status === 'inactive') {
+                    btnContainer.append('<button class="btn btn-success btn-sm user-action" data-action="activate" ' +
+                                     'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Activate</button>');
+                } else if (status === 'pending') {
+                    btnContainer.append('<button class="btn btn-success btn-sm user-action" data-action="activate" ' +
+                                     'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Approve</button>');
+                }
+
+                // Add role management buttons
+                if (!user.isAdmin) {
+                    btnContainer.append('<button class="btn btn-info btn-sm user-action" data-action="promote" ' +
+                                     'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Promote to Admin</button>');
+                } else {
+                    btnContainer.append('<button class="btn btn-info btn-sm user-action" data-action="demote" ' +
+                                     'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Demote to User</button>');
+                }
+
+                // Add delete button
+                btnContainer.append('<button class="btn btn-danger btn-sm user-action" data-action="delete" ' +
+                                 'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Delete</button>');
+
+                cardBody.append(btnContainer);
+                card.append(cardBody);
+                col.append(card);
+                container.append(col);
+            });
+        }
+    });
+</script>
+</body>
+</html> 

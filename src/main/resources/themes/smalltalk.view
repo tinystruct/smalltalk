@@ -54,6 +54,15 @@
             padding: 0.75rem 0;
             font-size: 0.9375rem;
             line-height: 1.5;
+            margin-bottom: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #messages li .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.25rem;
         }
 
         #messages li .time {
@@ -71,15 +80,117 @@
         #messages li .content {
             color: #374151;
             line-height: 1.6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
+
+        /* User message styles */
+        #messages li:not(.chat-gpt):not(.system-notification) .content {
+            background-color: #e3f2fd;
+            border-bottom-right-radius: 0.25rem;
+            margin-left: auto;
+            position: relative;
         }
 
         /* ChatGPT message styles */
-        #messages li.chat-gpt {
-            background-color: #f9fafb;
+        #messages li.chat-gpt .content {
+            background-color: #f3f4f6;
+            border-bottom-left-radius: 0.25rem;
+            margin-right: auto;
+            position: relative;
         }
 
-        #messages li.chat-gpt .content {
-            color: #111827;
+        /* Dark theme support for messages */
+        #list.dark-green li:not(.chat-gpt):not(.system-notification) .content,
+        #list.light-green li:not(.chat-gpt):not(.system-notification) .content {
+            background-color: #1a365d;
+            color: #e5e7eb;
+        }
+
+        #list.dark-green li:not(.chat-gpt):not(.system-notification) .content::after,
+        #list.light-green li:not(.chat-gpt):not(.system-notification) .content::after {
+            background: #1a365d;
+        }
+
+        #list.dark-green li.chat-gpt .content,
+        #list.light-green li.chat-gpt .content {
+            background-color: #2d3748;
+            color: #e5e7eb;
+        }
+
+        #list.dark-green li.chat-gpt .content::after,
+        #list.light-green li.chat-gpt .content::after {
+            background: #2d3748;
+        }
+
+        /* System notification styles */
+        #messages li.system-notification {
+            background-color: #f3f4f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+            color: #6b7280;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        #messages li.system-notification.user-joined {
+            border-left-color: #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        #messages li.system-notification.user-left {
+            border-left-color: #F44336;
+            background-color: rgba(244, 67, 54, 0.1);
+        }
+
+        #messages li.system-notification.meeting-status {
+            border-left-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        #messages li.system-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #messages li.system-notification .notification-icon {
+            font-size: 1rem;
+        }
+
+        #messages li.system-notification .notification-text {
+            flex-grow: 1;
+        }
+
+        #messages li.system-notification .notification-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        /* Dark theme support for notifications */
+        #list.dark-green li.system-notification,
+        #list.light-green li.system-notification {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e5e7eb;
+        }
+
+        #list.dark-green li.system-notification.user-joined,
+        #list.light-green li.system-notification.user-joined {
+            background-color: rgba(76, 175, 80, 0.2);
+        }
+
+        #list.dark-green li.system-notification.user-left,
+        #list.light-green li.system-notification.user-left {
+            background-color: rgba(244, 67, 54, 0.2);
+        }
+
+        #list.dark-green li.system-notification.meeting-status,
+        #list.light-green li.system-notification.meeting-status {
+            background-color: rgba(33, 150, 243, 0.2);
         }
 
         /* Markdown content styles */
@@ -1446,7 +1557,7 @@
 
         /* Markdown content styles */
         #messages li .content {
-            white-space: pre-wrap;
+            /*white-space: pre-wrap;*/
             word-wrap: break-word;
         }
 
@@ -1749,6 +1860,28 @@
             color: #666;
             font-style: italic;
         }
+
+        /* Password toggle button styles */
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: #333;
+        }
+
+        .password-field-wrapper {
+            position: relative;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -1788,6 +1921,23 @@
             smartypants: false,
             xhtml: false
         };
+
+        // Password toggle functionality
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            const icon = button.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
 
         // Check if user is logged in
         function checkAuthStatus() {
@@ -2033,8 +2183,32 @@
                         placeholder.appendChild(content);
                     } else {
                         // Regular message
-                        placeholder.setAttribute('class', 'pre-wrapper');
-                        placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
+                        if ($data.user === 'ChatGPT') {
+                            placeholder.classList.add('chat-gpt');
+                        }
+                        
+                        // Create message header
+                        const header = document.createElement('div');
+                        header.className = 'message-header';
+                        
+                        // Add timestamp
+                        const time = document.createElement('span');
+                        time.className = 'time';
+                        time.textContent = $data.time;
+                        header.appendChild(time);
+                        
+                        // Add username
+                        const name = document.createElement('span');
+                        name.className = 'name';
+                        name.textContent = $data.user;
+                        header.appendChild(name);
+                        
+                        placeholder.appendChild(header);
+                        
+                        // Create message content container
+                        const content = document.createElement('div');
+                        content.className = 'content';
+                        placeholder.appendChild(content);
                     }
 
                     $('#messages').append(placeholder);
@@ -2043,46 +2217,29 @@
                 // Handle message content
                 if ($data.type !== 'system') {
                     $text = $data.message;
-
+                    const contentSpan = placeholder.querySelector('.content');
+                    
                     // Handle different types of messages
                     if ($data.user === 'ChatGPT') {
                         // ChatGPT messages - use markdown rendering
-                        if (isNewElement) {
-                            placeholder.innerHTML += "<span class='content'>";
-                        }
-                        
-                        const contentSpan = placeholder.querySelector('.content') || placeholder;
-                        
-                        // Check if the message contains PlantUML images
-                        if ($text.indexOf("<placeholder-image>") >= 0) {
-                            // Process PlantUML images as before
-                            // ... existing PlantUML handling code ...
-                        } else {
-                            // Regular ChatGPT message - use markdown
-                            requestAnimationFrame(() => {
-                                // First set the raw text content to preserve newlines
-                                contentSpan.textContent = $text;
-                                $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
-                                            .replace(/\\`/g, '`')
-                                            .replace(/\\'/g, '\'')
-                                            .replace(/\\"/g, '"');        // Fix backticks if escaped
-                                // Then parse markdown and update HTML
-                                const parsedContent = marked.parse($text, markedOptions);
-                                contentSpan.innerHTML = parsedContent;
-                                
-                                // Apply syntax highlighting to code blocks
-                                contentSpan.querySelectorAll('pre code').forEach((block) => {
-                                    hljs.highlightElement(block);
-                                });
+                        requestAnimationFrame(() => {
+                            // First set the raw text content to preserve newlines
+                            contentSpan.textContent = $text;
+                            $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
+                                        .replace(/\\`/g, '`')
+                                        .replace(/\\'/g, '\'')
+                                        .replace(/\\"/g, '"');        // Fix backticks if escaped
+                            // Then parse markdown and update HTML
+                            const parsedContent = marked.parse($text, markedOptions);
+                            contentSpan.innerHTML = parsedContent;
+                            
+                            // Apply syntax highlighting to code blocks
+                            contentSpan.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
                             });
-                        }
+                        });
                     } else {
                         // Regular user messages - use markdown
-                        if (isNewElement) {
-                            placeholder.innerHTML += "<span class='content'>";
-                        }
-                        
-                        const contentSpan = placeholder.querySelector('.content') || placeholder;
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
@@ -2400,44 +2557,11 @@
                 });
             });
 
-            $("#topic_submit").click(function () {
-                $.ajax({
-                    type: "POST",
-                    url: "[%LINK:talk/topic%]",
-                    data: {topic: $("#brief").val()}
-                }).done(function (msg) {
-                    $("#topic_modal").modal('hide');
-                    $("#topic").html($("#brief").val());
-                });
-            });
-
             $("#nickname").keyup(function (event) {
                 if (event.which == 13) {
                     $("#dialog_submit").click();
                 }
             });
-
-            // Check if we need to show the topic modal
-            // Only show it if the user hasn't set a topic before and this isn't a page reload after login
-            const hasJustLoggedIn = localStorage.getItem('justLoggedIn') === 'true';
-            const loginTimestamp = parseInt(localStorage.getItem('loginTimestamp') || '0');
-            const currentTime = Date.now();
-            const isRecentLogin = (currentTime - loginTimestamp) < 10000; // Within 10 seconds of login
-
-            console.log('Topic check - Has topic:', !!$("#topic").text(), 'Just logged in:', hasJustLoggedIn, 'Recent login:', isRecentLogin);
-
-            if (!$("#topic").text() && !(hasJustLoggedIn && isRecentLogin)) {
-                $("#topic_modal").modal();
-            } else {
-                console.log('Skipping topic dialog - Topic exists or user just logged in');
-            }
-
-            // Clear the login flag after a delay to ensure it persists through page load
-            setTimeout(function() {
-                localStorage.removeItem('justLoggedIn');
-                localStorage.removeItem('loginTimestamp');
-                console.log('Login flags cleared');
-            }, 15000); // Clear after 15 seconds
 
             // Setup ChatGPT toggle button
             $("#chatgpt-toggle").change(function(event) {
@@ -2499,36 +2623,6 @@
                 }
             });
 
-/*            $("#attachment").fileinput({
-                uploadAsync: false,
-                showPreview: false,
-                showCaption: false,
-                maxFileCount: 2,
-                uploadUrl: "/?q=talk/upload", // server upload action
-            });*/
-
-            /*$("#attachment").on('filebatchuploadsuccess', function (event, data, previewId, index) {
-                var form = data.form, files = data.files, extra = data.extra,
-                    response = data.response, reader = data.reader;
-
-                $ul = $("<ul />");
-                for (var i = 0; i < response.length; i++) {
-                    if (response[i].type.indexOf("image/") != -1) {
-                        e = $("<img />");
-                        e.attr("src", response[i].file);
-                    } else {
-                        e = $("<a target='_blank' >" + response[i].file + "</a>");
-                        e.attr("href", response[i].file);
-                    }
-
-                    $li = $("<li />");
-                    $li.append(e);
-                    $ul.append($li);
-                }
-
-                $("#text").append($ul);
-            });*/
-
             $('a.theme').click(function () {
                 $('#list').removeClass().toggleClass($(this).text().toLowerCase().replace(/\s/, "-"));
                 $('a.theme').find('svg').attr('class', 'bi bi-check hidden');
@@ -2573,7 +2667,6 @@
                             </div>
                             <div class="sidebar-section">
                                 <h3>Room Info</h3>
-                                <p>Topic: <span id="sidebar-topic"></span></p>
                                 <p>Active Since: <span id="sidebar-active-time"></span></p>
                             </div>
                         </div>
@@ -2685,24 +2778,6 @@
 
             // Initialize sidebar after DOM is loaded
             const sidebar = new Sidebar();
-
-            // Update sidebar topic when topic changes
-            const updateSidebarTopic = () => {
-                const topicElement = document.querySelector('#sidebar-topic');
-                if (topicElement) {
-                    topicElement.textContent = $("#topic").text() || 'No topic set';
-                }
-            };
-
-            // Update topic when it changes
-            const originalTopicSubmit = $("#topic_submit").click;
-            $("#topic_submit").click(function() {
-                originalTopicSubmit.apply(this, arguments);
-                updateSidebarTopic();
-            });
-
-            // Initial topic update
-            updateSidebarTopic();
 
             // Set initial active time
             const activeTimeElement = document.querySelector('#sidebar-active-time');
@@ -3129,7 +3204,12 @@
                             </div>
                             <div class="form-group">
                                 <label for="login-password">Password</label>
-                                <input type="password" class="form-control" id="login-password" placeholder="Password">
+                                <div class="password-field-wrapper">
+                                    <input type="password" class="form-control" id="login-password" placeholder="Password">
+                                    <button type="button" class="password-toggle" onclick="togglePassword('login-password')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="alert alert-danger" id="login-error" style="display: none;"></div>
                             <button type="submit" class="btn btn-primary">Login</button>
@@ -3150,7 +3230,12 @@
                             </div>
                             <div class="form-group">
                                 <label for="register-password">Password</label>
-                                <input type="password" class="form-control" id="register-password" placeholder="Password">
+                                <div class="password-field-wrapper">
+                                    <input type="password" class="form-control" id="register-password" placeholder="Password">
+                                    <button type="button" class="password-toggle" onclick="togglePassword('register-password')">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="register-email">Email</label>
@@ -3173,7 +3258,6 @@
     <!-- Chat Interface -->
     <div id="chat-interface" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
         <p>Welcome to use smalltalk application!</p>
-        <p id="topic">{%topic%}</p>
         <div id="user-info" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
             <p>Logged in as: <strong id="current-username">{%username%}</strong> <a href="#" id="logout-link">(Logout)</a></p>
         </div>
