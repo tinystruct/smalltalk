@@ -13,6 +13,36 @@ import java.util.Date;
  */
 public class AuthenticationService {
     private static final int BCRYPT_WORKLOAD = 12; // Recommended workload factor for BCrypt
+    private Session session;
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
+    /**
+     * Check if the current user is logged in
+     *
+     * @return true if the user is logged in, false otherwise
+     */
+    public boolean isLoggedIn() {
+        return session != null && session.getAttribute("user_id") != null;
+    }
+
+    /**
+     * Check if the current user is an admin
+     *
+     * @return true if the user is an admin, false otherwise
+     * @throws ApplicationException if an error occurs
+     */
+    public boolean isAdmin() throws ApplicationException {
+        if (!isLoggedIn()) {
+            return false;
+        }
+
+        String userId = session.getAttribute("user_id").toString();
+        User user = findUserById(userId);
+        return user != null && user.getIsAdmin();
+    }
 
     /**
      * Register a new user
