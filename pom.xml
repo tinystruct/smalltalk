@@ -19,7 +19,7 @@
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>1.6.7</version>
+            <version>1.6.8</version>
             <classifier>jar-with-dependencies</classifier>
         </dependency>
         <dependency>
@@ -66,6 +66,12 @@
             <artifactId>junit-platform-console</artifactId>
             <version>1.9.3</version>
             <scope>test</scope>
+        </dependency>
+        <!-- BCrypt for password hashing -->
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
         </dependency>
     </dependencies>
     <build>
