@@ -103,7 +103,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
     private void initializeBasicSettings() {
         this.setVariable("message", "");
-        this.setVariable("topic", "");
         this.setVariable("meeting_update_url", "");
 
         System.setProperty("LANG", "en_US.UTF-8");
@@ -230,14 +229,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setVariable("start_url", this.getLink("talk/start", null));
         this.setVariable("meeting_update_url", this.getLink("talk/update", null) + "/" + meetingCode + "/" + request.getSession().getId());
         this.setVariable("meeting_qr_code_url", this.getLink("talk/matrix", null) + "/" + meetingCode);
-
-        Variable<?> topic;
-        SharedVariables sharedVariables = SharedVariables.getInstance(meetingCode.toString());
-        if ((topic = sharedVariables.getVariable(meetingCode.toString())) != null) {
-            this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
-        } else {
-            this.setVariable("topic", "");
-        }
 
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
@@ -477,13 +468,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             info.put("meeting_code", meetingCode);
             info.put("user_count", sessionIds.size());
             info.put("created_at", format.format(new Date()));
-            
-            // Get meeting topic if available
-            SharedVariables sharedVariables = SharedVariables.getInstance(meetingCode);
-            Variable<?> topic = sharedVariables.getVariable(meetingCode);
-            if (topic != null) {
-                info.put("topic", topic.getValue().toString());
-            }
 
             return info.toString();
         } catch (Exception e) {
@@ -1828,19 +1812,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Action("files")
     public byte[] download(String fileName, Request request, Response response) throws ApplicationException {
         return this.download(fileName, true, request, response);
-    }
-
-    @Action("talk/topic")
-    public boolean topic(Request request) {
-        final Object meeting_code = request.getSession().getAttribute("meeting_code");
-        if (meeting_code != null && request.getParameter("topic") != null) {
-            SharedVariables sharedVariables = SharedVariables.getInstance(meeting_code.toString());
-            StringVariable variable = new StringVariable(meeting_code.toString(), filter(request.getParameter("topic")));
-            sharedVariables.setVariable(variable, true);
-            return true;
-        }
-
-        return false;
     }
 
     protected smalltalk exit(Request request) {
