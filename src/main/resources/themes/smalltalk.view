@@ -1004,7 +1004,7 @@
 
         #text {
             min-height: 40px;
-            padding: 0 0 0 15px;  /* Add padding for the buttons */
+            padding: 0;  /* Add padding for the buttons */
             width: 100%;
             font-style: Consolas;
             font-family: monospace;
@@ -1543,7 +1543,27 @@
         #messages li code {
             background-color: #f8f9fa;
             padding: 0.2em 0.4em;
-            border-radius: 3px;
+        }
+
+        /* Remove PlantUML diagram styles */
+        .plantuml-diagram {
+            max-width: 100%;
+            height: auto;
+            margin: 1em 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: white;
+            display: block;
+        }
+
+        /* Dark mode support for PlantUML diagrams */
+        @media (prefers-color-scheme: dark) {
+            .plantuml-diagram {
+                border-color: #404040;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                background-color: #1a1a1a;
+            }
         }
 
         /* Remove typing indicator styles */
@@ -1927,7 +1947,7 @@
             const input = document.getElementById(inputId);
             const button = input.nextElementSibling;
             const icon = button.querySelector('i');
-            
+
             if (input.type === 'password') {
                 input.type = 'text';
                 icon.classList.remove('fa-eye');
@@ -2115,6 +2135,11 @@
                 let placeholder;
                 let isNewElement = true;
 
+                // Check if user is at bottom before adding new message
+                const chatList = document.getElementById('list');
+                const userHasScrolled = chatList.dataset.userScrolled === 'true';
+                const isAtBottom = chatList.scrollHeight - chatList.scrollTop <= chatList.clientHeight + 100; // 100px threshold
+
                 // Check if this is a streaming update (has ID and streaming flag)
                 if ($data.id && ($data.streaming === true || $data.incremental === true)) {
                     // Look for an existing element with this ID
@@ -2225,11 +2250,12 @@
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
-                            $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
+                            $text = $text.replace(/\\n/g, '\n')
                                         .replace(/\\`/g, '`')
                                         .replace(/\\'/g, '\'')
-                                        .replace(/\\"/g, '"');        // Fix backticks if escaped
-                            // Then parse markdown and update HTML
+                                        .replace(/\\"/g, '"');
+                            
+                            // Parse markdown directly without PlantUML processing
                             const parsedContent = marked.parse($text, markedOptions);
                             contentSpan.innerHTML = parsedContent;
                             
@@ -2237,15 +2263,24 @@
                             contentSpan.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
                             });
+
+                            // Only auto-scroll if user hasn't manually scrolled and is not at bottom
+                            if (!userHasScrolled && !isAtBottom) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
                         });
                     } else {
                         // Regular user messages - use markdown
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
-                            $text = $text.replace(/\\n/g, '\n')        // Convert literal \n to newlines
-                                        .replace(/\\`/g, '`');        // Fix backticks if escaped
-                            // Then parse markdown and update HTML
+                            $text = $text.replace(/\\n/g, '\n')
+                                        .replace(/\\`/g, '`');
+                            
+                            // Parse markdown directly without PlantUML processing
                             const parsedContent = marked.parse($text, markedOptions);
                             contentSpan.innerHTML = parsedContent;
                             
@@ -2253,17 +2288,17 @@
                             contentSpan.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
                             });
+
+                            // Only auto-scroll if user hasn't manually scrolled and is not at bottom
+                            if (!userHasScrolled && !isAtBottom) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
                         });
                     }
                 }
-
-                // Smooth scroll to bottom
-                $('#list').animate({
-                    scrollTop: $('#messages').height()
-                }, {
-                    duration: 300,
-                    easing: 'swing'
-                });
 
                 if (document.title == old_title) {
                     document.title = 'New Message(s) Received!';
@@ -2288,19 +2323,37 @@
                             $li = $("<li />");
                             $li.html("System Notification: " + $data.user + " joined this conversation.");
                             $('#messages').append($li);
-                            $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                            // Only auto-scroll if user hasn't manually scrolled
+                            if (!chatList.dataset.userScrolled) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
                             break;
                         case 'session-timeout':
                             $li = $("<li />");
                             $li.html("System Notification: " + $data.user + " left from this conversation.");
                             $('#messages').append($li);
-                            $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                            // Only auto-scroll if user hasn't manually scrolled
+                            if (!chatList.dataset.userScrolled) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
                             break;
                         case 'expired':
                             $li = $("<li />");
                             $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
                             $('#messages').append($li);
-                            $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                            // Only auto-scroll if user hasn't manually scrolled
+                            if (!chatList.dataset.userScrolled) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
                             break;
                         default:
                             timer.setAction(function () {
@@ -2466,6 +2519,18 @@
             setupRegisterForm();
             setupLogout();
 
+            // Add scroll event listener to detect user scrolling
+            const chatList = document.getElementById('list');
+            chatList.addEventListener('scroll', function() {
+                // Simply set userScrolled to true when user scrolls
+                chatList.dataset.userScrolled = true;
+            });
+
+            // Reset user scroll flag when user manually scrolls to bottom
+            chatList.addEventListener('scrollend', function() {
+                chatList.dataset.userScrolled = false;
+            });
+
             // Check if we should use SSE or fall back to the original implementation
 
             const meetingURL = "{%meeting_update_url%}";
@@ -2493,9 +2558,14 @@
 
             //Start here.
             $("#text").keypress(function (event) {
-                if (event.which == 13) {
-                    save();
-                    timer.stop();
+                if (event.which == 13) { // Enter key
+                    if (!event.shiftKey) {
+                        // If Enter without Shift, send message and prevent default
+                        event.preventDefault();
+                        save();
+                        timer.stop();
+                    }
+                    // If Shift+Enter, let the default behavior happen (new line)
                 }
             });
 
@@ -2653,11 +2723,11 @@
                                 <h3>Small Talk</h3>
                             </div>
                             <ul class="sidebar-menu">
-                                <li><i class="fas fa-home"></i> Home</li>
-                                <li><i class="fas fa-cog"></i> Settings</li>
+                                <li><i class="fas fa-home"></i> New Chat</li>
                                 <li><i class="fas fa-book"></i> Libraries</li>
                                 <li><i class="fas fa-history"></i> Chat History</li>
                                 <li class="admin-only" style="display: none;"><i class="fas fa-shield-alt"></i> Management</li>
+                                <li class="admin-only"><i class="fas fa-cog"></i> Settings</li>
                             </ul>
                             <div class="sidebar-section">
                                 <h3>Online Users</h3>
