@@ -38,7 +38,7 @@ public class plantuml extends AbstractApplication {
         return generateUML(sc);
     }
 
-    @Action("generate-uml")
+    @Action(value = "plantuml2png")
     public List<String> generateUMLFromEncoded(Request request) throws ApplicationException, IOException {
         if (request.getParameter("plantuml-script") == null)
             throw new ApplicationException("Missing plantuml-script");
@@ -61,7 +61,6 @@ public class plantuml extends AbstractApplication {
 
         return list;
     }
-
 
     /**
      * Return the version of the application.
