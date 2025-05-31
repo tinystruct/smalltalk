@@ -2282,10 +2282,15 @@
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
-                            $text = $text.replace(/\\n/g, '\n')
-                                        .replace(/\\`/g, '`')
-                                        .replace(/\\'/g, '\'')
-                                        .replace(/\\"/g, '"');
+                            
+                            // Clean up escaped characters before markdown processing
+                            $text = $text.replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                        .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                        .replace(/\\`/g, '`')    // Convert escaped backticks
+                                        .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                        .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                        .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                        .replace(/\\t/g, '\t');  // Convert escaped tabs
                             
                             // Parse markdown directly without PlantUML processing
                             const parsedContent = marked.parse($text, markedOptions);
@@ -2313,7 +2318,16 @@
                                     previewButton.className = 'preview-button';
                                     previewButton.textContent = 'Preview';
                                     previewButton.onclick = function() {
-                                        const script = block.textContent;
+                                        // Clean up the script content before sending
+                                        const script = block.textContent
+                                            .replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                            .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                            .replace(/\\`/g, '`')    // Convert escaped backticks
+                                            .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                            .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                            .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                            .replace(/\\t/g, '\t');  // Convert escaped tabs
+                                        
                                         const encodedScript = utf8_to_b64(script);
                                         
                                         // Show loading state
@@ -2386,10 +2400,15 @@
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
-                            $text = $text.replace(/\\n/g, '\n')
-                                        .replace(/\\`/g, '`')
-                                        .replace(/\\'/g, '\'')
-                                        .replace(/\\"/g, '"');
+                            
+                            // Clean up escaped characters before markdown processing
+                            $text = $text.replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                        .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                        .replace(/\\`/g, '`')    // Convert escaped backticks
+                                        .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                        .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                        .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                        .replace(/\\t/g, '\t');  // Convert escaped tabs
                             
                             // Parse markdown directly without PlantUML processing
                             const parsedContent = marked.parse($text, markedOptions);
@@ -2417,7 +2436,16 @@
                                     previewButton.className = 'preview-button';
                                     previewButton.textContent = 'Preview';
                                     previewButton.onclick = function() {
-                                        const script = block.textContent;
+                                        // Clean up the script content before sending
+                                        const script = block.textContent
+                                            .replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                            .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                            .replace(/\\`/g, '`')    // Convert escaped backticks
+                                            .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                            .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                            .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                            .replace(/\\t/g, '\t');  // Convert escaped tabs
+                                        
                                         const encodedScript = utf8_to_b64(script);
                                         
                                         // Show loading state
