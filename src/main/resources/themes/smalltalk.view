@@ -2295,8 +2295,19 @@
                             contentSpan.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
                                 
-                                // Check if this is a PlantUML code block
-                                if (block.className.includes('language-plantuml')) {
+                                // Check if this is a PlantUML code block by examining content
+                                const content = block.textContent.trim();
+                                const isPlantUML = content.includes('@startuml') || 
+                                                 content.includes('@start') || 
+                                                 content.includes('skinparam') ||
+                                                 content.includes('->') ||
+                                                 content.includes('--') ||
+                                                 content.includes('note') ||
+                                                 content.includes('title') ||
+                                                 content.includes('participant') ||
+                                                 content.includes('actor');
+                                
+                                if (isPlantUML) {
                                     const pre = block.parentElement;
                                     const previewButton = document.createElement('button');
                                     previewButton.className = 'preview-button';
@@ -2386,8 +2397,19 @@
                             contentSpan.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
                                 
-                                // Check if this is a PlantUML code block
-                                if (block.className.includes('language-plantuml')) {
+                                // Check if this is a PlantUML code block by examining content
+                                const content = block.textContent.trim();
+                                const isPlantUML = content.includes('@startuml') || 
+                                                 content.includes('@start') || 
+                                                 content.includes('skinparam') ||
+                                                 content.includes('->') ||
+                                                 content.includes('--') ||
+                                                 content.includes('note') ||
+                                                 content.includes('title') ||
+                                                 content.includes('participant') ||
+                                                 content.includes('actor');
+                                
+                                if (isPlantUML) {
                                     const pre = block.parentElement;
                                     const previewButton = document.createElement('button');
                                     previewButton.className = 'preview-button';
