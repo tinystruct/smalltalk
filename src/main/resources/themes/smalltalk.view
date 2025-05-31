@@ -2387,7 +2387,9 @@
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
                             $text = $text.replace(/\\n/g, '\n')
-                                        .replace(/\\`/g, '`');
+                                        .replace(/\\`/g, '`')
+                                        .replace(/\\'/g, '\'')
+                                        .replace(/\\"/g, '"');
                             
                             // Parse markdown directly without PlantUML processing
                             const parsedContent = marked.parse($text, markedOptions);
