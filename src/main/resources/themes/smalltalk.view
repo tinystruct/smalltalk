@@ -55,7 +55,6 @@
             font-size: 0.9375rem;
             line-height: 1.5;
             margin-bottom: 0.5rem;
-            display: flex;
             flex-direction: column;
         }
 
@@ -215,6 +214,42 @@
             margin: 0.75rem 0;
             font-size: 0.875rem;
             line-height: 1.5;
+            position: relative;
+        }
+
+        #messages li .content pre .preview-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        #messages li .content pre:hover .preview-button {
+            opacity: 1;
+        }
+
+        #messages li .content pre .preview-button:hover {
+            background-color: #45a049;
+        }
+
+        #messages li .content .plantuml-preview {
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        #messages li .content .plantuml-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.375rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         #messages li .content code {
@@ -1593,14 +1628,6 @@
             margin-bottom: 0;
         }
 
-        #messages li .content pre {
-            background-color: #f8f9fa;
-            padding: 1em;
-            border-radius: 4px;
-            overflow-x: auto;
-            margin: 0.5em 0;
-        }
-
         #messages li .content code {
             background-color: #f8f9fa;
             padding: 0.2em 0.4em;
@@ -1942,6 +1969,11 @@
             xhtml: false
         };
 
+        // Add UTF-8 safe base64 encoding function
+        function utf8_to_b64(str) {
+            return window.btoa(unescape(encodeURIComponent(str)));
+        }
+
         // Password toggle functionality
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
@@ -2262,6 +2294,72 @@
                             // Apply syntax highlighting to code blocks
                             contentSpan.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
+                                
+                                // Check if this is a PlantUML code block
+                                if (block.className.includes('language-plantuml')) {
+                                    const pre = block.parentElement;
+                                    const previewButton = document.createElement('button');
+                                    previewButton.className = 'preview-button';
+                                    previewButton.textContent = 'Preview';
+                                    previewButton.onclick = function() {
+                                        const script = block.textContent;
+                                        const encodedScript = utf8_to_b64(script);
+                                        
+                                        // Show loading state
+                                        previewButton.textContent = 'Loading...';
+                                        previewButton.disabled = true;
+                                        
+                                        // Call the backend to generate the PlantUML image
+                                        $.ajax({
+                                            url: '/?q=plantuml2png',
+                                            type: 'POST',
+                                            data: {
+                                                'plantuml-script': encodedScript
+                                            },
+                                            success: function(response) {
+                                                if (response && response.length > 0) {
+                                                    // Create preview container if it doesn't exist
+                                                    let previewContainer = pre.nextElementSibling;
+                                                    if (!previewContainer || !previewContainer.classList.contains('plantuml-preview')) {
+                                                        previewContainer = document.createElement('div');
+                                                        previewContainer.className = 'plantuml-preview';
+                                                        pre.parentNode.insertBefore(previewContainer, pre.nextSibling);
+                                                    }
+                                                    
+                                                    // Parse the response string to get the base64 image
+                                                    try {
+                                                        // Remove the square brackets and split by comma
+                                                        const base64String = response.replace(/[\[\]]/g, '').split(',')[0];
+                                                        // Add the image
+                                                        previewContainer.innerHTML = `<img src="data:image/png;base64,${base64String}" alt="PlantUML Diagram">`;
+                                                    } catch (error) {
+                                                        console.error('Error parsing PlantUML response:', error);
+                                                        previewButton.textContent = 'Error';
+                                                        previewButton.disabled = false;
+                                                        setTimeout(() => {
+                                                            previewButton.textContent = 'Preview';
+                                                            previewButton.disabled = false;
+                                                        }, 2000);
+                                                        return;
+                                                    }
+                                                    
+                                                    // Reset button state
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }
+                                            },
+                                            error: function() {
+                                                previewButton.textContent = 'Error';
+                                                previewButton.disabled = false;
+                                                setTimeout(() => {
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }, 2000);
+                                            }
+                                        });
+                                    };
+                                    pre.appendChild(previewButton);
+                                }
                             });
 
                             // Only auto-scroll if user hasn't manually scrolled and is not at bottom
@@ -2287,6 +2385,72 @@
                             // Apply syntax highlighting to code blocks
                             contentSpan.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
+                                
+                                // Check if this is a PlantUML code block
+                                if (block.className.includes('language-plantuml')) {
+                                    const pre = block.parentElement;
+                                    const previewButton = document.createElement('button');
+                                    previewButton.className = 'preview-button';
+                                    previewButton.textContent = 'Preview';
+                                    previewButton.onclick = function() {
+                                        const script = block.textContent;
+                                        const encodedScript = utf8_to_b64(script);
+                                        
+                                        // Show loading state
+                                        previewButton.textContent = 'Loading...';
+                                        previewButton.disabled = true;
+                                        
+                                        // Call the backend to generate the PlantUML image
+                                        $.ajax({
+                                            url: '/?q=plantuml2png',
+                                            type: 'POST',
+                                            data: {
+                                                'plantuml-script': encodedScript
+                                            },
+                                            success: function(response) {
+                                                if (response && response.length > 0) {
+                                                    // Create preview container if it doesn't exist
+                                                    let previewContainer = pre.nextElementSibling;
+                                                    if (!previewContainer || !previewContainer.classList.contains('plantuml-preview')) {
+                                                        previewContainer = document.createElement('div');
+                                                        previewContainer.className = 'plantuml-preview';
+                                                        pre.parentNode.insertBefore(previewContainer, pre.nextSibling);
+                                                    }
+                                                    
+                                                    // Parse the response string to get the base64 image
+                                                    try {
+                                                        // Remove the square brackets and split by comma
+                                                        const base64String = response.replace(/[\[\]]/g, '').split(',')[0];
+                                                        // Add the image
+                                                        previewContainer.innerHTML = `<img src="data:image/png;base64,${base64String}" alt="PlantUML Diagram">`;
+                                                    } catch (error) {
+                                                        console.error('Error parsing PlantUML response:', error);
+                                                        previewButton.textContent = 'Error';
+                                                        previewButton.disabled = false;
+                                                        setTimeout(() => {
+                                                            previewButton.textContent = 'Preview';
+                                                            previewButton.disabled = false;
+                                                        }, 2000);
+                                                        return;
+                                                    }
+                                                    
+                                                    // Reset button state
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }
+                                            },
+                                            error: function() {
+                                                previewButton.textContent = 'Error';
+                                                previewButton.disabled = false;
+                                                setTimeout(() => {
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }, 2000);
+                                            }
+                                        });
+                                    };
+                                    pre.appendChild(previewButton);
+                                }
                             });
 
                             // Only auto-scroll if user hasn't manually scrolled and is not at bottom
