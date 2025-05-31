@@ -111,13 +111,6 @@ public class DocumentProcessor {
     }
 
     /**
-     * Process a document file into fragments
-     * @param filePath Path to the document file
-     * @param mimeType MIME type of the document
-     * @return List of document fragments
-     * @throws ApplicationException if processing fails
-     */
-    /**
      * Process a document file into fragments with user information
      * @param filePath Path to the document file
      * @param mimeType MIME type of the document
