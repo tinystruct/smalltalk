@@ -12,7 +12,6 @@ import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
 import org.tinystruct.application.Context;
-import org.tinystruct.application.SharedVariables;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
@@ -25,8 +24,6 @@ import org.tinystruct.http.SSEPushManager;
 import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
-import org.tinystruct.system.template.variable.StringVariable;
-import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
