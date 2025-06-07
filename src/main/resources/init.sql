@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE,
-    is_admin BOOLEAN DEFAULT FALSE
+    is_admin BOOLEAN DEFAULT FALSE,
+    reset_token VARCHAR(255) NULL,
+    reset_token_expiry TIMESTAMP
 );
 
 -- Create indexes for users
