@@ -80,6 +80,7 @@
         }
 
         .action-buttons .btn {
+            margin-top: 5px;
             margin-right: 5px;
         }
 
@@ -555,6 +556,10 @@
                 // Add delete button
                 btnContainer.append('<button class="btn btn-danger btn-sm user-action" data-action="delete" ' +
                                  'data-user-id="' + user.id + '" data-user-name="' + user.username + '">Delete</button>');
+
+                // Add reset password button
+                btnContainer.append('<td><button class="btn btn-sm btn-warning" onclick="openResetPasswordModal(' + user.id + ')">' +
+                                 '<i class="fas fa-key"></i> Reset Password</button></td>');
 
                 cardBody.append(btnContainer);
                 card.append(cardBody);
