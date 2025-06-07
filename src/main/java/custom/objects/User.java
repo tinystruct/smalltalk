@@ -21,6 +21,8 @@ public class User extends AbstractData implements Serializable {
     private Date lastLogin;
     private boolean isActive;
     private boolean isAdmin;
+    private String resetToken;
+    private Date resetTokenExpiry;
 
     public String getId() {
         return String.valueOf(this.Id);
@@ -90,6 +92,22 @@ public class User extends AbstractData implements Serializable {
         return this.isAdmin;
     }
 
+    public void setResetToken(String resetToken) {
+        this.resetToken = this.setFieldAsString("resetToken", resetToken);
+    }
+
+    public String getResetToken() {
+        return this.resetToken;
+    }
+
+    public void setResetTokenExpiry(Date resetTokenExpiry) {
+        this.resetTokenExpiry = this.setFieldAsDate("resetTokenExpiry", resetTokenExpiry);
+    }
+
+    public Date getResetTokenExpiry() {
+        return this.resetTokenExpiry;
+    }
+
     @Override
     public void setData(Row row) {
         if (row.getFieldInfo("id") != null) this.setId(row.getFieldInfo("id").stringValue());
@@ -101,6 +119,8 @@ public class User extends AbstractData implements Serializable {
         if (row.getFieldInfo("last_login") != null) this.setLastLogin(row.getFieldInfo("last_login").dateValue());
         if (row.getFieldInfo("is_active") != null) this.setIsActive(row.getFieldInfo("is_active").booleanValue());
         if (row.getFieldInfo("is_admin") != null) this.setIsAdmin(row.getFieldInfo("is_admin").booleanValue());
+        if (row.getFieldInfo("reset_token") != null) this.setResetToken(row.getFieldInfo("reset_token").stringValue());
+        if (row.getFieldInfo("reset_token_expiry") != null) this.setResetTokenExpiry(row.getFieldInfo("reset_token_expiry").dateValue());
     }
 
     @Override
@@ -115,6 +135,8 @@ public class User extends AbstractData implements Serializable {
         buffer.append(",\"lastLogin\":\"").append(this.getLastLogin() != null ? this.getLastLogin() : "").append("\"");
         buffer.append(",\"isActive\":").append(this.getIsActive());
         buffer.append(",\"isAdmin\":").append(this.getIsAdmin());
+        buffer.append(",\"resetToken\":\"").append(this.getResetToken() != null ? this.getResetToken() : "").append("\"");
+        buffer.append(",\"resetTokenExpiry\":\"").append(this.getResetTokenExpiry() != null ? this.getResetTokenExpiry() : "").append("\"");
         buffer.append("}");
         return buffer.toString();
     }

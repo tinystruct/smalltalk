@@ -11,5 +11,7 @@
         <property name="lastLogin" column="last_login" length="0" type="DATE"/>
         <property name="isActive" column="is_active" length="1" type="BOOLEAN"/>
         <property name="isAdmin" column="is_admin" length="1" type="BOOLEAN"/>
+        <property name="resetToken" column="reset_token" length="255" type="VARCHAR"/>
+        <property name="resetTokenExpiry" column="reset_token_expiry" length="0" type="DATE"/>
     </class>
 </mapping>
