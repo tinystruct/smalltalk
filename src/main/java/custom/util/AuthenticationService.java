@@ -171,12 +171,32 @@ public class AuthenticationService {
     }
 
     /**
+     * Find a user by reset token
+     *
+     * @param resetToken Reset token to search for
+     * @return The user, or null if not found
+     * @throws ApplicationException if database operation fails
+     */
+    public User findUserByResetToken(String resetToken) throws ApplicationException {
+        User user = new User();
+        Table results = user.findWith("WHERE reset_token = ? AND reset_token_expiry > ?", 
+            new Object[]{resetToken, new Date()});
+
+        if (results == null || results.isEmpty()) {
+            return null;
+        }
+
+        user.setData(results.get(0));
+        return user;
+    }
+
+    /**
      * Hash a password using BCrypt
      *
      * @param password Plain text password
      * @return BCrypt hashed password
      */
-    private String hashPassword(String password) {
+    public String hashPassword(String password) {
         return BCrypt.hashpw(password, BCrypt.gensalt(BCRYPT_WORKLOAD));
     }
 
