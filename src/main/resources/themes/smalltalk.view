@@ -2163,6 +2163,12 @@
         }
 
         function update($data) {
+            // Check if user is logged in before processing updates
+            if ($('#auth-forms').is(':visible')) {
+                // User is not logged in, ignore updates
+                return;
+            }
+
             if (typeof ($data.message) != 'undefined') {
                 let placeholder;
                 let isNewElement = true;
@@ -2680,6 +2686,11 @@
         var blur_timer = new Timer(5);
 
         function autoupdate() {
+            // Check if user is logged in before processing updates
+            if ($('#auth-forms').is(':visible')) {
+                // User is not logged in, ignore updates
+                return;
+            }
             if (!is_running) {
                 is_running = true;
                 $.getJSON("{%meeting_update_url%}", function (data) {
@@ -2735,6 +2746,107 @@
             setupRegisterForm();
             setupLogout();
 
+            // Handle forgot password link click
+            $('#forgot-password-link').click(function(e) {
+                e.preventDefault();console.log('forgot');
+                $('#forgotPasswordModal').modal('show');
+            });
+
+            // Handle back to login link click
+            $('#back-to-login').click(function(e) {
+                e.preventDefault();
+                $('#forgotPasswordModal').modal('hide');
+            });
+
+            // Handle forgot password form submission
+            $('#forgot-password-form').submit(function(e) {
+                e.preventDefault();
+
+                var email = $('#forgot-email').val();
+
+                // Clear previous messages
+                $('#forgot-password-error').hide().text('');
+                $('#forgot-password-success').hide().text('');
+
+                // Send forgot password request
+                $.ajax({
+                    url: '/?q=auth/forgot-password',
+                    type: 'POST',
+                    data: {
+                        email: email
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#forgot-password-success').text('If an account exists with this email, you will receive password reset instructions.').show();
+                        $('#forgot-email').val('');
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'An error occurred. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#forgot-password-error').text(errorMessage).show();
+                    }
+                });
+            });
+
+            // Handle password reset form submission
+            $('#reset-password-form').submit(function(e) {
+                e.preventDefault();
+
+                var token = $('#reset-token').val();
+                var newPassword = $('#new-password').val();
+                var confirmPassword = $('#confirm-password').val();
+
+                // Clear previous messages
+                $('#reset-password-error').hide().text('');
+                $('#reset-password-success').hide().text('');
+
+                // Validate passwords match
+                if (newPassword !== confirmPassword) {
+                    $('#reset-password-error').text('Passwords do not match').show();
+                    return;
+                }
+
+                // Send reset password request
+                $.ajax({
+                    url: '/?q=reset-password',
+                    type: 'POST',
+                    data: {
+                        token: token,
+                        password: newPassword
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#reset-password-success').text('Your password has been reset successfully. You can now login with your new password.').show();
+                        $('#new-password').val('');
+                        $('#confirm-password').val('');
+
+                        // Redirect to login after 3 seconds
+                        setTimeout(function() {
+                            window.location.href = '/?q=login';
+                        }, 3000);
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'An error occurred. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#reset-password-error').text(errorMessage).show();
+                    }
+                });
+            });
+
+            // Check for reset token in URL
+            var urlParams = new URLSearchParams(window.location.search);
+            var token = urlParams.get('token');
+            if (token) {
+                $('#login-form').hide();
+                $('#forgot-password-form').hide();
+                $('#reset-password-form').show();
+                $('#reset-token').val(token);
+            }
+
             // Add scroll event listener to detect user scrolling
             const chatList = document.getElementById('list');
             chatList.addEventListener('scroll', function() {
@@ -2754,18 +2866,19 @@
             // Extract the part after '?q='
             const queryString = meetingURL.split('?q=')[1];
 
-            // Use regex to find the UUID (meeting code)
-            const match = queryString.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
-            const meetingCode = match ? match[0] : null;
+            if (typeof queryString != 'undefined') {
+                // Use regex to find the UUID (meeting code)
+                const match = queryString.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+                const meetingCode = match ? match[0] : null;
 
-            // Use it
-            if (meetingCode) {
-                window.smallTalk = new SSEClient();
-                window.smallTalk.connect(meetingCode);
-            } else {
-                console.error("Meeting code not found in the given URL.");
+                // Use it
+                if (meetingCode) {
+                    window.smallTalk = new SSEClient();
+                    window.smallTalk.connect(meetingCode);
+                } else {
+                    console.error("Meeting code not found in the given URL.");
+                }
             }
-
 
             $("#button").click(function () {
                 save();
@@ -3024,9 +3137,8 @@
                             window.location.href = '/?q=libraries';
                             break;
                         case 'chat history':
-                            // Show chat history
-                            loadChatHistory();
-                            $('#chat_history_modal').modal('show');
+                            // Go to chat history page
+                            window.location.href = '/?q=talk/history';
                             break;
                         case 'management':
                             // Navigate to management page
@@ -3419,133 +3531,36 @@
     <nav class="navbar navbar-default navbar-fixed-top">
         <div class="container">
             <div class="navbar-header">
-                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
-                        aria-expanded="false" aria-controls="navbar">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
                     <span class="sr-only">Toggle navigation</span>
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                     <span class="icon-bar"></span>
                 </button>
-                <a class="navbar-brand" href="#">Small Talk</a>
             </div>
-            <div id="navbar" class="collapse navbar-collapse">
-                <ul class="nav navbar-nav">
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                           aria-expanded="false">Settings <span class="caret"></span></a>
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                            {%username%} <span class="caret"></span>
+                        </a>
                         <ul class="dropdown-menu">
-                            <li>
-                                <a class="btn disabled" href="#" role="button" data-toggle="dropdown" aria-expanded="false">Appearance
-                                    <span class="caret"></span></a>
-                            </li>
-                            <li role="separator" class="divider"></li>
-                            <li><a class="dropdown-item theme" href="#">Default
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                     class="bi bi-check" viewBox="0 0 16 16">
-                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                                </svg>
-                            </a></li>
-                            <li><a class="dropdown-item theme" href="#">Dark Green
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                     class="bi bi-check hidden" viewBox="0 0 16 16">
-                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                                </svg>
-                            </a></li>
-                            <li><a class="dropdown-item theme" href="#">Light Green
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                     class="bi bi-check hidden" viewBox="0 0 16 16">
-                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                                </svg>
-                            </a></li>
-                        </ul>
-                    </li>
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                           aria-expanded="false">Help <span class="caret"></span></a>
-                        <ul class="dropdown-menu">
-                            <li><a href="#">Manual</a></li>
+                            <li><a href="#" id="logout-link">Logout</a></li>
                             <li role="separator" class="divider"></li>
                             <li><a href="#">About</a></li>
                         </ul>
                     </li>
                 </ul>
-            </div><!--/.nav-collapse -->
+            </div>
         </div>
     </nav>
     <div class="pageheader"></div>
-
-    <!-- Login and Registration Forms -->
-    <div id="auth-forms" style="display: {%show_login%} === 'true' ? 'block' : 'none';">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="panel panel-primary">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">Login</h3>
-                    </div>
-                    <div class="panel-body">
-                        <form id="login-form">
-                            <div class="form-group">
-                                <label for="login-username">Username</label>
-                                <input type="text" class="form-control" id="login-username" placeholder="Enter username">
-                            </div>
-                            <div class="form-group">
-                                <label for="login-password">Password</label>
-                                <div class="password-field-wrapper">
-                                    <input type="password" class="form-control" id="login-password" placeholder="Password">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('login-password')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="alert alert-danger" id="login-error" style="display: none;"></div>
-                            <button type="submit" class="btn btn-primary">Login</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h3 class="panel-title">Register</h3>
-                    </div>
-                    <div class="panel-body">
-                        <form id="register-form">
-                            <div class="form-group">
-                                <label for="register-username">Username</label>
-                                <input type="text" class="form-control" id="register-username" placeholder="Enter username">
-                            </div>
-                            <div class="form-group">
-                                <label for="register-password">Password</label>
-                                <div class="password-field-wrapper">
-                                    <input type="password" class="form-control" id="register-password" placeholder="Password">
-                                    <button type="button" class="password-toggle" onclick="togglePassword('register-password')">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="register-email">Email</label>
-                                <input type="email" class="form-control" id="register-email" placeholder="Email" required>
-                                <small class="form-text text-muted">Email is required and must be unique.</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="register-fullname">Full Name (optional)</label>
-                                <input type="text" class="form-control" id="register-fullname" placeholder="Full Name">
-                            </div>
-                            <div class="alert alert-danger" id="register-error" style="display: none;"></div>
-                            <button type="submit" class="btn btn-default">Register</button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Chat Interface -->
     <div id="chat-interface" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
         <p>Welcome to use smalltalk application!</p>
         <div id="user-info" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
-            <p>Logged in as: <strong id="current-username">{%username%}</strong> <a href="#" id="logout-link">(Logout)</a></p>
+            <p>Logged in as: <strong id="current-username">{%username%}</strong></p>
         </div>
         <div id="list">
             <ul id="messages">
@@ -3553,8 +3568,7 @@
             </ul>
         </div>
         <form id="sender">
-            <div class="note">Share the link to invite others join this conversation: <a id="link"
-                                                                                         href="javascript:void(0)">{%meeting_url%}</a>
+            <div class="note">Share the link to invite others join this conversation: <a id="link" href="javascript:void(0)">{%meeting_url%}</a>
                 <div id="matrix"><img/><span>Click For QR Code</span></div>
             </div>
             <div class="pad">
@@ -3669,5 +3683,66 @@
 <script src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
 <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
 <script src="/scripts/bootstrap/ie10-viewport-bug-workaround.js?raw=true"></script>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" role="dialog" aria-labelledby="forgotPasswordModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="forgotPasswordModalLabel">Forgot Password</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="forgot-password-form">
+                        <div class="form-group">
+                            <label for="forgot-email">Email Address</label>
+                            <input type="email" class="form-control" id="forgot-email" placeholder="Enter your email address" required>
+                        </div>
+                        <div class="alert alert-danger" id="forgot-password-error" style="display: none;"></div>
+                        <div class="alert alert-success" id="forgot-password-success" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" role="dialog" aria-labelledby="resetPasswordModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="resetPasswordModalLabel">Reset Password</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="reset-password-form">
+                        <input type="hidden" id="reset-token">
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <div class="password-field-wrapper">
+                                <input type="password" class="form-control" id="new-password" placeholder="Enter new password" required>
+                                <button type="button" class="password-toggle" onclick="togglePassword('new-password')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password</label>
+                            <div class="password-field-wrapper">
+                                <input type="password" class="form-control" id="confirm-password" placeholder="Confirm new password" required>
+                                <button type="button" class="password-toggle" onclick="togglePassword('confirm-password')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-danger" id="reset-password-error" style="display: none;"></div>
+                        <div class="alert alert-success" id="reset-password-success" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary">Reset Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
