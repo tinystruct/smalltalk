@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content=""/>
+    <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
+    <title>Small Talk - Chat History</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+    <!-- Bootstrap core CSS -->
+    <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
+
+    <!-- Custom styles for this template -->
+    <style type="text/css">
+        body {
+            padding-top: 40px;
+            padding-bottom: 40px;
+            background-color: #f5f5f5;
+        }
+
+        .history-container {
+            margin-top: 50px;
+        }
+
+        .meeting-card {
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .meeting-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .meeting-code {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .meeting-date {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .meeting-stats {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .back-link {
+            margin-bottom: 20px;
+        }
+
+        .filters {
+            margin-bottom: 20px;
+        }
+
+        .messages-container {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 80%;
+            margin-bottom: 10px;
+        }
+
+        .message.system {
+            background-color: #f8f9fa;
+            text-align: center;
+            color: #666;
+        }
+
+        .message.user {
+            background-color: #ffffff;
+            color: #777777;
+            margin-left: auto;
+        }
+
+        .message.assistant {
+            background-color: #f0f0f0;
+            margin-right: auto;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .message-content {
+            word-wrap: break-word;
+        }
+
+        .message-image {
+            max-width: 100%;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <div class="history-container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>Chat History</h1>
+                <p>Browse and search through your chat history.</p>
+
+                <div class="back-link">
+                    <a href="?q=talk/history" class="btn btn-default"><i class="fas fa-arrow-left"></i> Back to History</a>
+                </div>
+
+                <div class="filters">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search...">
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-control" id="messageTypeFilter" style="display: none;">
+                                <option value="">All Messages</option>
+                                <option value="user">User Messages</option>
+                                <option value="assistant">Assistant Messages</option>
+                                <option value="system">System Messages</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="date" class="form-control" id="dateFilter">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="meetings-list" id="meetingsList">
+                    <!-- Meetings will be populated here via JavaScript -->
+                </div>
+
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Messages will be populated here via JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
+<script type="text/javascript" src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Get meeting code from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const meetingCode = urlParams.get('meetingCode');
+
+        // Function to load meetings from the server
+        function loadMeetings() {
+            $.ajax({
+                url: '?q=api/meetings',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    const meetingsList = $('#meetingsList');
+                    meetingsList.empty();
+
+                    if (!data || data.length === 0) {
+                        meetingsList.html('<div class="col-md-12"><p class="text-center">No chat history available.</p></div>');
+                        return;
+                    }
+
+                    data.forEach(function(meeting) {
+                        const date = new Date(meeting.createdAt);
+                        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+
+                        const meetingCard = `
+                            <div class="col-md-4">
+                                <div class="meeting-card">
+                                    <div class="meeting-code">${meeting.meetingCode}</div>
+                                    <div class="meeting-date">${formattedDate}</div>
+                                    <div class="meeting-stats">
+                                        <div>Messages: ${meeting.messageCount}</div>
+                                        <div>Participants: ${meeting.participantCount}</div>
+                                    </div>
+                                    <a href="?q=talk/history&meetingCode=${meeting.meetingCode}" class="btn btn-primary btn-sm">View History</a>
+                                </div>
+                            </div>
+                        `;
+                        
+                        meetingsList.append(meetingCard);
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading meetings:', error);
+                    const meetingsList = $('#meetingsList');
+                    meetingsList.empty();
+                    
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        // Redirect to login page if not authenticated
+                        window.location.href = '/?q=login';
+                    } else {
+                        meetingsList.html(`
+                            <div class="col-md-12">
+                                <div class="alert alert-danger">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    Error loading chat history. Please try again later.
+                                </div>
+                            </div>
+                        `);
+                    }
+                }
+            });
+        }
+
+        // Function to load messages for a specific meeting
+        function loadMessages(meetingCode) {
+            $.ajax({
+                url: '?q=api/history',
+                type: 'GET',
+                data: { meetingCode: meetingCode },
+                dataType: 'json',
+                success: function(data) {
+                    const messagesContainer = $('#messagesContainer');
+                    messagesContainer.empty();
+
+                    if (!data || data.length === 0) {
+                        messagesContainer.html('<div class="alert alert-info">No messages found for this meeting.</div>');
+                        return;
+                    }
+
+                    data.forEach(function(message) {
+                        const date = new Date(message.createdAt);
+                        const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                        const messageType = message.messageType.toLowerCase();
+                        const displayName = messageType === 'assistant' ? 'Assistant' : 
+                                          messageType === 'system' ? 'System' : 
+                                          message.username || 'User';
+
+                        const messageHtml = `
+                            <div class="message ${messageType}">
+                                <div class="message-header">
+                                    <span>${displayName}</span>
+                                    <span>${formattedDate}</span>
+                                </div>
+                                <div class="message-content">${message.message}</div>
+                                ${message.imageUrl ? `<img src="${message.imageUrl}" alt="Message image" class="message-image">` : ''}
+                            </div>
+                        `;
+                        
+                        messagesContainer.append(messageHtml);
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading messages:', error);
+                    const messagesContainer = $('#messagesContainer');
+                    messagesContainer.empty();
+                    
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        window.location.href = '/?q=login';
+                    } else {
+                        messagesContainer.html(`
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle"></i>
+                                Error loading messages. Please try again later.
+                            </div>
+                        `);
+                    }
+                }
+            });
+        }
+
+        // Initialize the page
+        const messageTypeFilter = $('#messageTypeFilter');
+        const messagesContainer = $('#messagesContainer');
+        const meetingsList = $('#meetingsList');
+        const backLink = $('.back-link a');
+
+        if (meetingCode) {
+            // Show messages view
+            messageTypeFilter.show();
+            messagesContainer.show();
+            meetingsList.hide();
+            $('h1').text('Chat History - Meeting Details');
+            backLink.attr('href', '?q=talk/history').html('<i class="fas fa-arrow-left"></i> Back to History');
+            loadMessages(meetingCode);
+        } else {
+            // Show meetings list
+            messageTypeFilter.hide();
+            messagesContainer.hide();
+            meetingsList.show();
+            $('h1').text('Chat History');
+            backLink.attr('href', '?q=talk').html('<i class="fas fa-arrow-left"></i> Back to Chat');
+            loadMeetings();
+        }
+
+        // Search functionality
+        $('#searchInput').on('input', function() {
+            const searchTerm = $(this).val().toLowerCase();
+            $('.meeting-card').each(function() {
+                const meetingCode = $(this).find('.meeting-code').text().toLowerCase();
+                const meetingDate = $(this).find('.meeting-date').text();
+                const date = new Date(meetingDate);
+                const dateFilter = $('#dateFilter').val();
+
+                const matchesSearch = meetingCode.includes(searchTerm);
+                const matchesDate = !dateFilter || date.toISOString().split('T')[0] === dateFilter;
+
+                $(this).closest('.col-md-4').toggle(matchesSearch && matchesDate);
+            });
+        });
+
+        // Date filter functionality
+        $('#dateFilter').on('change', function() {
+            $('#searchInput').trigger('input');
+        });
+    });
+</script>
+</body>
+</html> 
