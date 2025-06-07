@@ -1,13 +1,7 @@
 package custom.objects;
 
-import org.tinystruct.ApplicationException;
-import org.tinystruct.data.DatabaseOperator;
 import org.tinystruct.data.component.AbstractData;
 import org.tinystruct.data.component.Row;
-import org.tinystruct.data.component.Table;
-import org.tinystruct.system.ApplicationManager;
-import java.util.ArrayList;
-import java.util.List;
 
 public class ChatHistory extends AbstractData {
     private String meetingCode;
@@ -104,72 +98,5 @@ public class ChatHistory extends AbstractData {
         buffer.append(",\"createdAt\":\"" + this.getCreatedAt() + "\"");
         buffer.append("}");
         return buffer.toString();
-    }
-
-    public static void main(String[] args) throws ApplicationException {
-        ApplicationManager.init();
-        try(DatabaseOperator db = new DatabaseOperator();) {
-            String sql = "CREATE TABLE chat_history (\n" +
-                    "    id BIGINT PRIMARY KEY AUTO_INCREMENT,\n" +
-                    "    meeting_code VARCHAR(255) NOT NULL,\n" +
-                    "    user_id INTEGER NOT NULL,\n" +
-                    "    message TEXT,\n" +
-                    "    session_id VARCHAR(255),\n" +
-                    "    message_type VARCHAR(50),\n" +
-                    "    image_url TEXT,\n" +
-                    "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n" +
-                    "    INDEX idx_meeting_code (meeting_code),\n" +
-                    "    INDEX idx_user_id (user_id),\n" +
-                    "    INDEX idx_created_at (created_at)\n" +
-                    ");";
-            db.execute(sql);
-/*            ChatHistory chatHistory = new ChatHistory();
-            chatHistory.setMeetingCode("1234567890");
-            chatHistory.setUserName("John Doe");
-            chatHistory.setMessage("Hello, world!");
-            System.out.println(chatHistory.toString());*/
-        } catch (ApplicationException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public static List<ChatHistory> getChatHistory(String meetingCode) {
-        List<ChatHistory> history = new ArrayList<>();
-        try {
-            Table messages = new ChatHistory().findWith("WHERE meeting_code = ? ORDER BY created_at ASC", new Object[]{meetingCode});
-            for (Row row : messages) {
-                ChatHistory entry = new ChatHistory();
-                entry.setData(row);
-                history.add(entry);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return history;
-    }
-
-    public static List<ChatHistory> getUserMeetings(Integer userId) {
-        List<ChatHistory> meetings = new ArrayList<>();
-        try {
-            // Get unique meetings for the user, ordered by most recent
-            Table results = new ChatHistory().find(
-                "SELECT DISTINCT meeting_code, MAX(created_at) as last_activity " +
-                "FROM chat_history " +
-                "WHERE user_id = ? " +
-                "GROUP BY meeting_code " +
-                "ORDER BY last_activity DESC",
-                new Object[]{userId}
-            );
-
-            for (Row row : results) {
-                ChatHistory meeting = new ChatHistory();
-                meeting.setMeetingCode(row.getFieldInfo("meeting_code").stringValue());
-                meeting.setCreatedAt(row.getFieldInfo("last_activity").stringValue());
-                meetings.add(meeting);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return meetings;
     }
 } 
