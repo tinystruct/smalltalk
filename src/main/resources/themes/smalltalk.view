@@ -2715,46 +2715,9 @@
 
         var is_running = false;
         var connection_timer = new Timer(5, function () {
-            autoupdate()
+            // Timer callback removed as it's no longer needed
         });
         var blur_timer = new Timer(5);
-
-        function autoupdate() {
-            // Check if user is logged in before processing updates
-            if ($('#auth-forms').is(':visible')) {
-                // User is not logged in, ignore updates
-                return;
-            }
-            if (!is_running) {
-                is_running = true;
-                $.getJSON("{%meeting_update_url%}", function (data) {
-                    update(data);
-                    is_running = false;
-                }).done(function (msg) {
-                    autoupdate();
-                    is_running = false;
-                }).fail(function (err) {
-                    if (typeof (err.responseJSON) != 'undefined') {
-                        $msg = err.responseJSON;
-                        if ($msg.error == "expired") {
-                            command("expired");
-                        } else if ($msg.error == "session-timeout") {
-                            command("session-timeout");
-                        } else {
-                            connection_timer.start();
-                            is_running = false;
-                            console.log("The message has not been sent successfully.error:" + $msg.error);
-                            console.log($msg);
-                        }
-                    } else {
-                        connection_timer.start();
-                        is_running = false;
-                        console.log("The message has not been sent successfully.");
-                        console.log(err);
-                    }
-                });
-            }
-        }
 
         var n = 0;
         var current_position = 0;
@@ -2964,8 +2927,6 @@
                     this.stop();
                 });
             });
-
-            autoupdate();
 
             $(".pad").hover(function () {
                 $(this).addClass("hover");
