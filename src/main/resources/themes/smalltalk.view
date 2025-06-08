@@ -1929,6 +1929,40 @@
         .password-field-wrapper {
             position: relative;
         }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin-right: 8px;
+        }
+
+        .status-indicator.connected {
+            background-color: #28a745;
+        }
+
+        .status-indicator.disconnected {
+            background-color: #dc3545;
+        }
+
+        .message-form button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .message-form input:disabled {
+            cursor: not-allowed;
+            background-color: #f8f9fa;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -3055,7 +3089,7 @@
                                 <li><i class="fas fa-home"></i> New Chat</li>
                                 <li><i class="fas fa-book"></i> Libraries</li>
                                 <li><i class="fas fa-history"></i> Chat History</li>
-                                <li class="admin-only" style="display: none;"><i class="fas fa-shield-alt"></i> Management</li>
+                                <li class="admin-only" style="display: none;"><i class="fas fa-shield-alt"></i> User Management</li>
                                 <li class="admin-only"><i class="fas fa-cog"></i> Settings</li>
                             </ul>
                             <div class="sidebar-section">
@@ -3140,7 +3174,7 @@
                             // Go to chat history page
                             window.location.href = '/?q=talk/history';
                             break;
-                        case 'management':
+                        case 'user management':
                             // Navigate to management page
                             window.location.href = '/?q=management';
                             break;
@@ -3518,6 +3552,54 @@
 
             // Call checkAdminStatus when user logs in
             checkAdminStatus();
+
+            // Register SSE event handlers
+            const statusIndicator = $('.status-indicator');
+            const statusText = $('.status-text');
+            const sseClient = window.smallTalk;
+
+            // Disable message input until connection is established
+            $('#message-form').find('input, textarea, button').prop('disabled', true);
+            $('#message-form').find('button').addClass('disabled');
+            statusIndicator.removeClass('connected disconnected');
+
+            // Set up connection status handlers
+            const originalUpdate = window.update;
+            window.update = function(data) {
+                if (data.error) {
+                    console.error('SSE Error:', data.error);
+                    statusIndicator.addClass('disconnected').removeClass('connected');
+                    statusText.text('Disconnected - Reconnecting...');
+                    $('#message-form').find('input, textarea, button').prop('disabled', true);
+                    $('#message-form').find('button').addClass('disabled');
+                } else if (data.cmd === 'expired') {
+                    sseClient.disconnect();
+                    window.location.href = '/?q=talk';
+                    return;
+                }
+                
+                // Call original update function
+                if (originalUpdate) {
+                    originalUpdate(data);
+                }
+            };
+
+            // Handle connection status
+            sseClient.on('connected', function() {
+                console.log('SSE connection established');
+                statusIndicator.addClass('connected').removeClass('disconnected');
+                statusText.text('Connected');
+                $('#message-form').find('input, textarea, button').prop('disabled', false);
+                $('#message-form').find('button').removeClass('disabled');
+            });
+
+            sseClient.on('disconnected', function() {
+                console.log('SSE connection lost');
+                statusIndicator.addClass('disconnected').removeClass('connected');
+                statusText.text('Disconnected - Reconnecting...');
+                $('#message-form').find('input, textarea, button').prop('disabled', true);
+                $('#message-form').find('button').addClass('disabled');
+            });
         });
         //]]>
     </script>
