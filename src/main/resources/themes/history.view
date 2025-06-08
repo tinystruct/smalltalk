@@ -128,6 +128,9 @@
 
                 <div class="back-link">
                     <a href="?q=talk/history" class="btn btn-default"><i class="fas fa-arrow-left"></i> Back to History</a>
+                    <button id="downloadCsv" class="btn btn-success" style="display: none; margin-left: 10px;">
+                        <i class="fas fa-download"></i> Download as CSV
+                    </button>
                 </div>
 
                 <div class="filters">
@@ -197,7 +200,10 @@
                                         <div>Messages: ${meeting.messageCount}</div>
                                         <div>Participants: ${meeting.participantCount}</div>
                                     </div>
-                                    <a href="?q=talk/history&meetingCode=${meeting.meetingCode}" class="btn btn-primary btn-sm">View History</a>
+                                    <div class="btn-group">
+                                        <a href="?q=talk/history&meetingCode=${meeting.meetingCode}" class="btn btn-primary btn-sm">View History</a>
+                                        <button onclick="deleteMeetingHistory('${meeting.meetingCode}')" class="btn btn-danger btn-sm">Delete History</button>
+                                    </div>
                                 </div>
                             </div>
                         `;
@@ -290,11 +296,35 @@
         const meetingsList = $('#meetingsList');
         const backLink = $('.back-link a');
 
+        // Function to delete meeting history
+        window.deleteMeetingHistory = function(meetingCode) {
+            if (confirm('Are you sure you want to delete this meeting history? This action cannot be undone.')) {
+                $.ajax({
+                    url: '?q=api/history',
+                    type: 'DELETE',
+                    data: { meetingCode: meetingCode },
+                    success: function() {
+                        alert('Meeting history deleted successfully');
+                        loadMeetings(); // Reload the meetings list
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error deleting meeting history:', error);
+                        if (xhr.status === 401 || xhr.status === 403) {
+                            window.location.href = '/?q=login';
+                        } else {
+                            alert('Error deleting meeting history. Please try again later.');
+                        }
+                    }
+                });
+            }
+        };
+
         if (meetingCode) {
             // Show messages view
             messageTypeFilter.show();
             messagesContainer.show();
             meetingsList.hide();
+            $('#downloadCsv').show(); // Show download button
             $('h1').text('Chat History - Meeting Details');
             backLink.attr('href', '?q=talk/history').html('<i class="fas fa-arrow-left"></i> Back to History');
             loadMessages(meetingCode);
@@ -303,6 +333,7 @@
             messageTypeFilter.hide();
             messagesContainer.hide();
             meetingsList.show();
+            $('#downloadCsv').hide(); // Hide download button
             $('h1').text('Chat History');
             backLink.attr('href', '?q=talk').html('<i class="fas fa-arrow-left"></i> Back to Chat');
             loadMeetings();
@@ -327,6 +358,80 @@
         // Date filter functionality
         $('#dateFilter').on('change', function() {
             $('#searchInput').trigger('input');
+        });
+
+        // Function to convert messages to CSV
+        function convertToCSV(messages) {
+            const headers = ['Timestamp', 'Sender', 'Message Type', 'Message', 'Image URL'];
+            const rows = messages.map(message => {
+                const date = new Date(message.createdAt);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                const messageType = message.messageType.toLowerCase();
+                const displayName = messageType === 'assistant' ? 'Assistant' : 
+                                  messageType === 'system' ? 'System' : 
+                                  message.username || 'User';
+                
+                return [
+                    formattedDate,
+                    displayName,
+                    messageType,
+                    message.message ? message.message.replace(/"/g, '""') : '', // Escape quotes
+                    message.imageUrl || ''
+                ];
+            });
+
+            // Convert to CSV format
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+
+            return csvContent;
+        }
+
+        // Function to download CSV
+        function downloadCSV(csvContent, meetingCode) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `chat_history_${meetingCode}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Add click handler for download button
+        $('#downloadCsv').on('click', function() {
+            const meetingCode = urlParams.get('meetingCode');
+            if (!meetingCode) return;
+
+            $.ajax({
+                url: '?q=api/history',
+                type: 'GET',
+                data: { meetingCode: meetingCode },
+                dataType: 'json',
+                success: function(data) {
+                    if (!data || data.length === 0) {
+                        alert('No messages to download');
+                        return;
+                    }
+                    
+                    const csvContent = convertToCSV(data);
+                    downloadCSV(csvContent, meetingCode);
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error downloading messages:', error);
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        window.location.href = '/?q=login';
+                    } else {
+                        alert('Error downloading messages. Please try again later.');
+                    }
+                }
+            });
         });
     });
 </script>
