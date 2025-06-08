@@ -14,6 +14,36 @@ class SSEClient {
         this.pendingMessages = {}; // Store streaming messages by ID
         this.messageQueue = new Map(); // Queue for message updates
         this.updateInterval = null; // Interval for smooth updates
+        this.eventHandlers = {}; // Store event handlers
+    }
+
+    /**
+     * Register an event handler
+     * @param {string} event - The event name
+     * @param {Function} handler - The event handler function
+     */
+    on(event, handler) {
+        if (!this.eventHandlers[event]) {
+            this.eventHandlers[event] = [];
+        }
+        this.eventHandlers[event].push(handler);
+    }
+
+    /**
+     * Trigger an event
+     * @param {string} event - The event name
+     * @param {*} data - The event data
+     */
+    trigger(event, data) {
+        if (this.eventHandlers[event]) {
+            this.eventHandlers[event].forEach(handler => {
+                try {
+                    handler(data);
+                } catch (error) {
+                    console.error(`Error in ${event} event handler:`, error);
+                }
+            });
+        }
     }
 
     /**
@@ -33,7 +63,7 @@ class SSEClient {
             this.eventSource = new EventSource(url);
             this.connected = true;
             this.reconnectAttempts = 0;
-            console.log('SSE Connection established');
+            this.trigger('connected');
 
             // Start the update interval for smooth rendering
             this.startUpdateInterval();
@@ -84,6 +114,7 @@ class SSEClient {
                 
                 this.connected = false;
                 this.stopUpdateInterval();
+                this.trigger('disconnected');
 
                 if (this.reconnectAttempts < this.maxReconnectAttempts) {
                     this.reconnectAttempts++;
@@ -108,6 +139,8 @@ class SSEClient {
                 url: url,
                 meetingCode: this.meetingCode
             });
+            this.connected = false;
+            this.trigger('disconnected');
             // Call update with error data
             if (typeof update === 'function') {
                 update({ error: 'Failed to create EventSource' });
@@ -216,16 +249,16 @@ class SSEClient {
     }
 
     /**
-     * Disconnect the SSE connection
+     * Disconnect from the SSE endpoint
      */
     disconnect() {
-        this.stopUpdateInterval();
         if (this.eventSource) {
-            console.log('Disconnecting SSE connection');
             this.eventSource.close();
             this.eventSource = null;
-            this.connected = false;
         }
+        this.connected = false;
+        this.stopUpdateInterval();
+        this.trigger('disconnected');
     }
 
     /**
