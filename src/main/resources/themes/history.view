@@ -300,9 +300,8 @@
         window.deleteMeetingHistory = function(meetingCode) {
             if (confirm('Are you sure you want to delete this meeting history? This action cannot be undone.')) {
                 $.ajax({
-                    url: '?q=api/history',
+                    url: '?q=api/history&meetingCode=' + meetingCode,
                     type: 'DELETE',
-                    data: { meetingCode: meetingCode },
                     success: function() {
                         alert('Meeting history deleted successfully');
                         loadMeetings(); // Reload the meetings list
