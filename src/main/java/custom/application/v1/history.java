@@ -8,6 +8,7 @@ import org.tinystruct.data.component.Builders;
 import org.tinystruct.data.component.Row;
 import org.tinystruct.data.component.Table;
 import org.tinystruct.handler.Reforward;
+import org.tinystruct.http.Method;
 import org.tinystruct.http.Request;
 import org.tinystruct.http.Response;
 import org.tinystruct.http.ResponseStatus;
@@ -28,6 +29,10 @@ public class history extends AbstractApplication {
     @Action("api/history")
     public String getChatHistory(Request request, Response response) throws ApplicationException {
         try {
+            if(request.method() == Method.DELETE) {
+                return deleteChatHistory(request, response);
+            }
+
             String meetingCode = request.getParameter("meetingCode");
             if (meetingCode == null || meetingCode.isEmpty()) {
                 throw new ApplicationException("Meeting code is required");
@@ -93,7 +98,7 @@ public class history extends AbstractApplication {
 
             boolean isMeetingOwner = false;
             if (meetingOwner.size() > 0) {
-                isMeetingOwner = meetingOwner.get(0).getFieldInfo("user_id").intValue() == (Integer) userId;
+                isMeetingOwner = meetingOwner.get(0).getFieldInfo("user_id").intValue() == Integer.parseInt(userId.toString());
             }
 
             // Only allow deletion if user is admin or meeting owner
@@ -103,7 +108,7 @@ public class history extends AbstractApplication {
             }
 
             // Delete the chat history
-            Table list = history.findWith("meeting_code = ?", new Object[]{meetingCode});
+            Table list = history.findWith("WHERE meeting_code = ?", new Object[]{meetingCode});
             if (list == null || list.isEmpty()) {
                 throw new ApplicationException("No chat history found for the specified meeting code");
             }
