@@ -201,7 +201,7 @@ public class OpenAI extends AbstractApplication implements Provider {
                                 data = data.substring(6);
 
                                 // Skip [DONE] message
-                                if (data.equals("[DONE]")) {
+                                if (data.startsWith("[DONE]")) {
                                     continue;
                                 }
 
