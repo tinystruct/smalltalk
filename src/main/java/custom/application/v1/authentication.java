@@ -226,6 +226,8 @@ public class authentication extends AbstractApplication {
                 return "{ \"error\": \"user_not_found\", \"message\": \"User not found\" }";
             }
 
+            request.getSession().setAttribute("is_admin", user.getIsAdmin());
+
             // Return user profile
             Builder builder = new Builder();
             builder.put("id", user.getId());
