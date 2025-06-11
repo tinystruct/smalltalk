@@ -10,6 +10,7 @@ import org.tinystruct.data.component.Table;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.Request;
 import org.tinystruct.http.Response;
+import org.tinystruct.http.ResponseStatus;
 import org.tinystruct.system.annotation.Action;
 
 import java.util.List;
@@ -62,6 +63,62 @@ public class history extends AbstractApplication {
             return builders.toString();
         } catch (Exception e) {
             throw new ApplicationException("Failed to get chat history: " + e.getMessage());
+        }
+    }
+
+    public String deleteChatHistory(Request request, Response response) throws ApplicationException {
+        try {
+            // Check if user is logged in
+            Object userId = request.getSession().getAttribute("user_id");
+            if (userId == null) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
+                throw new ApplicationException("User not logged in");
+            }
+
+            String meetingCode = request.getParameter("meetingCode");
+            if (meetingCode == null || meetingCode.isEmpty()) {
+                throw new ApplicationException("Meeting code is required");
+            }
+
+            // Check if user is admin
+            Object isAdmin = request.getSession().getAttribute("is_admin");
+            boolean isUserAdmin = isAdmin != null && (Boolean) isAdmin;
+
+            // Check if user is the meeting owner
+            ChatHistory history = new ChatHistory();
+            Table meetingOwner = history.find(
+                "SELECT user_id FROM chat_history WHERE meeting_code = ? GROUP BY user_id",
+                new Object[]{meetingCode}
+            );
+
+            boolean isMeetingOwner = false;
+            if (meetingOwner.size() > 0) {
+                isMeetingOwner = meetingOwner.get(0).getFieldInfo("user_id").intValue() == (Integer) userId;
+            }
+
+            // Only allow deletion if user is admin or meeting owner
+            if (!isUserAdmin && !isMeetingOwner) {
+                response.setStatus(ResponseStatus.FORBIDDEN);
+                throw new ApplicationException("Not authorized to delete this meeting history");
+            }
+
+            // Delete the chat history
+            Table list = history.findWith("meeting_code = ?", new Object[]{meetingCode});
+            if (list == null || list.isEmpty()) {
+                throw new ApplicationException("No chat history found for the specified meeting code");
+            }
+
+            for (Row row : list) {
+                ChatHistory entry = new ChatHistory();
+                entry.setId(row.getFieldInfo("id").stringValue());
+                entry.delete();
+            }
+
+            return "{\"status\":\"success\",\"message\":\"Chat history deleted successfully\"}";
+        } catch (ApplicationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to delete chat history: " + e.getMessage());
         }
     }
 
