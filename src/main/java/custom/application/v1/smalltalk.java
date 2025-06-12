@@ -39,6 +39,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -70,6 +71,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private boolean cliMode;
     private boolean chatGPT;
     private static final EventDispatcher dispatcher = EventDispatcher.getInstance();
+
+    private final Map<String, BlockingQueue<Builder>> sessionQueues = new ConcurrentHashMap<>();
+    private static final int DEFAULT_QUEUE_SIZE = 100;
 
     public void init() {
         try {
@@ -212,14 +216,13 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Get the session ID
         String sessionId = request.getSession().getId();
 
-        // Get the message queue for this meeting and convert to BlockingQueue if needed
-        Queue<Builder> queue = this.groups.get(meetingCode);
-        BlockingQueue<Builder> messageQueue = queue instanceof BlockingQueue ?
-                (BlockingQueue<Builder>) queue :
-                new ArrayBlockingQueue<>(DEFAULT_MESSAGE_POOL_SIZE, true);
+        // Get or create queue for this session using combined key
+        String clientId = meetingCode + "_" + sessionId;
+        BlockingQueue<Builder> sessionQueue = sessionQueues.computeIfAbsent(clientId,
+            k -> new ArrayBlockingQueue<>(DEFAULT_QUEUE_SIZE));
 
         // Register with SSE manager and get the client
-        SSEClient client = SSEPushManager.getInstance().register(sessionId, response, messageQueue);
+        SSEClient client = SSEPushManager.getInstance().register(clientId, response, sessionQueue);
         if (client == null) {
             throw new ApplicationException("Failed to register SSE client");
         }
@@ -228,7 +231,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         Builder heartbeat = new Builder();
         heartbeat.put("type", "heartbeat");
         heartbeat.put("time", format.format(new Date()));
-        SSEPushManager.getInstance().push(sessionId, heartbeat);
+        SSEPushManager.getInstance().push(clientId, heartbeat);
 
         // Keep the connection open and monitor for completion
         try {
@@ -244,7 +247,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         } finally {
             // Clean up when the connection is closed
             client.close();
-            SSEPushManager.getInstance().remove(sessionId);
+            SSEPushManager.getInstance().remove(clientId);
+            // Remove the session queue
+            sessionQueues.remove(clientId);
         }
     }
 
@@ -2098,22 +2103,20 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     private String save(String meetingCode, Builder data) {
-        Queue<Builder> queue = this.groups.get(meetingCode);
-        if (queue != null) {
-            // Get all sessions in this meeting
-            Set<String> sessionIds = this.sessions.get(meetingCode);
-            if (sessionIds != null) {
-                // Broadcast to all sessions in the meeting
-                for (String sessionId : sessionIds) {
-                    SSEPushManager.getInstance().push(sessionId, data);
-                }
+        // Get all sessions in this meeting
+        Set<String> sessionIds = this.sessions.get(meetingCode);
+        if (sessionIds != null) {
+            // Broadcast to all sessions in the meeting
+            for (String sessionId : sessionIds) {
+                String clientId = meetingCode + "_" + sessionId;
+                SSEPushManager.getInstance().push(clientId, data);
             }
 
             // Only save to chat history if this is a final message
             try {
                 if ((data.get("final")) == null || (Boolean) data.get("final")) {
                     // Save the chat history
-                    if(data.get("message")!=null && !data.get("message").toString().isEmpty()) {;
+                    if(data.get("message")!=null && !data.get("message").toString().isEmpty()) {
                         saveChatHistory(data, meetingCode);
                     }
                 }
