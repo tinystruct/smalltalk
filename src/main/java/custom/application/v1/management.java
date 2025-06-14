@@ -465,7 +465,6 @@ public class management extends AbstractApplication {
 
         User user = new User();
         user.setId(userId);
-        user.findOneById();
         user.setIsActive(isActive);
         user.update();
 
