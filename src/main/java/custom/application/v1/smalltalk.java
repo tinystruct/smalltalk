@@ -19,8 +19,6 @@ import org.tinystruct.data.component.Row;
 import org.tinystruct.data.component.Table;
 import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
-import org.tinystruct.http.SSEClient;
-import org.tinystruct.http.SSEPushManager;
 import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
@@ -38,8 +36,6 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,9 +67,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private boolean cliMode;
     private boolean chatGPT;
     private static final EventDispatcher dispatcher = EventDispatcher.getInstance();
-
-    private final Map<String, BlockingQueue<Builder>> sessionQueues = new ConcurrentHashMap<>();
-    private static final int DEFAULT_QUEUE_SIZE = 100;
 
     public void init() {
         try {
@@ -216,40 +209,37 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         // Get the session ID
         String sessionId = request.getSession().getId();
 
-        // Get or create queue for this session using combined key
-        String clientId = meetingCode + "_" + sessionId;
-        BlockingQueue<Builder> sessionQueue = sessionQueues.computeIfAbsent(clientId,
-            k -> new ArrayBlockingQueue<>(DEFAULT_QUEUE_SIZE));
-
-        // Register with SSE manager and get the client
-        SSEClient client = SSEPushManager.getInstance().register(clientId, response, sessionQueue);
-        if (client == null) {
-            throw new ApplicationException("Failed to register SSE client");
-        }
+        // Register with SSE manager using sessionId and response only
+        // For Netty: returns null, for Servlet: returns SSEClient
+        SSEClient client = SSEPushManager.getInstance().register(meetingCode + "_" + sessionId, response);
 
         // Send initial heartbeat to establish connection
         Builder heartbeat = new Builder();
         heartbeat.put("type", "heartbeat");
         heartbeat.put("time", format.format(new Date()));
+        String clientId = meetingCode + "_" + sessionId;
         SSEPushManager.getInstance().push(clientId, heartbeat);
 
+        // For Netty: No thread/queue/loop needed - Netty keeps connection open
+        // For Servlet: The SSEClient runs in its own thread and handles the connection, Keep the connection open and monitor for completion
+        // Cleanup is handled by connection close events elsewhere
         // Keep the connection open and monitor for completion
-        try {
-            while (client.isActive()) {
-                // Sleep briefly to prevent tight loop
-                Thread.sleep(1000);
+        if (client != null) {
+            try {
+                while (client.isActive()) {
+                    // Sleep briefly to prevent tight loop
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new ApplicationException("Stream interrupted: " + e.getMessage(), e);
+            } catch (Exception e) {
+                throw new ApplicationException("Error in stream: " + e.getMessage(), e);
+            } finally {
+                // Clean up when the connection is closed
+                client.close();
+                SSEPushManager.getInstance().remove(clientId);
             }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new ApplicationException("Stream interrupted: " + e.getMessage(), e);
-        } catch (Exception e) {
-            throw new ApplicationException("Error in stream: " + e.getMessage(), e);
-        } finally {
-            // Clean up when the connection is closed
-            client.close();
-            SSEPushManager.getInstance().remove(clientId);
-            // Remove the session queue
-            sessionQueues.remove(clientId);
         }
     }
 
@@ -684,7 +674,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 // Continue execution even if variable storage fails
             }
 
-            if(!rawResponse.isEmpty()) {
+            if (!rawResponse.isEmpty()) {
                 // Save to chat history database
                 Builder messageBuilder = new Builder();
                 messageBuilder.put("user", CHAT_GPT);
@@ -2116,7 +2106,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             try {
                 if ((data.get("final")) == null || (Boolean) data.get("final")) {
                     // Save the chat history
-                    if(data.get("message")!=null && !data.get("message").toString().isEmpty()) {
+                    if (data.get("message") != null && !data.get("message").toString().isEmpty()) {
                         saveChatHistory(data, meetingCode);
                     }
                 }
