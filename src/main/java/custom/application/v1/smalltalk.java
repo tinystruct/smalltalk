@@ -48,7 +48,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     // Constants
     public static final String CHAT_GPT = "ChatGPT";
     // private static final String DEFAULT_MODEL = "deepseek/deepseek-r1:free";
-    private static final String DEFAULT_MODEL = "gpt-4o-mini";
+    private static final String DEFAULT_MODEL = "gpt-4o";
     private static final int DEFAULT_MESSAGE_POOL_SIZE = 100;
     private static final int DEFAULT_MAX_TOKENS = 3000;
     private static final double DEFAULT_TEMPERATURE = 0.8;
@@ -131,7 +131,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 System.out.println(event.getPayload()));
     }
 
-
     @Action("talk")
     public Object index(Request request, Response response) throws ApplicationException {
         // Check if user is authenticated
@@ -199,48 +198,12 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     }
 
     @Action("talk/stream")
-    public void stream(String meetingCode, Request request, Response response) throws ApplicationException, IOException {
-        // Set SSE headers
-        response.addHeader(Header.CONTENT_TYPE.name(), "text/event-stream");
-        response.addHeader(Header.CACHE_CONTROL.name(), "no-cache, no-transform");
-        response.addHeader(Header.CONNECTION.name(), "keep-alive");
-        response.addHeader("X-Accel-Buffering", "no");
-
-        // Get the session ID
-        String sessionId = request.getSession().getId();
-
-        // Register with SSE manager using sessionId and response only
-        // For Netty: returns null, for Servlet: returns SSEClient
-        SSEClient client = SSEPushManager.getInstance().register(meetingCode + "_" + sessionId, response);
-
+    public Builder stream(String meetingCode, Request request, Response response) throws ApplicationException, IOException {
+        SSEPushManager.getInstance().setIdentifier(meetingCode);
         // Send initial heartbeat to establish connection
-        Builder heartbeat = new Builder();
-        heartbeat.put("type", "heartbeat");
-        heartbeat.put("time", format.format(new Date()));
-        String clientId = meetingCode + "_" + sessionId;
-        SSEPushManager.getInstance().push(clientId, heartbeat);
-
-        // For Netty: No thread/queue/loop needed - Netty keeps connection open
-        // For Servlet: The SSEClient runs in its own thread and handles the connection, Keep the connection open and monitor for completion
-        // Cleanup is handled by connection close events elsewhere
-        // Keep the connection open and monitor for completion
-        if (client != null) {
-            try {
-                while (client.isActive()) {
-                    // Sleep briefly to prevent tight loop
-                    Thread.sleep(1000);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new ApplicationException("Stream interrupted: " + e.getMessage(), e);
-            } catch (Exception e) {
-                throw new ApplicationException("Error in stream: " + e.getMessage(), e);
-            } finally {
-                // Clean up when the connection is closed
-                client.close();
-                SSEPushManager.getInstance().remove(clientId);
-            }
-        }
+        Builder initial = new Builder();
+        initial.put("type", "connect");
+        return initial; // This method is used to set up the SSE stream, no direct response needed
     }
 
     @Action("talk/matrix")
@@ -2044,7 +2007,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             history.setMeetingCode(meetingCode);
             history.setUserId(userId);
             history.setMessage(builder.get("message").toString());
-            history.setSessionId(builder.get("session_id").toString());
+            if (builder.get("session_id") != null)
+                history.setSessionId(builder.get("session_id").toString());
             history.setMessageType(userId == 0 ? "assistant" : "user");
             history.setCreatedAt(builder.get("time").toString());
             history.append();
@@ -2098,8 +2062,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         if (sessionIds != null) {
             // Broadcast to all sessions in the meeting
             for (String sessionId : sessionIds) {
-                String clientId = meetingCode + "_" + sessionId;
-                SSEPushManager.getInstance().push(clientId, data);
+                SSEPushManager.getInstance().push(sessionId, data);
             }
 
             // Only save to chat history if this is a final message
