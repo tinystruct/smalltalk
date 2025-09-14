@@ -17,7 +17,6 @@ import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.data.component.Row;
 import org.tinystruct.data.component.Table;
-import org.tinystruct.handler.Reforward;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.EventDispatcher;
@@ -46,7 +45,7 @@ import static org.tinystruct.http.Constants.*;
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
     // Constants
-    public static final String CHAT_GPT = "ChatGPT";
+    public static final String AI = "AI";
     // private static final String DEFAULT_MODEL = "deepseek/deepseek-r1:free";
     private static final String DEFAULT_MODEL = "gpt-4o";
     private static final int DEFAULT_MESSAGE_POOL_SIZE = 100;
@@ -461,8 +460,8 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 builder.put("message", filter(message));
             }
 
-            if (message.contains("@" + CHAT_GPT)) {
-                final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
+            if (message.contains("@" + AI)) {
+                final String finalMessage = message.replaceAll("@" + AI, "");
 
                 // Use a separate thread for processing to avoid request object issues
                 Thread processingThread = new Thread(() -> {
@@ -532,7 +531,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private void sendErrorMessage(Object meetingCode, String sessionId, String errorMessage) {
         try {
             final Builder data = new Builder();
-            data.put("user", CHAT_GPT);
+            data.put("user", AI);
             data.put("user_id", 0);
             data.put("session_id", sessionId);
             data.put("time", format.format(new Date()));
@@ -589,7 +588,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
                                     // Send the chunk to all users in the meeting
                                     final Builder chunkData = new Builder();
-                                    chunkData.put("user", CHAT_GPT);
+                                    chunkData.put("user", AI);
                                     chunkData.put("user_id", 0);
                                     chunkData.put("session_id", sessionId);
                                     chunkData.put("time", format.format(new Date()));
@@ -611,7 +610,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
             // Send a final chunk to indicate the end of streaming
             final Builder finalChunkData = new Builder();
-            finalChunkData.put("user", CHAT_GPT);
+            finalChunkData.put("user", AI);
             finalChunkData.put("user_id", 0);
             finalChunkData.put("session_id", sessionId);
             finalChunkData.put("time", format.format(new Date()));
@@ -640,7 +639,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             if (!rawResponse.isEmpty()) {
                 // Save to chat history database
                 Builder messageBuilder = new Builder();
-                messageBuilder.put("user", CHAT_GPT);
+                messageBuilder.put("user", AI);
                 messageBuilder.put("user_id", 0);
                 messageBuilder.put("session_id", sessionId);
                 messageBuilder.put("time", format.format(new Date()));
@@ -697,7 +696,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 try {
                     if (!input.trim().isEmpty()) {
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
-                        System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
+                        System.out.print(String.format("%s %s >: ", format.format(new Date()), AI));
                         message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
                         if (!message.startsWith("data:image/png;base64,")) {
                             for (int i = 0; i < message.length(); i++) {
