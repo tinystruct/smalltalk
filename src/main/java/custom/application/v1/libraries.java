@@ -7,13 +7,13 @@ import custom.util.DocumentProcessor;
 import custom.util.EmbeddingManager;
 import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
+import org.tinystruct.http.Reforward;
 import org.tinystruct.system.ApplicationManager;
 
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.data.component.Row;
 import org.tinystruct.data.component.Table;
-import org.tinystruct.handler.Reforward;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.http.Request;
 import org.tinystruct.http.Response;
