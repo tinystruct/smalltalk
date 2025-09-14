@@ -93,7 +93,7 @@
             position: relative;
         }
 
-        /* ChatGPT message styles */
+        /* AI message styles */
         #messages li.chat-gpt .content {
             background-color: #f3f4f6;
             border-bottom-left-radius: 0.25rem;
@@ -431,26 +431,26 @@
             color: #60a5fa;
         }
 
-        /* ChatGPT toggle button styles */
-        .chatgpt-toggle-wrapper {
+        /* AI toggle button styles */
+        .ai-toggle-wrapper {
             position: absolute;
             left: 10px;
             bottom: 10px;
             z-index: 1;
         }
 
-        .chatgpt-toggle {
+        .ai-toggle {
             display: inline-flex;
             align-items: center;
             cursor: pointer;
             user-select: none;
         }
 
-        .chatgpt-toggle input {
+        .ai-toggle input {
             display: none;
         }
 
-        .chatgpt-toggle-label {
+        .ai-toggle-label {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -462,25 +462,25 @@
             transition: all 0.2s ease;
         }
 
-        .chatgpt-toggle-label i {
+        .ai-toggle-label i {
             font-size: 0.875rem;
             transition: transform 0.2s ease;
         }
 
-        .chatgpt-toggle input:checked + .chatgpt-toggle-label {
+        .ai-toggle input:checked + .ai-toggle-label {
             background-color: #10a37f;
             color: #ffffff;
         }
 
-        .chatgpt-toggle input:checked + .chatgpt-toggle-label i {
+        .ai-toggle input:checked + .ai-toggle-label i {
             transform: scale(1.1);
         }
 
-        .chatgpt-toggle:hover .chatgpt-toggle-label {
+        .ai-toggle:hover .ai-toggle-label {
             background-color: #e5e7eb;
         }
 
-        .chatgpt-toggle input:checked:hover + .chatgpt-toggle-label {
+        .ai-toggle input:checked:hover + .ai-toggle-label {
             background-color: #0d8c6d;
         }
 
@@ -1107,15 +1107,15 @@
             100% { content: '.'; }
         }
 
-        /* ChatGPT toggle button styles */
-        .chatgpt-toggle-wrapper {
+        /* AI toggle button styles */
+        .ai-toggle-wrapper {
             position: absolute;
             left: 10px;
             bottom: 10px;
             z-index: 1;
         }
 
-        .chatgpt-toggle {
+        .ai-toggle {
             display: inline-flex;
             align-items: center;
             cursor: pointer;
@@ -1123,11 +1123,11 @@
             margin-bottom: 0;
         }
 
-        .chatgpt-toggle input {
+        .ai-toggle input {
             display: none;
         }
 
-        .chatgpt-toggle-label {
+        .ai-toggle-label {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -1139,25 +1139,25 @@
             transition: all 0.2s ease;
         }
 
-        .chatgpt-toggle-label i {
+        .ai-toggle-label i {
             font-size: 0.875rem;
             transition: transform 0.2s ease;
         }
 
-        .chatgpt-toggle input:checked + .chatgpt-toggle-label {
+        .ai-toggle input:checked + .ai-toggle-label {
             background-color: #10a37f;
             color: #ffffff;
         }
 
-        .chatgpt-toggle input:checked + .chatgpt-toggle-label i {
+        .ai-toggle input:checked + .ai-toggle-label i {
             transform: scale(1.1);
         }
 
-        .chatgpt-toggle:hover .chatgpt-toggle-label {
+        .ai-toggle:hover .ai-toggle-label {
             background-color: #e5e7eb;
         }
 
-        .chatgpt-toggle input:checked:hover + .chatgpt-toggle-label {
+        .ai-toggle input:checked:hover + .ai-toggle-label {
             background-color: #0d8c6d;
         }
 
@@ -2280,7 +2280,7 @@
                         placeholder.appendChild(content);
                     } else {
                         // Regular message
-                        if ($data.user === 'ChatGPT') {
+                        if ($data.user === 'AI') {
                             placeholder.classList.add('chat-gpt');
                         }
                         
@@ -2317,8 +2317,8 @@
                     const contentSpan = placeholder.querySelector('.content');
                     
                     // Handle different types of messages
-                    if ($data.user === 'ChatGPT') {
-                        // ChatGPT messages - use markdown rendering
+                    if ($data.user === 'AI') {
+                        // AI messages - use markdown rendering
                         requestAnimationFrame(() => {
                             // First set the raw text content to preserve newlines
                             contentSpan.textContent = $text;
@@ -2682,11 +2682,11 @@
 
             image = "";
 
-            // Check if ChatGPT mode is enabled via the toggle button
-            const chatGPTMode = localStorage.getItem('chatgpt-mode') === 'enabled';
+            // Check if AI mode is enabled via the toggle button
+            const AIMode =  localStorage.getItem('ai-mode') === 'enabled';
 
-            if (chatGPTMode) {
-                $message = "@ChatGPT " + $("#text").text() + "\n";
+            if (AIMode) {
+                $message = "@AI " + $("#text").text() + "\n";
 
                 $("#text").find("img").each(function () {
                     image = $(this).attr("src");
@@ -2704,7 +2704,7 @@
                     text: $message,
                     time: new Date().getTime(),
                     image: image,
-                    stream: chatGPTMode ? "true" : "false" // Enable streaming for ChatGPT messages
+                    stream: AIMode ? "true" : "false" // Enable streaming for AI messages
                 }
             }).done(function (msg) {
                 // Input already cleared
@@ -2957,18 +2957,18 @@
                 }
             });
 
-            // Setup ChatGPT toggle button
-            $("#chatgpt-toggle").change(function(event) {
-                localStorage.setItem('chatgpt-mode', event.target.checked ? 'enabled' : 'disabled');
-                updateChatGPTToggleState();
+            // Setup AI toggle button
+            $("#ai-toggle").change(function(event) {
+                localStorage.setItem('ai-mode', event.target.checked ? 'enabled' : 'disabled');
+                updateAIToggleState();
             });
 
             // Initialize toggle state from localStorage
-            updateChatGPTToggleState();
+            updateAIToggleState();
 
-            function updateChatGPTToggleState() {
-                const chatGPTMode = localStorage.getItem('chatgpt-mode') || 'disabled';
-                $("#chatgpt-toggle").prop('checked', chatGPTMode === 'enabled');
+            function updateAIToggleState() {
+                const AIMode = localStorage.getItem('ai-mode') || 'disabled';
+                $("#ai-toggle").prop('checked', AIMode === 'enabled');
             }
 
             $("#link").click(function () {
@@ -3628,10 +3628,10 @@
                         </div>
                         <div class="upload-progress"></div>
                     </div>
-                    <div class="chatgpt-toggle-wrapper">
-                        <label class="chatgpt-toggle" title="Toggle ChatGPT mode">
-                            <input type="checkbox" id="chatgpt-toggle" />
-                            <span class="chatgpt-toggle-label">
+                    <div class="ai-toggle-wrapper">
+                        <label class="ai-toggle" title="Toggle AI mode">
+                            <input type="checkbox" id="ai-toggle" />
+                            <span class="ai-toggle-label">
                                 <i class="fas fa-brain"></i>
                                 <span>AI</span>
                             </span>
