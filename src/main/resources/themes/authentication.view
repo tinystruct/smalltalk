@@ -68,6 +68,14 @@
                                     </button>
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="login-terms-checkbox" required>
+                                        I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/terms.html" target="_blank">Privacy Policy</a>
+                                    </label>
+                                </div>
+                            </div>
                             <div class="alert alert-danger" id="login-error" style="display: none;"></div>
                             <button type="submit" class="btn btn-primary">Login</button>
                             <div class="mt-2">
@@ -146,6 +154,14 @@
                                 <label for="register-fullname">Full Name (optional)</label>
                                 <input type="text" class="form-control" id="register-fullname" placeholder="Full Name">
                             </div>
+                            <div class="form-group">
+                                <div class="checkbox">
+                                    <label>
+                                        <input type="checkbox" id="register-terms-checkbox" required>
+                                        I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and <a href="/terms.html" target="_blank">Privacy Policy</a>
+                                    </label>
+                                </div>
+                            </div>
                             <div class="alert alert-danger" id="register-error" style="display: none;"></div>
                             <button type="submit" class="btn btn-default">Register</button>
                         </form>
@@ -181,6 +197,11 @@
 
             // Handle login form submission
             $('#login-form').submit(function(e) {
+                if (!$('#login-terms-checkbox').is(':checked')) {
+                    $('#login-error').text('You must agree to the Terms of Service and Privacy Policy.').show();
+                    e.preventDefault();
+                    return false;
+                }
                 e.preventDefault();
                 const username = $('#login-username').val();
                 const password = $('#login-password').val();
@@ -210,6 +231,11 @@
 
             // Handle register form submission
             $('#register-form').submit(function(e) {
+                if (!$('#register-terms-checkbox').is(':checked')) {
+                    $('#register-error').text('You must agree to the Terms of Service and Privacy Policy.').show();
+                    e.preventDefault();
+                    return false;
+                }
                 e.preventDefault();
                 const username = $('#register-username').val();
                 const password = $('#register-password').val();
