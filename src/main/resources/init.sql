@@ -94,3 +94,12 @@ FOR EACH ROW
 BEGIN
     UPDATE user_prompts SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END
+
+DROP TABLE IF EXISTS feedback;
+CREATE TABLE IF NOT EXISTS feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 600px; margin: 40px auto; padding: 20px; }
+        textarea { min-height: 120px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Feedback</h2>
+        <form id="feedback-form">
+            <div class="form-group">
+                <label for="feedback-content">Your Feedback</label>
+                <textarea class="form-control" id="feedback-content" name="content" required placeholder="Enter your feedback here..."></textarea>
+            </div>
+            <div class="alert alert-success" id="feedback-success" style="display:none;">Thank you for your feedback!</div>
+            <div class="alert alert-danger" id="feedback-error" style="display:none;"></div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $('#feedback-form').submit(function(e) {
+            e.preventDefault();
+            var content = $('#feedback-content').val();
+            $('#feedback-success').hide();
+            $('#feedback-error').hide();
+            $.ajax({
+                url: '/?q=feedback/submit',
+                type: 'POST',
+                data: { content: content },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        $('#feedback-success').show();
+                        $('#feedback-content').val('');
+                    } else {
+                        $('#feedback-error').text(response.message || 'Failed to submit feedback.').show();
+                    }
+                },
+                error: function(xhr) {
+                    $('#feedback-error').text('Failed to submit feedback.').show();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

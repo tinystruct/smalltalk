@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mapping>
+    <class name="Feedback" table="feedback">
+        <id name="Id" column="id" increment="true" generate="true" length="20" type="INTEGER"/>
+        <property name="content" column="content" length="0" type="TEXT"/>
+        <property name="createdAt" column="created_at" length="0" type="DATE"/>
+        <property name="userId" column="user_id" length="20" type="INTEGER"/>
+    </class>
+</mapping> 

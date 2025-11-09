@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        table { margin-top: 20px; }
+        td { word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>User Feedback</h2>
+        <table class="table table-bordered table-striped" id="feedback-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Content</th>
+                    <th>Created At</th>
+                    <th>User ID</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+            </tbody>
+        </table>
+        <div class="alert alert-danger" id="feedback-error" style="display:none;"></div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function loadFeedback() {
+            $.ajax({
+                url: '/?q=feedback/list',
+                type: 'GET',
+                dataType: 'json',
+                success: function(data) {
+                    var tbody = '';
+                    if (data.length === 0) {
+                        tbody = '<tr><td colspan="4" class="text-center">No feedback found.</td></tr>';
+                    } else {
+                        for (var i = 0; i < data.length; i++) {
+                            tbody += '<tr>' +
+                                '<td>' + data[i].id + '</td>' +
+                                '<td>' + $('<div>').text(data[i].content).html() + '</td>' +
+                                '<td>' + data[i].created_at + '</td>' +
+                                '<td>' + (data[i].user_id !== null ? data[i].user_id : '-') + '</td>' +
+                                '</tr>';
+                        }
+                    }
+                    $('#feedback-table tbody').html(tbody);
+                },
+                error: function(xhr) {
+                    $('#feedback-error').text('Failed to load feedback.').show();
+                    $('#feedback-table tbody').html('<tr><td colspan="4" class="text-center">Error loading feedback.</td></tr>');
+                }
+            });
+        }
+        $(function() { loadFeedback(); });
+    </script>
+</body>
+</html> 
