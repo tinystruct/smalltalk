@@ -27,7 +27,7 @@ public class plantuml extends AbstractApplication {
 
     }
 
-    @Action(value = "generate-uml", mode = org.tinystruct.application.Action.Mode.CLI)
+    @Action(value = "generate-uml", mode = Action.Mode.CLI)
     public List<String> generateUML() throws ApplicationException, IOException {
         if (getContext().getAttribute("--plantuml-script") == null)
             throw new ApplicationException("Missing --plantuml-script");
