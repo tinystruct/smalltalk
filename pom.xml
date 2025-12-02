@@ -19,15 +19,18 @@
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct</artifactId>
-            <version>1.7.10</version>
-            <classifier>jar-with-dependencies</classifier>
+            <version>1.7.12</version>
         </dependency>
         <dependency>
             <groupId>org.tinystruct</groupId>
             <artifactId>tinystruct-tomcat-server</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.4</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.tinystruct</groupId>
+            <artifactId>tinystruct-netty-http-server</artifactId>
+            <version>1.0.4</version>
+        </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.groovy/groovy -->
         <dependency>
             <groupId>org.apache.groovy</groupId>

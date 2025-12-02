@@ -2,6 +2,45 @@
  * SSE Client for SmallTalk
  * Handles real-time updates using Server-Sent Events (SSE)
  */
+
+// Suppress browser extension errors that interfere with SSE
+(function () {
+    'use strict';
+
+    // Suppress chrome extension errors - only if the API exists
+    if (typeof chrome !== 'undefined' &&
+        chrome.runtime &&
+        chrome.runtime.onMessage &&
+        chrome.runtime.onMessage.addListener) {
+        try {
+            const originalAddListener = chrome.runtime.onMessage.addListener;
+            chrome.runtime.onMessage.addListener = function (...args) {
+                try {
+                    return originalAddListener.apply(this, args);
+                } catch (e) {
+                    // Suppress extension errors
+                    console.debug('Suppressed extension error:', e.message);
+                }
+            };
+        } catch (e) {
+            // Silently fail if we can't override the listener
+            console.debug('Could not override chrome extension listener:', e.message);
+        }
+    }
+
+    // Global error handler for uncaught extension errors
+    window.addEventListener('error', function (event) {
+        if (event.message &&
+            (event.message.includes('Extension context invalidated') ||
+                event.message.includes('Could not establish connection') ||
+                event.message.includes('Receiving end does not exist'))) {
+            event.preventDefault();
+            console.debug('Suppressed extension-related error:', event.message);
+            return true;
+        }
+    });
+})();
+
 class SSEClient {
     constructor() {
         this.eventSource = null;
@@ -51,6 +90,15 @@ class SSEClient {
      * @param {string} meetingCode - The meeting Code
      */
     connect(meetingCode) {
+        // Check if EventSource is supported
+        if (!SSEClient.isSupported()) {
+            console.error('SSE is not supported in this browser');
+            if (typeof update === 'function') {
+                update({ error: 'SSE is not supported in this browser' });
+            }
+            return;
+        }
+
         if (this.eventSource) {
             this.disconnect();
         }
@@ -61,9 +109,14 @@ class SSEClient {
 
         try {
             this.eventSource = new EventSource(url);
-            this.connected = true;
-            this.reconnectAttempts = 0;
-            this.trigger('connected');
+
+            // Wait for the connection to open before marking as connected
+            this.eventSource.addEventListener('open', () => {
+                console.log('SSE connection established successfully');
+                this.connected = true;
+                this.reconnectAttempts = 0;
+                this.trigger('connected');
+            });
 
             // Start the update interval for smooth rendering
             this.startUpdateInterval();
@@ -105,13 +158,27 @@ class SSEClient {
             // Error handling
             this.eventSource.onerror = (error) => {
                 console.error('SSE Connection error:', error);
-                console.error('EventSource readyState:', this.eventSource.readyState);
+
+                // Check the readyState to determine the type of error
+                const readyState = this.eventSource ? this.eventSource.readyState : null;
+                console.error('EventSource readyState:', readyState);
+
+                // ReadyState values: 0 = CONNECTING, 1 = OPEN, 2 = CLOSED
+                let errorMessage = 'Connection error';
+
+                if (readyState === EventSource.CLOSED || readyState === 2) {
+                    errorMessage = 'Connection closed by server';
+                } else if (readyState === EventSource.CONNECTING || readyState === 0) {
+                    errorMessage = 'Unable to establish connection';
+                }
+
                 console.error('Connection details:', {
                     url: url,
                     meetingCode: this.meetingCode,
-                    reconnectAttempts: this.reconnectAttempts
+                    reconnectAttempts: this.reconnectAttempts,
+                    errorMessage: errorMessage
                 });
-                
+
                 this.connected = false;
                 this.stopUpdateInterval();
                 this.trigger('disconnected');
@@ -119,16 +186,19 @@ class SSEClient {
                 if (this.reconnectAttempts < this.maxReconnectAttempts) {
                     this.reconnectAttempts++;
                     const delay = this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1);
-                    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
 
                     setTimeout(() => {
                         this.connect(this.meetingCode);
                     }, delay);
                 } else {
-                    console.error('Max reconnect attempts reached, giving up');
+                    console.error('Max reconnect attempts reached. Connection failed permanently.');
                     // Call update with error data
                     if (typeof update === 'function') {
-                        update({ error: 'Max reconnect attempts reached' });
+                        update({
+                            error: 'Connection failed after multiple attempts. Please refresh the page.',
+                            type: 'connection_error'
+                        });
                     }
                 }
             };
@@ -155,7 +225,7 @@ class SSEClient {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
         }
-        
+
         this.updateInterval = setInterval(() => {
             this.processMessageQueue();
         }, 50); // Update every 50ms for smooth rendering
@@ -233,7 +303,7 @@ class SSEClient {
         if (data.final) {
             console.log('Message is final, marking as complete:', messageId);
             this.pendingMessages[messageId].final = true;
-            
+
             // Queue final update
             this.messageQueue.set(messageId, {
                 ...this.pendingMessages[messageId],
