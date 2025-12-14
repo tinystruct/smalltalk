@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content=""/>
+    <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
+    <title>Small Talk - Libraries</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+    <!-- Bootstrap core CSS -->
+    <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
+
+    <!-- Custom styles for this template -->
+    <style type="text/css">
+        body {
+            padding-top: 40px;
+            padding-bottom: 40px;
+            background-color: #f5f5f5;
+        }
+
+        .libraries-container {
+            margin-top: 50px;
+        }
+
+        .document-card {
+            margin-bottom: 20px;
+        }
+
+        .document-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .document-description {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .document-meta {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .nav-tabs {
+            margin-bottom: 20px;
+        }
+
+        .back-link {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="libraries-container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>Document Libraries</h1>
+                <p>Browse and search documents uploaded by users.</p>
+
+                <div class="back-link">
+                    <a href="/?q=talk" class="btn btn-default"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+                    <button class="btn btn-primary" data-toggle="modal" data-target="#uploadModal">
+                        <i class="fas fa-upload"></i> Upload Document
+                    </button>
+                </div>
+
+                <!-- Upload Modal -->
+                <div class="modal fade" id="uploadModal" tabindex="-1" role="dialog" aria-labelledby="uploadModalLabel">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                <h4 class="modal-title" id="uploadModalLabel">Upload Document</h4>
+                            </div>
+                            <div class="modal-body">
+                                <form id="uploadForm" enctype="multipart/form-data">
+                                    <div class="form-group">
+                                        <label for="documentTitle">Title</label>
+                                        <input type="text" class="form-control" id="documentTitle" placeholder="Document Title">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="documentDescription">Description</label>
+                                        <textarea class="form-control" id="documentDescription" rows="3" placeholder="Document Description"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="documentFile">File</label>
+                                        <input type="file" id="documentFile" name="attachment">
+                                        <p class="help-block">Supported formats: PDF, DOCX, TXT, MD, CSV</p>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Visibility</label>
+                                        <div class="radio">
+                                            <label>
+                                                <input type="radio" name="visibility" id="visibilityPublic" value="public" checked>
+                                                Public (visible to all users)
+                                            </label>
+                                        </div>
+                                        <div class="radio">
+                                            <label>
+                                                <input type="radio" name="visibility" id="visibilityPrivate" value="private">
+                                                Private (visible only to you)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="progress" style="display: none;">
+                                        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                                            <span class="sr-only">0% Complete</span>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-success" id="uploadSuccess" style="display: none;"></div>
+                                    <div class="alert alert-danger" id="uploadError" style="display: none;"></div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                                <button type="button" class="btn btn-primary" id="uploadButton">Upload</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs" id="libraryTabs">
+                    <li class="active"><a href="#myDocuments" data-toggle="tab">My Documents</a></li>
+                    <li><a href="#publicDocuments" data-toggle="tab">Public Documents</a></li>
+                    <li id="adminTab" style="display: none;"><a href="#allDocuments" data-toggle="tab">All Documents (Admin)</a></li>
+                </ul>
+
+                <div class="tab-content">
+                    <!-- My Documents Tab -->
+                    <div class="tab-pane active" id="myDocuments">
+                        <div class="row" id="myDocumentsList">
+                            <div class="col-md-12">
+                                <p class="text-center" id="myDocumentsLoading">Loading your documents...</p>
+                                <p class="text-center" id="myDocumentsEmpty" style="display: none;">You haven't uploaded any documents yet.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Public Documents Tab -->
+                    <div class="tab-pane" id="publicDocuments">
+                        <div class="row" id="publicDocumentsList">
+                            <div class="col-md-12">
+                                <p class="text-center" id="publicDocumentsLoading">Loading public documents...</p>
+                                <p class="text-center" id="publicDocumentsEmpty" style="display: none;">No public documents available.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All Documents Tab (Admin Only) -->
+                    <div class="tab-pane" id="allDocuments">
+                        <div class="row" id="allDocumentsList">
+                            <div class="col-md-12">
+                                <p class="text-center" id="allDocumentsLoading">Loading all documents...</p>
+                                <p class="text-center" id="allDocumentsEmpty" style="display: none;">No documents available.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
+<script type="text/javascript" src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Variables to store user info
+        var userId = null;
+        var isAdmin = false;
+
+        // Auto-fill title when file is selected
+        $('#documentFile').change(function() {
+            var file = this.files[0];
+            if (file) {
+                // Only set the title if it's currently empty
+                var currentTitle = $('#documentTitle').val();
+                if (!currentTitle) {
+                    // Extract filename without extension
+                    var fileName = file.name;
+                    var fileNameWithoutExt = fileName.split('.').slice(0, -1).join('.');
+                    // If filename has no extension or extraction failed, use the full filename
+                    if (!fileNameWithoutExt) {
+                        fileNameWithoutExt = fileName;
+                    }
+                    $('#documentTitle').val(fileNameWithoutExt);
+                }
+            }
+        });
+
+        // Handle file upload
+        $('#uploadButton').click(function() {
+            // Get form data
+            var title = $('#documentTitle').val();
+            var description = $('#documentDescription').val();
+            var file = $('#documentFile')[0].files[0];
+            var isPublic = $('#visibilityPublic').is(':checked');
+
+            // Validate form
+            if (!title) {
+                $('#uploadError').text('Please enter a title').show();
+                $('#uploadSuccess').hide();
+                return;
+            }
+
+            if (!file) {
+                $('#uploadError').text('Please select a file').show();
+                $('#uploadSuccess').hide();
+                return;
+            }
+
+            // Create form data
+            var formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('attachment', file);
+            formData.append('isPublic', isPublic);
+
+            // Show progress bar
+            $('.progress').show();
+            $('#uploadError').hide();
+            $('#uploadSuccess').hide();
+
+            // Send request
+            $.ajax({
+                url: '/?q=libraries/upload',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhr: function() {
+                    var xhr = new window.XMLHttpRequest();
+                    xhr.upload.addEventListener('progress', function(evt) {
+                        if (evt.lengthComputable) {
+                            var percentComplete = evt.loaded / evt.total * 100;
+                            $('.progress-bar').css('width', percentComplete + '%');
+                            $('.progress-bar').attr('aria-valuenow', percentComplete);
+                            $('.progress-bar').find('.sr-only').text(Math.round(percentComplete) + '% Complete');
+                        }
+                    }, false);
+                    return xhr;
+                },
+                success: function(response) {
+                    // Hide progress bar
+                    $('.progress').hide();
+
+                    // Show success message briefly
+                    $('#uploadSuccess').text('Document uploaded successfully').show();
+
+                    // Reset form
+                    $('#uploadForm')[0].reset();
+
+                    // Reload documents and close the modal after a short delay
+                    setTimeout(function() {
+                        // Close the modal
+                        $('#uploadModal').modal('hide');
+
+                        // Reload the document lists
+                        loadMyDocuments();
+                        loadPublicDocuments();
+                        if ($('#adminTab').is(':visible')) {
+                            loadAllDocuments();
+                        }
+                    }, 1000);
+                },
+                error: function(xhr) {
+                    // Hide progress bar
+                    $('.progress').hide();
+
+                    // Show error message
+                    var errorMessage = 'Failed to upload document';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    $('#uploadError').text(errorMessage).show();
+                }
+            });
+        });
+
+        // Check if user is admin and get user info
+        $.ajax({
+            url: '/?q=auth/profile',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                // Store user info for later use
+                userId = response.id;
+                isAdmin = response.isAdmin;
+
+                if (isAdmin) {
+                    $('#adminTab').show();
+                }
+
+                // Load documents
+                loadMyDocuments();
+                loadPublicDocuments();
+                if (isAdmin) {
+                    loadAllDocuments();
+                }
+            },
+            error: function() {
+                // Redirect to login if not authenticated
+                window.location.href = '/?q=login';
+            }
+        });
+
+        // Load user's documents
+        function loadMyDocuments() {
+            $.ajax({
+                url: '/?q=libraries/my-documents',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $('#myDocumentsLoading').hide();
+
+                    if (response.length === 0) {
+                        $('#myDocumentsEmpty').show();
+                    } else {
+                        renderDocuments(response, 'myDocumentsList');
+                    }
+                },
+                error: function() {
+                    $('#myDocumentsLoading').hide();
+                    $('#myDocumentsList').html('<div class="col-md-12"><p class="text-danger">Error loading documents. Please try again later.</p></div>');
+                }
+            });
+        }
+
+        // Load public documents
+        function loadPublicDocuments() {
+            $.ajax({
+                url: '/?q=libraries/public-documents',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $('#publicDocumentsLoading').hide();
+
+                    if (response.length === 0) {
+                        $('#publicDocumentsEmpty').show();
+                    } else {
+                        renderDocuments(response, 'publicDocumentsList');
+                    }
+                },
+                error: function() {
+                    $('#publicDocumentsLoading').hide();
+                    $('#publicDocumentsList').html('<div class="col-md-12"><p class="text-danger">Error loading documents. Please try again later.</p></div>');
+                }
+            });
+        }
+
+        // Load all documents (admin only)
+        function loadAllDocuments() {
+            $.ajax({
+                url: '/?q=libraries/all-documents',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $('#allDocumentsLoading').hide();
+
+                    if (response.length === 0) {
+                        $('#allDocumentsEmpty').show();
+                    } else {
+                        renderDocuments(response, 'allDocumentsList');
+                    }
+                },
+                error: function() {
+                    $('#allDocumentsLoading').hide();
+                    $('#allDocumentsList').html('<div class="col-md-12"><p class="text-danger">Error loading documents. Please try again later.</p></div>');
+                }
+            });
+        }
+
+        // Handle document deletion
+        $(document).on('click', '.delete-document', function() {
+            var documentId = $(this).data('document-id');
+            var documentTitle = $(this).data('document-title');
+
+            if (confirm('Are you sure you want to delete "' + documentTitle + '"? This action cannot be undone.')) {
+                $.ajax({
+                    url: '/?q=libraries/delete',
+                    type: 'POST',
+                    data: { documentId: documentId },
+                    dataType: 'json',
+                    success: function(response) {
+                        alert('Document deleted successfully');
+
+                        // Reload documents
+                        loadMyDocuments();
+                        loadPublicDocuments();
+                        if (isAdmin) {
+                            loadAllDocuments();
+                        }
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'Failed to delete document';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        alert(errorMessage);
+                    }
+                });
+            }
+        });
+
+        // Render documents to the specified container
+        function renderDocuments(documents, containerId) {
+            var container = $('#' + containerId);
+            container.empty();
+
+            // Group documents by document ID
+            var documentGroups = {};
+            documents.forEach(function(doc) {
+                if (!documentGroups[doc.documentId]) {
+                    documentGroups[doc.documentId] = [];
+                }
+                documentGroups[doc.documentId].push(doc);
+            });
+
+            // Render each document group
+            Object.keys(documentGroups).forEach(function(documentId) {
+                var docs = documentGroups[documentId];
+                var firstDoc = docs[0];
+
+                var col = $('<div class="col-md-4"></div>');
+                var card = $('<div class="panel panel-default document-card"></div>');
+                var cardBody = $('<div class="panel-body"></div>');
+
+                cardBody.append('<h4 class="document-title">' + firstDoc.title + '</h4>');
+                cardBody.append('<p class="document-description">' + firstDoc.description + '</p>');
+                cardBody.append('<p class="document-meta">Uploaded: ' + new Date(firstDoc.createdAt).toLocaleString() + '</p>');
+                cardBody.append('<p class="document-meta">File: ' + firstDoc.filePath.split('/').pop() + '</p>');
+                cardBody.append('<p class="document-meta">Fragments: ' + docs.length + '</p>');
+
+                // Add buttons container for better styling
+                var btnContainer = $('<div class="btn-group btn-group-sm" style="margin-top: 10px;"></div>');
+
+                // Chat button
+                var chatBtn = $('<a href="/?q=talk&document=' + documentId + '" class="btn btn-primary">Chat with Document</a>');
+                btnContainer.append(chatBtn);
+
+                // Delete button - only show for documents the user owns
+                if (firstDoc.userId === userId || isAdmin) {
+                    var deleteBtn = $('<button class="btn btn-danger delete-document" data-document-id="' + documentId + '" data-document-title="' + firstDoc.title + '">Delete</button>');
+                    btnContainer.append(deleteBtn);
+                }
+
+                cardBody.append(btnContainer);
+
+                card.append(cardBody);
+                col.append(card);
+                container.append(col);
+            });
+        }
+    });
+</script>
+</body>
+</html>

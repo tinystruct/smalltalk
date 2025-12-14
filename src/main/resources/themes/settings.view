@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Small Talk - Settings</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
+    <!-- Bootstrap core CSS -->
+    <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
+
+    <!-- Custom styles for this template -->
+    <style type="text/css">
+        body {
+            padding-top: 40px;
+            padding-bottom: 40px;
+            background-color: #f5f5f5;
+        }
+
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .system-prompt-textarea {
+            min-height: 200px;
+            font-family: monospace;
+        }
+        .settings-card {
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .settings-card-header {
+            background-color: #f8f9fa;
+            padding: 15px 20px;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 10px 10px 0 0;
+        }
+        .settings-card-body {
+            padding: 20px;
+        }
+        .alert {
+            display: none;
+            margin-top: 20px;
+        }
+        .back-link {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="settings-container">
+        <div class="row">
+            <div class="col-md-12">
+                <h1>Settings</h1>
+                <p>Customize your AI assistant preferences.</p>
+
+                <div class="back-link">
+                    <a href="/?q=talk" class="btn btn-default"><i class="fas fa-arrow-left"></i> Back to Chat</a>
+                    <a href="/?q=libraries" class="btn btn-default"><i class="fas fa-book"></i> Libraries</a>
+                </div>
+                
+                <div class="alert alert-success" id="success-alert" role="alert">
+                    Settings saved successfully!
+                </div>
+                
+                <div class="alert alert-danger" id="error-alert" role="alert">
+                    Error saving settings. Please try again.
+                </div>
+                
+                <div class="card settings-card">
+                    <div class="settings-card-header">
+                        <h5 class="mb-0">System Prompt</h5>
+                        <p class="text-muted mb-0">Customize the default system prompt for your AI assistant</p>
+                    </div>
+                    <div class="settings-card-body">
+                        <form id="system-prompt-form">
+                            <div class="form-group">
+                                <label for="system-prompt">System Prompt</label>
+                                <textarea class="form-control system-prompt-textarea" id="system-prompt" name="system_prompt" rows="10">{%custom_prompt%}</textarea>
+                                <small class="form-text text-muted">
+                                    This prompt defines how the AI assistant behaves. You can customize it to better suit your needs.
+                                </small>
+                            </div>
+                            <div class="form-group">
+                                <button type="button" id="reset-prompt" class="btn btn-outline-secondary">Reset to Default</button>
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/scripts/jquery/jquery.min.js"></script>
+<script src="/scripts/bootstrap/bootstrap.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Handle form submission
+        $('#system-prompt-form').submit(function(e) {
+            e.preventDefault();
+            
+            const systemPrompt = $('#system-prompt').val();
+            
+            $.ajax({
+                url: '/?q=settings/prompt',
+                type: 'POST',
+                data: {
+                    system_prompt: systemPrompt
+                },
+                success: function(response) {
+                    $('#success-alert').fadeIn().delay(3000).fadeOut();
+                },
+                error: function(xhr, status, error) {
+                    $('#error-alert').text('Error: ' + (xhr.responseJSON?.message || error)).fadeIn().delay(5000).fadeOut();
+                }
+            });
+        });
+        
+        // Handle reset to default
+        $('#reset-prompt').click(function() {
+            $.ajax({
+                url: '/?q=settings/prompt/get',
+                type: 'GET',
+                success: function(response) {
+                    if (response.is_default) {
+                        // Already using default prompt
+                        $('#system-prompt').val(response.custom_prompt);
+                    } else {
+                        // Confirm reset
+                        if (confirm('Are you sure you want to reset to the default system prompt?')) {
+                            // Get the default prompt from smalltalk
+                            $.ajax({
+                                url: '/?q=default-prompt',
+                                type: 'GET',
+                                success: function(defaultPrompt) {
+                                    $('#system-prompt').val(defaultPrompt.default_prompt);
+                                }
+                            });
+                        }
+                    }
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

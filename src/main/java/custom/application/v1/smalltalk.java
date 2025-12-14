@@ -4,26 +4,30 @@ import custom.ai.ImageProcessorType;
 import custom.ai.OpenAI;
 import custom.ai.SearchAI;
 import custom.ai.StabilityAI;
+import custom.objects.ChatHistory;
+import custom.objects.DocumentFragment;
+import custom.objects.User;
+import custom.util.*;
 import org.tinystruct.ApplicationContext;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.ApplicationRuntimeException;
 import org.tinystruct.application.Context;
-import org.tinystruct.application.SharedVariables;
 import org.tinystruct.data.FileEntity;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
-import org.tinystruct.handler.Reforward;
+import org.tinystruct.data.component.Row;
+import org.tinystruct.data.component.Table;
 import org.tinystruct.http.*;
 import org.tinystruct.system.ApplicationManager;
 import org.tinystruct.system.EventDispatcher;
 import org.tinystruct.system.annotation.Action;
-import org.tinystruct.system.template.variable.StringVariable;
-import org.tinystruct.system.template.variable.Variable;
 import org.tinystruct.system.util.Matrix;
 import org.tinystruct.transfer.DistributedMessageQueue;
 
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,43 +36,123 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static custom.ai.OpenAI.*;
 import static org.tinystruct.http.Constants.*;
 
 public class smalltalk extends DistributedMessageQueue implements SessionListener {
 
-    public static final String CHAT_GPT = "ChatGPT";
-    private static final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
+    // Constants
+    public static final String AI = "AI";
+    // private static final String DEFAULT_MODEL = "deepseek/deepseek-r1:free";
+    private static final String DEFAULT_MODEL = "gpt-4o";
+    private static final int DEFAULT_MESSAGE_POOL_SIZE = 100;
+    private static final int DEFAULT_MAX_TOKENS = 3000;
+    private static final double DEFAULT_TEMPERATURE = 0.8;
+    private static final String DATE_FORMAT_PATTERN = "yyyy-M-d h:m:s";
+    private static final String FILE_UPLOAD_DIR = "files";
+    private static final int MAX_CONVERSATION_HISTORY = 5; // Store up to 5 message pairs for context
+
+    // Configuration keys
+    public static final String CONFIG_OPENAI_API_KEY = "openai.api_key";
+    public static final String CONFIG_OPENAI_API_ENDPOINT = "openai.api_endpoint";
+    private static final String CONFIG_DEFAULT_CHAT_ENGINE = "default.chat.engine";
+    private static final String CONFIG_SYSTEM_DIRECTORY = "system.directory";
+
+    private static final SimpleDateFormat format = new SimpleDateFormat(DATE_FORMAT_PATTERN);
+    protected static final String MODEL = DEFAULT_MODEL;
     private boolean cliMode;
     private boolean chatGPT;
     private static final EventDispatcher dispatcher = EventDispatcher.getInstance();
 
     public void init() {
-        super.init();
+        try {
+            super.init();
+            ApplicationManager.install(new authentication());
+            initializeBasicSettings();
+            configureSecurity();
+            initializeAIServices();
+            setupEventHandling();
 
-        this.setVariable("message", "");
-        this.setVariable("topic", "");
-
-        System.setProperty("LANG", "en_US.UTF-8");
-
-        SessionManager.getInstance().addListener(this);
-
-        dispatcher.registerHandler(SessionCreated.class, event -> System.out.println(event.getPayload()));
-
-        ApplicationManager.install(new OpenAI());
-        ApplicationManager.install(new StabilityAI());
-        ApplicationManager.install(new SearchAI());
-
-        if (getConfiguration().get("default.chat.engine") != null) {
-            this.chatGPT = !getConfiguration().get("default.chat.engine").equals("gpt-3");
-        } else {
-            this.chatGPT = false;
+            // Actions are registered using annotations
+        } catch (Exception e) {
+            throw new ApplicationRuntimeException("Failed to initialize smalltalk: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Get the default system prompt as JSON
+     * This is used by the settings page to reset to the default prompt
+     *
+     * @return JSON with the default prompt
+     */
+    @Action("default-prompt")
+    public String getDefaultPrompt(Request request, Response response) {
+        Builder builder = new Builder();
+        builder.put("default_prompt", getDefaultSystemPrompt());
+        return builder.toString();
+    }
+
+    private void initializeBasicSettings() {
+        this.setVariable("message", "");
+        this.setVariable("meeting_update_url", "");
+
+        System.setProperty("LANG", "en_US.UTF-8");
+
+        // Install the chat history module
+        ApplicationManager.install(new history());
+    }
+
+    private void configureSecurity() {
+        // Configure TLS settings
+        System.setProperty("https.protocols", "TLSv1.2,TLSv1.3");
+        System.setProperty("jdk.tls.client.protocols", "TLSv1.2,TLSv1.3");
+        System.setProperty("https.cipherSuites",
+                "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384");
+    }
+
+    private void initializeAIServices() {
+        ApplicationManager.install(new OpenAI());
+        ApplicationManager.install(new StabilityAI());
+        ApplicationManager.install(new SearchAI());
+        ApplicationManager.install(new EmbeddingManager());
+
+        this.chatGPT = getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE) != null
+                ? !getConfiguration().get(CONFIG_DEFAULT_CHAT_ENGINE).equals("gpt-3")
+                : false;
+    }
+
+    private void setupEventHandling() {
+        SessionManager.getInstance().addListener(this);
+        dispatcher.registerHandler(SessionCreated.class, event ->
+                System.out.println(event.getPayload()));
+    }
+
     @Action("talk")
-    public smalltalk index(Request request, Response response) {
+    public Object index(Request request, Response response) throws ApplicationException {
+        // Check if user is authenticated
+        Object userId = request.getSession().getAttribute("user_id");
+        if (userId == null) {
+            // User is not authenticated, redirect to login page
+            System.out.println("User is not authenticated, redirecting to login page");
+            try {
+                Reforward reforward = new Reforward(request, response);
+                reforward.setDefault("/?q=login");
+                this.setVariable("show_login", "true"); // session based
+                return reforward.forward();
+            } catch (Exception e) {
+                throw new ApplicationException("Failed to redirect to login page: " + e.getMessage(), e);
+            }
+        }
+
+        // User is authenticated, set username variable
+        String username = (String) request.getSession().getAttribute("username");
+        this.setVariable("username", username != null ? username : "User");
+        this.setVariable("show_login", "false");
+        System.out.println("User is authenticated as: " + username);
+
         Object meetingCode = request.getSession().getAttribute("meeting_code");
 
         if (meetingCode == null) {
@@ -86,10 +170,10 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
 
         // If the current user is not in the list of the sessions, we create a default session list for the meeting generated.
         if ((session_ids = this.sessions.get(meetingCode)) == null) {
-            this.sessions.put(meetingCode.toString(), session_ids = new HashSet<>());
+            this.sessions.put(meetingCode.toString(), session_ids = new HashSet<String>());
         }
 
-        session_ids.add(sessionId);
+        if (!session_ids.contains(sessionId)) session_ids.add(sessionId);
 
         if (!this.list.containsKey(sessionId)) {
             this.list.put(sessionId, new ArrayDeque<Builder>());
@@ -102,22 +186,23 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         this.setVariable("meeting_update_url", this.getLink("talk/update", null) + "/" + meetingCode + "/" + request.getSession().getId());
         this.setVariable("meeting_qr_code_url", this.getLink("talk/matrix", null) + "/" + meetingCode);
 
-        Variable<?> topic;
-        SharedVariables sharedVariables = SharedVariables.getInstance(meetingCode.toString());
-        if ((topic = sharedVariables.getVariable(meetingCode.toString())) != null) {
-            this.setVariable("topic", topic.getValue().toString().replaceAll("[\r\n]", "<br />"), true);
-        } else {
-            this.setVariable("topic", "");
-        }
-
         request.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         response.headers().add(Header.CACHE_CONTROL.set("no-cache, no-store, max-age=0, must-revalidate"));
         return this;
     }
 
     @Action("talk/update")
-    public String update(String sessionId) throws ApplicationException {
-        return this.take(sessionId);
+    public String update(String sessionId, Response response, Request request) throws ApplicationException {
+        return "";//this.take(sessionId);
+    }
+
+    @Action("talk/stream")
+    public Builder stream(String meetingCode, Request request, Response response) throws ApplicationException, IOException {
+        SSEPushManager.getInstance().setIdentifier(meetingCode);
+        // Send initial heartbeat to establish connection
+        Builder initial = new Builder();
+        initial.put("type", "connect");
+        return initial; // This method is used to set up the SSE stream, no direct response needed
     }
 
     @Action("talk/matrix")
@@ -128,21 +213,78 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
             BufferedImage qrImage = Matrix.toQRImage(this.getLink("talk/join") + "/" + meetingCode, 100, 100);
             return "data:image/png;base64," + Matrix.getBase64Image(qrImage);
         }
-
         return "";
     }
 
     @Action("talk/join")
     public Object join(String meetingCode, Request request, Response response) throws ApplicationException {
-        if (groups.containsKey(meetingCode)) {
-            request.getSession().setAttribute("meeting_code", meetingCode);
+        if (!isValidMeetingCode(meetingCode)) {
+            response.setStatus(ResponseStatus.BAD_REQUEST);
+            return "{ \"error\": \"invalid_meeting_code\" }";
+        }
 
+        // Get the session ID
+        String sessionId = request.getSession().getId();
+
+        // Store meeting code in session
+        request.getSession().setAttribute("meeting_code", meetingCode);
+
+        // Add session to meeting group
+        Set<String> sessionIds = this.sessions.get(meetingCode);
+        if (sessionIds == null) {
+            sessionIds = new HashSet<>();
+            this.sessions.put(meetingCode, sessionIds);
+        }
+        sessionIds.add(sessionId);
+
+        // Initialize session queue
+        initializeSessionQueue(sessionId);
+
+        // Get username from session
+        String username = (String) request.getSession().getAttribute("username");
+        if (username != null) {
+            // Notify others that user joined
+            notifyUserJoined(meetingCode, username);
+
+            // Load chat history
+            try {
+                ChatHistory history = new ChatHistory();
+                Table messages = history.findWith("WHERE meeting_code = ? ORDER BY created_at ASC", new Object[]{meetingCode});
+
+                // Send each historical message to the new user
+                for (Row row : messages) {
+                    ChatHistory msg = new ChatHistory();
+                    msg.setData(row);
+                    Builder builder = new Builder();
+                    builder.put("userId", msg.getUserId());
+                    builder.put("time", msg.getCreatedAt());
+                    builder.put("message", msg.getMessage());
+                    builder.put("type", msg.getMessageType());
+                    if (msg.getImageUrl() != null && !msg.getImageUrl().isEmpty()) {
+                        builder.put("image", msg.getImageUrl());
+                    }
+                    SSEPushManager.getInstance().push(sessionId, builder);
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading chat history: " + e.getMessage());
+                // Continue even if history loading fails
+            }
+        }
+
+        return redirectToTalk(request, response);
+    }
+
+    private boolean isValidMeetingCode(String meetingCode) {
+        return groups.containsKey(meetingCode);
+    }
+
+    private Object redirectToTalk(Request request, Response response) throws ApplicationException {
+        try {
             Reforward reforward = new Reforward(request, response);
             reforward.setDefault("/?q=talk");
             return reforward.forward();
-        } else {
-            response.setStatus(ResponseStatus.NOT_FOUND);
-            return "Invalid meeting code.";
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to redirect: " + e.getMessage(), e);
         }
     }
 
@@ -158,6 +300,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         } else {
             this.setVariable("meeting_code", meetingCode.toString());
             this.setVariable("meeting_url", this.getLink("talk/join", null) + "/" + meetingCode + "&lang=" + this.getLocale().toLanguageTag());
+
+            // Notify other users about the new user joining
+            notifyUserJoined(meetingCode.toString(), name);
         }
 
         return name;
@@ -174,82 +319,341 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 return "{ \"error\": \"missing user\" }";
             }
 
-            Builder builder = new Builder();
-            builder.put("user", request.getSession().getAttribute("user"));
-            builder.put("cmd", request.getParameter("cmd"));
-
-            return this.save(meetingCode, builder);
+            String cmd = request.getParameter("cmd");
+            if (cmd != null) {
+                switch (cmd.toLowerCase()) {
+                    case "list_users":
+                        return listUsersInMeeting(meetingCode.toString());
+                    case "meeting_info":
+                        return getMeetingInfo(meetingCode.toString());
+                    default:
+                        Builder builder = new Builder();
+                        builder.put("user", request.getSession().getAttribute("user"));
+                        builder.put("cmd", cmd);
+                        return this.save(meetingCode, builder);
+                }
+            }
         }
         response.setStatus(ResponseStatus.UNAUTHORIZED);
         return "{ \"error\": \"expired\" }";
     }
 
-    @Action("talk/save")
-    public String save(Request request, Response response) {
-        final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (this.groups.containsKey(meetingCode)) {
-            final String sessionId = request.getSession().getId();
-            if (meetingCode != null && sessions.get(meetingCode) != null && sessions.get(meetingCode).contains(sessionId)) {
-                String message;
-                if ((message = request.getParameter("text")) != null && !message.isEmpty()) {
-                    if (request.headers().get(Header.USER_AGENT) != null) {
-                        String[] agent = request.headers().get(Header.USER_AGENT).toString().split(" ");
-                        this.setVariable("browser", agent[agent.length - 1]);
+    private String listUsersInMeeting(String meetingCode) {
+        try {
+            Set<String> sessionIds = sessions.get(meetingCode);
+            if (sessionIds == null) {
+                return "{ \"error\": \"invalid_meeting\" }";
+            }
+
+            Builders users = new Builders();
+            for (String sessionId : sessionIds) {
+                Session session = SessionManager.getInstance().getSession(sessionId);
+                if (session != null) {
+                    String username = (String) session.getAttribute("username");
+                    if (username == null) {
+                        username = (String) session.getAttribute("user");
                     }
-
-                    final Builder builder = new Builder();
-                    builder.put("user", request.getSession().getAttribute("user"));
-                    builder.put("time", format.format(new Date()));
-                    builder.put("session_id", sessionId);
-                    String image;
-                    if ((image = request.getParameter("image")) != null && !image.isEmpty()) {
-                        builder.put("message", filter(message) + "<img src=\"" + image + "\" />");
-                    } else {
-                        builder.put("message", filter(message));
+                    if (username != null) {
+                        Builder user = new Builder();
+                        user.put("username", username);
+                        user.put("session_id", sessionId);
+                        users.add(user);
                     }
-
-                    if (message.contains("@" + CHAT_GPT)) {
-                        final String finalMessage = message.replaceAll("@" + CHAT_GPT, "");
-                        return this.save(meetingCode, builder, new Runnable() {
-                            /**
-                             * When an object implementing interface {@code Runnable} is used
-                             * to create a thread, starting the thread causes the object's
-                             * {@code run} method to be called in that separately executing
-                             * thread.
-                             * <p>
-                             * The general contract of the method {@code run} is that it may
-                             * take any action whatsoever.
-                             *
-                             * @see Thread#run()
-                             */
-                            @Override
-                            public void run() {
-                                final SimpleDateFormat format = new SimpleDateFormat("yyyy-M-d h:m:s");
-                                final Builder data = new Builder();
-                                data.put("user", CHAT_GPT);
-                                data.put("session_id", request.getSession().getId());
-                                try {
-                                    String filterMessage = filter(chatGPT ? chatGPT(sessionId, finalMessage, image) : chat(sessionId, finalMessage, image));
-
-                                    data.put("time", format.format(new Date()));
-                                    data.put("message", filterMessage);
-                                    save(meetingCode, data);
-                                } catch (ApplicationException e) {
-                                    data.put("time", format.format(new Date()));
-                                    data.put("message", e.getMessage());
-                                    save(meetingCode, data);
-                                }
-                            }
-                        });
-                    }
-
-                    return this.save(meetingCode, builder);
                 }
             }
-        }
 
-        response.setStatus(ResponseStatus.REQUEST_TIMEOUT);
-        return "{ \"error\": \"expired\" }";
+            Builder response = new Builder();
+            response.put("type", "system");
+            response.put("event", "user_list");
+            response.put("users", users);
+            return response.toString();
+        } catch (Exception e) {
+            System.err.println("Error listing users: " + e.getMessage());
+            return "{ \"error\": \"internal_error\" }";
+        }
+    }
+
+    private String getMeetingInfo(String meetingCode) {
+        try {
+            Set<String> sessionIds = sessions.get(meetingCode);
+            if (sessionIds == null) {
+                return "{ \"error\": \"invalid_meeting\" }";
+            }
+
+            Builder info = new Builder();
+            info.put("type", "system");
+            info.put("event", "meeting_info");
+            info.put("meeting_code", meetingCode);
+            info.put("user_count", sessionIds.size());
+            info.put("created_at", format.format(new Date()));
+
+            return info.toString();
+        } catch (Exception e) {
+            System.err.println("Error getting meeting info: " + e.getMessage());
+            return "{ \"error\": \"internal_error\" }";
+        }
+    }
+
+    @Action("talk/save")
+    public String save(Request request, Response response) {
+        try {
+            // Extract all necessary data from the request immediately
+            final Object meetingCode = request.getSession().getAttribute("meeting_code");
+            if (meetingCode == null) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"missing_meeting_code\" }";
+            }
+
+            if (!this.groups.containsKey(meetingCode)) {
+                response.setStatus(ResponseStatus.NOT_FOUND);
+                return "{ \"error\": \"invalid_meeting_code\" }";
+            }
+
+            final String sessionId = request.getSession().getId();
+            Set<String> sessions = this.sessions.get(meetingCode);
+
+            if (sessions == null || !sessions.contains(sessionId)) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
+                return "{ \"error\": \"invalid_session\" }";
+            }
+
+            String message = request.getParameter("text");
+            if (message == null || message.trim().isEmpty()) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"empty_message\" }";
+            }
+
+            // Get user ID from session
+            Object userIdObj = request.getSession().getAttribute("user_id");
+            if (userIdObj == null) {
+                response.setStatus(ResponseStatus.UNAUTHORIZED);
+                return "{ \"error\": \"user_not_authenticated\" }";
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                response.setStatus(ResponseStatus.BAD_REQUEST);
+                return "{ \"error\": \"invalid_user_id\" }";
+            }
+
+            // Extract all parameters we need before any async operations
+            final String username = (String) request.getSession().getAttribute("username");
+            final String user = username != null ? username : "Anonymous";
+            final String image = request.getParameter("image");
+            final String streamParam = request.getParameter("stream");
+            final boolean isStreaming = streamParam != null && streamParam.equals("true");
+            final String meetingCodeStr = meetingCode.toString();
+
+            // Create the message builder
+            final Builder builder = new Builder();
+            builder.put("user", user);
+            builder.put("user_id", userId);
+            builder.put("time", format.format(new Date()));
+            builder.put("session_id", sessionId);
+
+            if (image != null && !image.isEmpty()) {
+                builder.put("message", filter(message) + "<img src=\"" + image + "\" />");
+            } else {
+                builder.put("message", filter(message));
+            }
+
+            if (message.contains("@" + AI)) {
+                final String finalMessage = message.replaceAll("@" + AI, "");
+
+                // Use a separate thread for processing to avoid request object issues
+                Thread processingThread = new Thread(() -> {
+                    try {
+                        processChatGPTResponseAsync(request, isStreaming, meetingCodeStr, sessionId, finalMessage, image);
+                    } catch (Exception e) {
+                        System.err.println("Error processing ChatGPT response: " + e.getMessage());
+                        sendErrorMessage(meetingCodeStr, sessionId, e.getMessage());
+                    }
+                });
+
+                // Start the thread after saving the user's message
+                this.save(meetingCodeStr, builder);
+                processingThread.start();
+
+                return "{ \"status\": \"ok\", \"processing\": true }";
+            }
+
+            return this.save(meetingCodeStr, builder);
+        } catch (Exception e) {
+            System.err.println("Error saving message: " + e.getMessage());
+            e.printStackTrace();
+            response.setStatus(ResponseStatus.INTERNAL_SERVER_ERROR);
+            return "{ \"error\": \"internal_error\", \"message\": \"" + e.getMessage() + "\" }";
+        }
+    }
+
+    /**
+     * Process ChatGPT response with request object - use this method only in synchronous contexts
+     * where the request object is still valid
+     */
+    private void processChatGPTResponse(Request request, Object meetingCode, String sessionId,
+                                        String message, String image) throws ApplicationException {
+        try {
+            String rawResponse = chatGPT(sessionId, message, image);
+            if (rawResponse != null) {
+                // Save to chat history database
+                saveChatHistory(meetingCode.toString(), sessionId, message, rawResponse, request);
+            }
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to process ChatGPT response: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Process ChatGPT response without request object - safe to use in asynchronous contexts
+     * where the request object might be recycled
+     */
+    private void processChatGPTResponseAsync(Request request, boolean isStreaming, Object meetingCode, String sessionId,
+                                             String message, String image) throws ApplicationException {
+        try {
+            if (isStreaming) {
+                String messageId = UUID.randomUUID().toString();
+                streamGPTResponse(message, sessionId, meetingCode.toString(), messageId, image);
+            } else {
+                String rawResponse = chatGPT(sessionId, message, image);
+                if (rawResponse != null) {
+                    // Save to chat history database
+                    saveChatHistory(meetingCode.toString(), sessionId, message, rawResponse, request);
+                }
+            }
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to process ChatGPT response: " + e.getMessage());
+        }
+    }
+
+    private void sendErrorMessage(Object meetingCode, String sessionId, String errorMessage) {
+        try {
+            final Builder data = new Builder();
+            data.put("user", AI);
+            data.put("user_id", 0);
+            data.put("session_id", sessionId);
+            data.put("time", format.format(new Date()));
+            data.put("id", UUID.randomUUID().toString());
+            data.put("message", "Error: " + errorMessage);
+            data.put("status", "error");
+            data.put("final", true);
+            save(meetingCode, data);
+        } catch (Exception e) {
+            System.err.println("Failed to send error message: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Stream a GPT response in chunks to provide a more responsive user experience
+     * Uses the OpenAI streaming API for real-time responses
+     *
+     * @param message     The user's message
+     * @param sessionId   The session ID
+     * @param meetingCode The meeting code
+     * @param messageId   The unique ID for this message exchange
+     * @param image       Optional image data
+     * @throws ApplicationException If an error occurs
+     */
+    private void streamGPTResponse(String message, String sessionId, String meetingCode, String messageId, String image)
+            throws ApplicationException {
+        try {
+            // Set up the API request
+            Builder payload = createChatGPTPayload(sessionId, message);
+            payload.put("stream", true); // Enable streaming
+
+            // Get the OpenAI service
+            OpenAI openAI = (OpenAI) ApplicationManager.get(OpenAI.class.getName());
+            if (openAI == null) {
+                throw new ApplicationException("OpenAI service not available");
+            }
+
+            // Process the streaming response
+            StringBuilder fullResponse = new StringBuilder();
+
+            // Start streaming from OpenAI API
+            openAI.streamChatCompletion(payload, chunk -> {
+                try {
+                    if (chunk != null && chunk.get("choices") != null) {
+                        Builders choices = (Builders) chunk.get("choices");
+                        if (!choices.isEmpty()) {
+                            Builder choice = choices.get(0);
+                            if (choice.get("delta") != null) {
+                                Builder delta = (Builder) choice.get("delta");
+                                if (delta.get("content") != null) {
+                                    String content = delta.get("content").toString();
+
+                                    fullResponse.append(content);
+
+                                    // Send the chunk to all users in the meeting
+                                    final Builder chunkData = new Builder();
+                                    chunkData.put("user", AI);
+                                    chunkData.put("user_id", 0);
+                                    chunkData.put("session_id", sessionId);
+                                    chunkData.put("time", format.format(new Date()));
+                                    chunkData.put("id", messageId);
+                                    chunkData.put("message", content);
+                                    chunkData.put("streaming", true);
+                                    chunkData.put("final", false);
+                                    chunkData.put("chunk", content);
+                                    chunkData.put("incremental", true); // Flag to indicate this is an incremental update
+                                    save(meetingCode, chunkData);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error processing streaming chunk: " + e.getMessage());
+                }
+            });
+
+            // Send a final chunk to indicate the end of streaming
+            final Builder finalChunkData = new Builder();
+            finalChunkData.put("user", AI);
+            finalChunkData.put("user_id", 0);
+            finalChunkData.put("session_id", sessionId);
+            finalChunkData.put("time", format.format(new Date()));
+            finalChunkData.put("id", messageId);
+            finalChunkData.put("message", ""); // Empty message for the final chunk
+            finalChunkData.put("streaming", true);
+            finalChunkData.put("final", true); // Set the final flag to true
+            finalChunkData.put("incremental", true);
+            save(meetingCode, finalChunkData);
+
+            // Get the raw response for storage
+            String rawResponse = fullResponse.toString();
+
+            // Store conversation history using our manager
+            ConversationHistoryManager.addMessagePair(sessionId, message, rawResponse);
+            System.out.println("Stored conversation history for session " + sessionId);
+
+            // Also store in session variables using the dedicated manager
+            try {
+                SessionVariableManager.addMessagePair(sessionId, message, rawResponse);
+            } catch (Exception e) {
+                System.err.println("Error storing conversation in session variables: " + e.getMessage());
+                // Continue execution even if variable storage fails
+            }
+
+            if (!rawResponse.isEmpty()) {
+                // Save to chat history database
+                Builder messageBuilder = new Builder();
+                messageBuilder.put("user", AI);
+                messageBuilder.put("user_id", 0);
+                messageBuilder.put("session_id", sessionId);
+                messageBuilder.put("time", format.format(new Date()));
+                messageBuilder.put("id", messageId);
+                messageBuilder.put("message", rawResponse);
+                messageBuilder.put("streaming", true);
+                messageBuilder.put("final", true);
+
+                saveChatHistory(messageBuilder, meetingCode);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new ApplicationException("Error streaming GPT response: " + e.getMessage(), e);
+        }
     }
 
     @Action("chat")
@@ -292,7 +696,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 try {
                     if (!input.trim().isEmpty()) {
                         String message = this.chat(sessionId, input.replaceAll("\n", " ") + "\n");
-                        System.out.print(String.format("%s %s >: ", format.format(new Date()), CHAT_GPT));
+                        System.out.print(String.format("%s %s >: ", format.format(new Date()), AI));
                         message = message.replaceAll("\\\\n", "\n").replaceAll("\\\\\"", "\"");
                         if (!message.startsWith("data:image/png;base64,")) {
                             for (int i = 0; i < message.length(); i++) {
@@ -320,10 +724,330 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         System.exit(-1);
     }
 
-    private String chat(String sessionId, String message) throws ApplicationException {
-        if (this.chatGPT) return this.chatGPT(sessionId, message, null);
+    private String processAIResponse(String response) throws ApplicationException {
+        if (response == null || response.isEmpty()) {
+            return "";
+        }
 
-        return this.chat(sessionId, message, null);
+        // Regex to detect PlantUML code block - either in markdown format or raw format
+        Pattern pattern = Pattern.compile("```plantuml\\s*@startuml(.*?)@enduml\\s*```|@startuml(.*?)@enduml",
+                Pattern.DOTALL);
+        Matcher matcher = pattern.matcher(response);
+
+        StringBuilder processedResponse = new StringBuilder(response);
+        int offset = 0;
+
+        while (matcher.find()) {
+            try {
+                String match = matcher.group(0);
+                plantuml plantUML = new plantuml();
+                List<String> umlImages = plantUML.generateUML(match);
+
+                if (!umlImages.isEmpty()) {
+                    String umlImage = umlImages.get(0);
+                    String replacement = "\n<placeholder-image>data:image/png;base64," +
+                            umlImage + "</placeholder-image>";
+
+                    int start = matcher.end() + offset;
+                    processedResponse.insert(start, replacement);
+                    offset += replacement.length();
+                }
+            } catch (IOException e) {
+                System.err.println("Error generating UML: " + e.getMessage());
+                // Continue processing other UML diagrams even if one fails
+            }
+        }
+
+        return processedResponse.toString();
+    }
+
+    private String chat(String sessionId, String message) throws ApplicationException {
+        return chat(sessionId, message, null);
+    }
+
+    private String chat(String sessionId, String message, String image) throws ApplicationException {
+        if (!cliMode) {
+            message = sanitizeMessage(message);
+        }
+
+        if (message == null || message.trim().isEmpty()) {
+            throw new ApplicationException("Message cannot be empty");
+        }
+
+        try {
+            String response = chatGPT ? chatGPT(sessionId, message, image) : chat(sessionId, message, image);
+
+            if (response == null || response.trim().isEmpty()) {
+                System.err.println("Warning: Received empty response from chat API for message: " + message);
+                throw new ApplicationException("No response received from chat service");
+            }
+
+            return processAIResponse(response);
+        } catch (ApplicationException e) {
+            System.err.println("Error in chat processing: " + e.getMessage() + " for message: " + message);
+            throw new ApplicationException("Chat processing failed: " + e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("Unexpected error in chat: " + e.getMessage() + " for message: " + message);
+            throw new ApplicationException("Unexpected error in chat processing", e);
+        }
+    }
+
+    private String sanitizeMessage(String message) {
+        if (message == null) return "";
+        return message.replaceAll("<br>|<br />", "");
+    }
+
+    /**
+     * Creates a more contextual query by combining the current message with recent conversation history
+     * This helps improve document retrieval relevance by providing more context
+     *
+     * @param currentMessage The current user message
+     * @return A contextual query that includes relevant parts of the conversation history
+     */
+    private String createContextualQuery(String sessionId, String currentMessage) {
+        StringBuilder contextualQuery = new StringBuilder(currentMessage);
+        int totalContextAdded = 0;
+
+        System.out.println("Building contextual query starting with: '" + currentMessage + "'");
+
+        // Get conversation history from our manager
+        List<Map<String, String>> conversationHistory = ConversationHistoryManager.getConversationHistory(sessionId);
+
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            // Add up to MAX_CONVERSATION_HISTORY previous message pairs
+            int count = Math.min(conversationHistory.size(), MAX_CONVERSATION_HISTORY);
+
+            for (int i = 0; i < count; i++) {
+                Map<String, String> messagePair = conversationHistory.get(i);
+                String userMessage = messagePair.get("user");
+                String assistantMessage = messagePair.get("assistant");
+
+                if (userMessage != null && assistantMessage != null) {
+                    // Add all messages regardless of length, but truncate very long messages
+                    String truncatedUserMessage = userMessage;
+                    String truncatedAssistantMessage = assistantMessage;
+
+                    // Truncate very long messages to avoid excessive token usage
+                    if (userMessage.length() > 1000) {
+                        truncatedUserMessage = userMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    if (assistantMessage.length() > 1000) {
+                        truncatedAssistantMessage = assistantMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    contextualQuery.append("\nPreviously I asked: ").append(truncatedUserMessage);
+                    contextualQuery.append("\nAnd you answered: ").append(truncatedAssistantMessage);
+
+                    totalContextAdded++;
+                    System.out.println("Added context pair #" + (i + 1) + " from conversation history to query");
+                }
+            }
+        }
+
+        // Fallback to session variables if no conversation history found
+        if (totalContextAdded == 0) {
+            System.out.println("No conversation history found, falling back to session variables");
+
+            // Get conversation history from session variable manager
+            java.util.List<String[]> messagePairs = SessionVariableManager.getAllMessagePairs(sessionId);
+            System.out.println("Retrieved " + messagePairs.size() + " message pairs from session variable history");
+
+            // Add message pairs to the contextual query
+            for (int i = 0; i < messagePairs.size(); i++) {
+                String[] pair = messagePairs.get(i);
+                String userMessage = pair[0];
+                String assistantMessage = pair[1];
+
+                if (userMessage != null && !userMessage.isEmpty() &&
+                        assistantMessage != null && !assistantMessage.isEmpty()) {
+
+                    // Add all messages regardless of length, but truncate very long messages
+                    String truncatedUserMessage = userMessage;
+                    String truncatedAssistantMessage = assistantMessage;
+
+                    // Truncate very long messages to avoid excessive token usage
+                    if (userMessage.length() > 1000) {
+                        truncatedUserMessage = userMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    if (assistantMessage.length() > 1000) {
+                        truncatedAssistantMessage = assistantMessage.substring(0, 1000) + "... (truncated)";
+                    }
+
+                    contextualQuery.append("\nPreviously I asked: ").append(truncatedUserMessage);
+                    contextualQuery.append("\nAnd you answered: ").append(truncatedAssistantMessage);
+
+                    totalContextAdded++;
+                    System.out.println("Added context pair #" + (i + 1) + " from session variable history to query");
+                }
+            }
+        }
+
+        System.out.println("Final contextual query length: " + contextualQuery.length() + " characters");
+        return contextualQuery.toString();
+    }
+
+    private Builder createChatPayload(String sessionId, String message, String model) {
+        Builder payload = new Builder();
+        payload.put("model", model);
+        payload.put("max_tokens", DEFAULT_MAX_TOKENS);
+        payload.put("temperature", DEFAULT_TEMPERATURE);
+        payload.put("n", 1);
+        payload.put("user", sessionId);
+
+        Builders messages = new Builders();
+        Builder systemMessage = new Builder();
+        systemMessage.put("role", "system");
+        systemMessage.put("content", getSystemPrompt());
+        messages.add(systemMessage);
+
+        // Add previous context if available
+        addPreviousContext(messages, sessionId);
+
+        // Add current message
+        Builder userMessage = new Builder();
+        userMessage.put("role", "user");
+        userMessage.put("content", message);
+        messages.add(userMessage);
+
+        payload.put("messages", messages);
+        return payload;
+    }
+
+    /**
+     * Get the system prompt for the current user
+     * If the user has a custom prompt, use that, otherwise use the default prompt
+     *
+     * @return The system prompt to use
+     */
+    public String getSystemPrompt() {
+        // Default system prompt
+        String defaultPrompt = "I am an AI assistant specialized in IT. If you enter any Linux command, " +
+                "I will execute it and display the result as you would see in a terminal. " +
+                "I always consider the full context of our conversation to provide the most relevant answers. " +
+                "This includes both our conversation history and any relevant documents that have been uploaded. " +
+                "When I find information in uploaded documents that's relevant to your question, I will: " +
+                "1. Use that information as my primary source for answering " +
+                "2. Cite the specific document I'm referencing " +
+                "3. Synthesize information from multiple documents if needed " +
+                "4. Maintain continuity with our previous conversation " +
+                "If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any " +
+                "reference content you can provide or a URL I can reference. " +
+                "I will always prioritize context from our conversation and uploaded documents over my general knowledge.";
+
+        try {
+            // Try to get the current user
+            Context context = this.getContext();
+            if (context != null) {
+                Request request = (Request) context.getAttribute(HTTP_REQUEST);
+                if (request != null) {
+                    Response response = (Response) context.getAttribute(HTTP_RESPONSE);
+                    if (request.getSession().getAttribute("user_id") == null) {
+                        response.setStatus(ResponseStatus.UNAUTHORIZED);
+                        return "{ \"error\": \"authentication_required\" }";
+                    }
+
+                    String userId = request.getSession().getAttribute("user_id").toString();
+                    User user = AuthenticationService.getCurrentUser(userId);
+                    if (user != null) {
+                        // Try to get the user's custom prompt
+                        custom.objects.UserPrompt userPrompt = custom.util.UserPromptService.getUserPrompt(user.getId());
+                        if (userPrompt != null) {
+                            return userPrompt.getSystemPrompt();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting user's custom prompt: " + e.getMessage());
+            // Fall back to default prompt
+        }
+
+        return defaultPrompt;
+    }
+
+    /**
+     * Get the default system prompt
+     * This is used by the settings page to show the default prompt
+     *
+     * @return The default system prompt
+     */
+    public String getDefaultSystemPrompt() {
+        return "I am an AI assistant specialized in IT. If you enter any Linux command, " +
+                "I will execute it and display the result as you would see in a terminal. " +
+                "I always consider the full context of our conversation to provide the most relevant answers. " +
+                "This includes both our conversation history and any relevant documents that have been uploaded. " +
+                "When I find information in uploaded documents that's relevant to your question, I will: " +
+                "1. Use that information as my primary source for answering " +
+                "2. Cite the specific document I'm referencing " +
+                "3. Synthesize information from multiple documents if needed " +
+                "4. Maintain continuity with our previous conversation " +
+                "If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any " +
+                "reference content you can provide or a URL I can reference. " +
+                "I will always prioritize context from our conversation and uploaded documents over my general knowledge.";
+    }
+
+    private void addPreviousContext(Builders messages, String sessionId) {
+        // Try to get conversation history from our manager first
+        List<Map<String, String>> conversationHistory = ConversationHistoryManager.getConversationHistory(sessionId);
+
+        if (conversationHistory != null && !conversationHistory.isEmpty()) {
+            System.out.println("Adding previous context from conversation history manager");
+
+            // Add up to MAX_CONVERSATION_HISTORY previous message pairs
+            int count = Math.min(conversationHistory.size(), MAX_CONVERSATION_HISTORY);
+
+            for (int i = 0; i < count; i++) {
+                Map<String, String> messagePair = conversationHistory.get(i);
+                String userMessage = messagePair.get("user");
+                String assistantMessage = messagePair.get("assistant");
+
+                if (userMessage != null) {
+                    Builder previousUser = new Builder();
+                    previousUser.put("role", "user");
+                    previousUser.put("content", userMessage);
+                    messages.add(previousUser);
+
+                    if (assistantMessage != null) {
+                        Builder previousAssistant = new Builder();
+                        previousAssistant.put("role", "assistant");
+                        previousAssistant.put("content", assistantMessage);
+                        messages.add(previousAssistant);
+                    }
+                }
+            }
+
+            System.out.println("Added " + count + " message pairs from conversation history manager");
+            return; // Return early if we successfully added context
+        }
+
+        // Fall back to session variables if no conversation history is available
+        System.out.println("No conversation history found, falling back to session variables");
+
+        // Get conversation history from session variable manager
+        java.util.List<String[]> messagePairs = SessionVariableManager.getAllMessagePairs(sessionId);
+        System.out.println("Retrieved " + messagePairs.size() + " message pairs from session variable history");
+
+        // Add message pairs to the context
+        for (String[] pair : messagePairs) {
+            String userMessage = pair[0];
+            String assistantMessage = pair[1];
+
+            if (userMessage != null && !userMessage.isEmpty()) {
+                Builder previousUser = new Builder();
+                previousUser.put("role", "user");
+                previousUser.put("content", userMessage);
+                messages.add(previousUser);
+
+                if (assistantMessage != null && !assistantMessage.isEmpty()) {
+                    Builder previousAssistant = new Builder();
+                    previousAssistant.put("role", "assistant");
+                    previousAssistant.put("content", assistantMessage);
+                    messages.add(previousAssistant);
+                }
+            }
+        }
     }
 
     /**
@@ -333,143 +1057,194 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
      * @throws ApplicationException while the failure occurred due to an exception
      */
     private String chatGPT(String sessionId, String message, String image) throws ApplicationException {
-        // Replace YOUR_API_KEY with your actual API key
-        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/chat/completions";
+        validateChatGPTRequest(sessionId, message);
 
-        if (!cliMode) message = message.replaceAll("<br>|<br />", "");
+        String API_URL = getConfiguration().get(CONFIG_OPENAI_API_ENDPOINT);
+        if (API_URL == null || API_URL.trim().isEmpty()) {
+            throw new ApplicationException("OpenAI API endpoint not configured");
+        }
 
-        // Try to get some information from internet
-        String payload = "{\n" + "  \"model\": \"gpt-3.5-turbo\"}";
+        // Check if API key is configured
+        String API_KEY = getConfiguration().get(CONFIG_OPENAI_API_KEY);
+        if (API_KEY == null || API_KEY.trim().isEmpty() ||
+                API_KEY.equals("your_openai_api_key_here") ||
+                API_KEY.equals("$_OPENAI_API_KEY")) {
 
+            // Try to get from environment variable
+            String envApiKey = System.getenv("OPENAI_API_KEY");
+            if (envApiKey != null && !envApiKey.trim().isEmpty()) {
+                // Use the environment variable
+                API_KEY = envApiKey;
+                System.out.println("Using OpenAI API key from environment variable");
+            } else {
+                throw new ApplicationException("OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
+            }
+        }
+
+        API_URL = API_URL + "/v1/chat/completions";
+
+        message = sanitizeMessage(message);
+        Builder payloadBuilder = createChatGPTPayload(sessionId, message);
+        Builder apiResponse = callOpenAIAPI(API_URL, payloadBuilder);
+        return processGPTResponse(apiResponse, sessionId, message, image);
+    }
+
+    private void validateChatGPTRequest(String sessionId, String message) throws ApplicationException {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            throw new ApplicationException("Session ID is required");
+        }
+        if (message == null || message.trim().isEmpty()) {
+            throw new ApplicationException("Message cannot be empty");
+        }
+    }
+
+    private Builder createChatGPTPayload(String sessionId, String message) throws ApplicationException {
         Builder payloadBuilder = new Builder();
-        payloadBuilder.parse(payload);
-        Builders messages = new Builders();
-        Builder messageBuilder = new Builder();
-        messageBuilder.put("role", "system");
-        messageBuilder.put("content", "I am an AI assistant specialized in IT. If you enter any Linux command, I will execute it and display the result as you would see in a terminal. I can also engage in normal conversations but will consider the context of the conversation to provide the best answers. If you ask me a question that I am not knowledgeable enough to answer, I will ask if you have any reference content, you can provide the content or a url can be referenced. If you provide an URL to me, I will output the url strictly to you as I'm not able to access the internet. However, I don't have the capability to create images, so I will redirect such requests to image-generation APIs. If you want to generate an image, please provide clear and concise instructions, and I will use the OpenAI API and  strictly follow the instructions below as I do not have the capability. so if it's about to create images, I'll output the OpenAI api in response simply: https://api.openai.com/v1/images/generations. If it's about image edit, then simply to output: https://api.openai.com/v1/images/edits. and if it's about image variations, then output the api simply: https://api.openai.com/v1/images/variations.");
+        try {
+            payloadBuilder.parse("{\n" + "  \"model\": \"" + MODEL + "\"}");
 
-        messages.add(messageBuilder);
+            Builders messages = new Builders();
+            Builder systemMessage = new Builder();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", getSystemPrompt());
+            messages.add(systemMessage);
 
-        Builder previousUser = new Builder();
-        if (this.getVariable("previous_user_message") != null) {
-            previousUser.put("role", "user");
-            previousUser.put("content", this.getVariable("previous_user_message").getValue());
-            messages.add(previousUser);
-        }
+            addPreviousContext(messages, sessionId);
 
-        Builder previousSystem = new Builder();
-        if (this.getVariable("previous_system_message") != null) {
-            previousSystem.put("role", "system");
-            previousSystem.put("content", this.getVariable("previous_system_message").getValue());
-            messages.add(previousSystem);
-        }
+            // Try to add relevant document context for the query
+            try {
+                System.out.println("Attempting to add document context for message: '" + message + "'");
 
-        Builder builder = new Builder();
-        builder.put("role", "user");
-        builder.put("content", message);
-        messages.add(builder);
-
-        payloadBuilder.put("user", sessionId);
-        payloadBuilder.put("messages", messages);
-
-        Context context = new ApplicationContext();
-        context.setAttribute("payload", payloadBuilder);
-        context.setAttribute("api", API_URL);
-
-        Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
-        assert apiResponse != null;
-        Builders builders;
-        if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
-            Builder choice = builders.get(0);
-
-            if (choice.get("message") != null) {
-                String choiceText = ((Builder) choice.get("message")).get("content").toString();
-                this.setVariable("previous_user_message", message);
-                this.setVariable("previous_system_message", choiceText);
-
-                if (choiceText.contains(IMAGES_GENERATIONS)) {
-                    return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_EDITS)) {
-                    return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                    return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
+                // Get meeting code from session
+                String meetingCode = null;
+                for (Map.Entry<?, Set<String>> entry : this.sessions.entrySet()) {
+                    if (entry.getValue().contains(sessionId)) {
+                        meetingCode = entry.getKey().toString();
+                        break;
+                    }
                 }
 
-                return choiceText;
+                if (meetingCode != null) {
+                    System.out.println("Found meeting code: " + meetingCode + " for session ID: " + sessionId);
+                } else {
+                    System.out.println("No meeting code found for session ID: " + sessionId + ", using default context");
+                }
+
+                // Create a more contextual query by combining the current message with recent history
+                String contextualQuery = createContextualQuery(sessionId, message);
+                System.out.println("Created contextual query: '" + contextualQuery + "'");
+
+                // Add document context with meeting code and contextual query
+                boolean contextAdded = DocumentQA.addDocumentContextToMessages(contextualQuery, meetingCode, messages);
+
+                if (contextAdded) {
+                    System.out.println("Successfully added document context to messages");
+                } else {
+                    System.out.println("No relevant document context found for message");
+                }
+            } catch (Exception e) {
+                System.err.println("Warning: Error adding document context: " + e.getMessage());
+                e.printStackTrace();
+                System.out.println("Continuing without document context due to error");
+                // Continue without document context if there's an error
             }
-        } else if (apiResponse.get("error") != null) {
+
+            Builder userMessage = new Builder();
+            userMessage.put("role", "user");
+            userMessage.put("content", message);
+            messages.add(userMessage);
+
+            payloadBuilder.put("messages", messages);
+            payloadBuilder.put("user", sessionId);
+
+            return payloadBuilder;
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to create chat payload: " + e.getMessage(), e);
+        }
+    }
+
+    private Builder callOpenAIAPI(String API_URL, Builder payload) throws ApplicationException {
+        try {
+            Context context = new ApplicationContext();
+            context.setAttribute("payload", payload);
+            context.setAttribute("api", API_URL);
+
+            Builder response = (Builder) ApplicationManager.call("openai", context);
+            if (response == null) {
+                throw new ApplicationException("No response received from OpenAI API");
+            }
+            return response;
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to call OpenAI API: " + e.getMessage(), e);
+        }
+    }
+
+    private String processGPTResponse(Builder apiResponse, String sessionId, String message, String image)
+            throws ApplicationException {
+        if (apiResponse.get("error") != null) {
             Builder error = (Builder) apiResponse.get("error");
-            if (error.get("message") != null) {
-                throw new ApplicationException(error.get("message").toString());
-            }
+            String errorMessage = error.get("message") != null ?
+                    error.get("message").toString() : "Unknown error from OpenAI API";
+            System.err.println("OpenAI API error: " + errorMessage);
+            throw new ApplicationException(errorMessage);
         }
 
-        return "";
+        Builders choices = (Builders) apiResponse.get("choices");
+        if (choices == null || choices.isEmpty()) {
+            System.err.println("No choices returned from OpenAI API");
+            throw new ApplicationException("No response choices available");
+        }
+
+        Builder choice = choices.get(0);
+        if (choice == null || choice.get("message") == null) {
+            System.err.println("Invalid choice structure in API response");
+            throw new ApplicationException("Invalid response format");
+        }
+
+        String choiceText = ((Builder) choice.get("message")).get("content").toString();
+        if (choiceText == null || choiceText.trim().isEmpty()) {
+            System.err.println("Empty response content from OpenAI API");
+            throw new ApplicationException("Empty response content");
+        }
+
+        // Store conversation history using our manager
+        ConversationHistoryManager.addMessagePair(sessionId, message, choiceText);
+        System.out.println("Stored conversation history for session " + sessionId);
+
+        // Also store in session variables using the dedicated manager
+        try {
+            SessionVariableManager.addMessagePair(sessionId, message, choiceText);
+        } catch (Exception e) {
+            System.err.println("Error storing conversation in session variables: " + e.getMessage());
+            // Continue execution even if variable storage fails
+        }
+
+        // Handle special response types
+        if (choiceText.contains(IMAGES_GENERATIONS)) {
+            return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
+        } else if (choiceText.contains(IMAGES_EDITS)) {
+            return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
+        } else if (choiceText.contains(IMAGES_VARIATIONS)) {
+            return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
+        } else if (choiceText.contains("@startuml")) {
+            return processAIResponse(choiceText);
+        }
+
+        return choiceText;
     }
 
     private Builder preprocess(String message) throws ApplicationException {
         Context context = new ApplicationContext();
         context.setAttribute("--query", message);
-        Builder builder = (Builder) ApplicationManager.call("search", context);
-        return builder;
-    }
-
-    /**
-     * Call chat GPT API
-     *
-     * @return message from API
-     * @throws ApplicationException while the failure occurred due to an exception
-     */
-    private String chat(String sessionId, String message, String image) throws ApplicationException {
-        // Replace YOUR_API_KEY with your actual API key
-        String API_URL = getConfiguration().get("openai.api_endpoint") + "/v1/completions";
-
-        if (!cliMode) message = message.replaceAll("<br>|<br />", "");
-
-        String payload = "{\n" + "  \"model\": \"text-davinci-003\"," + "  \"prompt\": \"\"," + "  \"max_tokens\": 2500," + "  \"temperature\": 0.8," + "  \"n\":1" + "}";
-
-        Builder _message = new Builder();
-        _message.parse(payload);
-        _message.put("prompt", "I want you to be a highly intelligent AI assistant，especially in IT. If you get any linux command, please execute it for me and output the result should be show in terminal. Otherwise, you can treat it as a normal conversation, but you should consider the conversation context to answer questions. If some questions you are not good at, please forward the question to the right engine and back with the answer quickly. but if you got any request about image creation, then you just need to return the OpenAI api: https://api.openai.com/v1/images/generations. If it's about image edit, then return: https://api.openai.com/v1/images/edits. If it's about image variations, then return: https://api.openai.com/v1/images/variations\n" + "\n" + message + "\n");
-        _message.put("user", sessionId);
-
-        Context context = new ApplicationContext();
-        context.setAttribute("payload", _message);
-        context.setAttribute("api", API_URL);
-
-        Builder apiResponse = (Builder) ApplicationManager.call("openai", context);
-        assert apiResponse != null;
-        Builders builders;
-        if ((builders = (Builders) apiResponse.get("choices")) != null && builders.get(0).size() > 0) {
-            Builder choice = builders.get(0);
-            if (choice.get("text") != null) {
-                String choiceText = choice.get("text").toString();
-                if (choiceText.contains(IMAGES_GENERATIONS)) {
-                    return this.imageProcessorStability(ImageProcessorType.GENERATIONS, null, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_EDITS)) {
-                    return this.imageProcessorStability(ImageProcessorType.EDITS, image, sessionId + ":" + message);
-                } else if (choiceText.contains(IMAGES_VARIATIONS)) {
-                    return this.imageProcessor(ImageProcessorType.VARIATIONS, image, sessionId + ":" + message);
-                }
-
-                return choiceText;
-            }
-        } else if (apiResponse.get("error") != null) {
-            Builder error = (Builder) apiResponse.get("error");
-            if (error.get("message") != null) {
-                throw new ApplicationException(error.get("message").toString());
-            }
-        }
-
-        return "";
+        return (Builder) ApplicationManager.call("search", context);
     }
 
     /**
      * Process image requests with the given image processor from stability AI.
      *
-     * @param imageProcessorType
-     * @param image
-     * @param message
+     * @param imageProcessorType type of image processor
+     * @param image              image base64 encoded string
+     * @param message            message to process
      * @return image base64 encoded string
      */
     private String imageProcessorStability(ImageProcessorType imageProcessorType, String image, String message) throws ApplicationException {
@@ -501,7 +1276,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 apiResponse = (Builder) ApplicationManager.call("stability", context);
                 if (!apiResponse.isEmpty()) {
                     Builders artifacts = (Builders) apiResponse.get("artifacts");
-                    if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
+                    if (artifacts != null && !artifacts.isEmpty() && artifacts.get(0).get("base64") != null) {
                         return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
                     }
                 }
@@ -524,9 +1299,9 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 context.setAttribute("api", "v1beta/generation/stable-diffusion-512-v2-1/image-to-image");
 
                 apiResponse = (Builder) ApplicationManager.call("stability", context);
-                if (apiResponse.size() > 0) {
+                if (!apiResponse.isEmpty()) {
                     Builders artifacts = (Builders) apiResponse.get("artifacts");
-                    if (artifacts != null && artifacts.size() > 0 && artifacts.get(0).get("base64") != null) {
+                    if (artifacts != null && !artifacts.isEmpty() && artifacts.get(0).get("base64") != null) {
                         return "data:image/png;base64," + artifacts.get(0).get("base64").toString();
                     } else if (apiResponse.get("message") != null) {
                         return apiResponse.get("message").toString();
@@ -592,7 +1367,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
                 _message.put("user", prompt[0]);
 
                 getContext().setAttribute("payload", _message);
-                getContext().setAttribute("api", IMAGES_GENERATIONS);
+                getContext().setAttribute("api", getConfiguration().get("openai.api_endpoint") + IMAGES_GENERATIONS);
 
                 apiResponse = (Builder) ApplicationManager.call("openai", getContext());
                 break;
@@ -650,6 +1425,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "";
     }
 
+    @Action("talk/update")
     public String update(Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
         final String sessionId = request.getSession().getId();
@@ -662,6 +1438,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{ \"error\": \"expired\" }";
     }
 
+    @Action("talk/update")
     public String update(String meetingCode, String sessionId, Request request, Response response) throws ApplicationException {
         if (request.getSession().getId().equalsIgnoreCase(sessionId)) {
             String error = "{ \"error\": \"expired\" }";
@@ -681,86 +1458,269 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return "{}";
     }
 
+    private String getUploadDirectory() {
+        return getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) != null
+                ? getConfiguration().get(CONFIG_SYSTEM_DIRECTORY) + "/" + FILE_UPLOAD_DIR
+                : FILE_UPLOAD_DIR;
+    }
+
+    private void validateFileUpload(String meetingCode) throws ApplicationException {
+        if (meetingCode == null) {
+            throw new ApplicationException("Not allowed to upload any files.");
+        }
+    }
+
+    private void validateFileDownload(String meetingCode, boolean encoded) throws ApplicationException {
+        if (encoded && meetingCode == null) {
+            throw new ApplicationException("Not allowed to download any files.");
+        }
+    }
+
+    private void encryptFile(byte[] data, String meetingCode) {
+        if (data == null || meetingCode == null) return;
+
+        byte[] keys = meetingCode.getBytes(StandardCharsets.UTF_8);
+        int blocks = (data.length - data.length % 1024) / 1024;
+        int i = 0;
+        do {
+            int min = Math.min(keys.length, data.length);
+            for (int j = 0; j < min; j++) {
+                data[i * 1024 + j] = (byte) (data[i * 1024 + j] ^ keys[j]);
+            }
+        } while (i++ < blocks);
+    }
+
     @Action("talk/upload")
     public String upload(Request request) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (meetingCode == null) throw new ApplicationException("Not allowed to upload any files.");
+        validateFileUpload(meetingCode.toString());
 
-        // Create path components to save the file
-        final String path = getConfiguration().get("system.directory") != null ? getConfiguration().get("system.directory").toString() + "/files" : "files";
-
+        final String uploadPath = getUploadDirectory();
         final Builders builders = new Builders();
-        List<FileEntity> list = request.getAttachments();
-        for (FileEntity file : list) {
-            final Builder builder = new Builder();
-            builder.put("type", file.getContentType());
-            builder.put("file", new StringBuilder().append(getContext().getAttribute(HTTP_HOST)).append("files/").append(file.getFilename()));
-            final File f = new File(path + File.separator + file.getFilename());
-            if (!f.exists()) {
-                if (!f.getParentFile().exists()) {
-                    f.getParentFile().mkdirs();
-                }
-            }
 
-            try (final OutputStream out = new FileOutputStream(f); final BufferedOutputStream bout = new BufferedOutputStream(out); final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(file.get()));) {
-                final byte[] bytes = new byte[1024];
-                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-                int read;
-                while ((read = bs.read(bytes)) != -1) {
-                    int min = Math.min(read, keys.length);
-                    for (int i = 0; i < min; i++) {
-                        bytes[i] = (byte) (bytes[i] ^ keys[i]);
-                    }
-                    bout.write(bytes, 0, read);
-                }
-                bout.close();
-                bs.close();
-
-                builders.add(builder);
-                System.out.printf("File %s being uploaded to %s%n", file.getFilename(), path);
-            } catch (FileNotFoundException e) {
-                throw new ApplicationException("File not found: " + e.getMessage(), e);
+        List<FileEntity> attachments = request.getAttachments();
+        for (FileEntity file : attachments) {
+            try {
+                processUploadedFile(file, uploadPath, meetingCode.toString(), builders);
             } catch (IOException e) {
-                throw new ApplicationException("Error uploading file: " + e.getMessage(), e);
+                throw new ApplicationException("Error processing file: " + e.getMessage(), e);
             }
         }
 
         return builders.toString();
     }
 
-    public byte[] download(String fileName, boolean encoded, Request request, Response response) throws ApplicationException {
+    private void processUploadedFile(FileEntity file, String uploadPath, String meetingCode, Builders builders)
+            throws IOException, ApplicationException {
+        final Builder builder = new Builder();
+        builder.put("type", file.getContentType());
+        builder.put("file", new StringBuilder()
+                .append(getContext().getAttribute(HTTP_HOST))
+                .append("files/")
+                .append(file.getFilename()));
+        builder.put("originalName", file.getFilename());
+
+        final File targetFile = new File(uploadPath + File.separator + file.getFilename());
+        createDirectoryIfNeeded(targetFile.getParentFile());
+
+        // Get file content
+        byte[] fileContent = file.get();
+
+        if (fileContent == null || fileContent.length == 0) {
+            System.err.println("Warning: Empty file content for " + file.getFilename());
+        }
+
+        try (final BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(targetFile))) {
+            // Write file content
+            if (fileContent != null && fileContent.length > 0) {
+                // Check if encryption is enabled
+                String encryptionEnabledStr = getConfiguration().get("file.upload.encryption.enabled");
+                boolean encryptionEnabled = Boolean.parseBoolean(encryptionEnabledStr);
+
+                if (encryptionEnabled) {
+                    // Write encrypted content
+                    try (final BufferedInputStream bs = new BufferedInputStream(new ByteArrayInputStream(fileContent))) {
+                        writeEncryptedFile(bout, bs, meetingCode);
+                    }
+                } else {
+                    // Write content directly
+                    bout.write(fileContent);
+                }
+            }
+        }
+
+        builders.add(builder);
+        System.out.printf("File %s being uploaded to %s%n", file.getFilename(), uploadPath);
+
+        // Verify file was written correctly
+        if (targetFile.exists() && targetFile.length() > 0) {
+            System.out.println("File written successfully: " + targetFile.getPath() + " (" + targetFile.length() + " bytes)");
+
+            // Process document if it's a supported type
+            if (DocumentProcessor.isSupportedMimeType(file.getContentType())) {
+                processDocumentContent(targetFile.getPath(), file.getContentType(), meetingCode);
+            }
+        } else {
+            System.err.println("Warning: File appears to be empty after writing: " + targetFile.getPath());
+        }
+    }
+
+    private void createDirectoryIfNeeded(File directory) throws ApplicationException {
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw new ApplicationException("Failed to create directory: " + directory.getPath());
+        }
+    }
+
+    private void writeEncryptedFile(BufferedOutputStream bout, BufferedInputStream bs, String meetingCode)
+            throws IOException {
+        final byte[] buffer = new byte[1024];
+        final byte[] keys = meetingCode.getBytes(StandardCharsets.UTF_8);
+        int read;
+
+        while ((read = bs.read(buffer)) != -1) {
+            int min = Math.min(read, keys.length);
+            for (int i = 0; i < min; i++) {
+                buffer[i] = (byte) (buffer[i] ^ keys[i]);
+            }
+            bout.write(buffer, 0, read);
+        }
+    }
+
+    private void processDocumentContent(String filePath, String mimeType, String meetingCode) {
+        try {
+            System.out.println("Starting document processing for: " + filePath);
+            System.out.println("MIME type: " + mimeType);
+            System.out.println("Meeting code: " + meetingCode);
+
+            // Get user ID from session
+            String userId = null;
+            String username = null;
+            for (Map.Entry<?, Set<String>> entry : this.sessions.entrySet()) {
+                if (entry.getKey().toString().equals(meetingCode)) {
+                    // Get the first session ID for this meeting
+                    if (!entry.getValue().isEmpty()) {
+                        String sessionId = entry.getValue().iterator().next();
+                        // Get the session object
+                        Session session = SessionManager.getInstance().getSession(sessionId);
+                        if (session != null) {
+                            userId = (String) session.getAttribute("user_id");
+                            username = (String) session.getAttribute("username");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            System.out.println("User ID: " + (userId != null ? userId : "none (anonymous)"));
+
+            // Get file name for title
+            String fileName = new File(filePath).getName();
+            String title = fileName;
+            String description = "Uploaded by " + (username != null ? username : "anonymous user") + " on " +
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+
+            DocumentProcessor processor = new DocumentProcessor();
+            List<DocumentFragment> fragments = processor.processDocument(
+                    filePath,
+                    mimeType.trim(),
+                    userId,
+                    title,
+                    description,
+                    true  // Public by default
+            );
+
+            System.out.println("Successfully processed document into " + fragments.size() + " fragments");
+
+            EmbeddingManager manager = (EmbeddingManager) ApplicationManager.get(EmbeddingManager.class.getName());
+            if (manager == null) {
+                System.err.println("ERROR: EmbeddingManager not found. Make sure it's properly initialized.");
+                throw new ApplicationException("EmbeddingManager not found");
+            }
+
+            // Save fragments to database
+            int successCount = 0;
+            for (DocumentFragment fragment : fragments) {
+                try {
+                    fragment.appendAndGetId();
+                    System.out.println("Saved fragment " + fragment.getId() + " to database");
+
+                    // Generate embedding for the fragment
+                    try {
+                        manager.generateEmbedding(fragment);
+                        successCount++;
+                        System.out.println("Generated embedding for fragment " + fragment.getId());
+                    } catch (Exception e) {
+                        System.err.println("Failed to generate embedding for document fragment: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to save document fragment: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+
+            System.out.println("Document processing complete. Successfully processed " +
+                    successCount + " out of " + fragments.size() + " fragments.");
+
+            // Add a message to the chat about the document processing
+            final Builder messageBuilder = new Builder();
+            messageBuilder.put("user", "System");
+            messageBuilder.put("time", format.format(new Date()));
+            messageBuilder.put("message", String.format("Document '%s' has been processed into %d fragments and is now searchable.",
+                    new File(filePath).getName(), fragments.size()));
+            save(meetingCode, messageBuilder);
+        } catch (ApplicationException e) {
+            System.err.println("Error processing document: " + e.getMessage());
+            e.printStackTrace();
+            // Add error message to chat
+            final Builder errorBuilder = new Builder();
+            errorBuilder.put("user", "System");
+            errorBuilder.put("time", format.format(new Date()));
+            errorBuilder.put("message", "Error processing document: " + e.getMessage());
+            save(meetingCode, errorBuilder);
+        } catch (Exception e) {
+            System.err.println("Unexpected error processing document: " + e.getMessage());
+            e.printStackTrace();
+            // Add error message to chat
+            final Builder errorBuilder = new Builder();
+            errorBuilder.put("user", "System");
+            errorBuilder.put("time", format.format(new Date()));
+            errorBuilder.put("message", "Unexpected error processing document: " + e.getMessage());
+            save(meetingCode, errorBuilder);
+        }
+    }
+
+    private byte[] download(String fileName, boolean encoded, Request request, Response response) throws ApplicationException {
         final Object meetingCode = request.getSession().getAttribute("meeting_code");
-        if (encoded && meetingCode == null) throw new ApplicationException("Not allowed to download any files.");
+        validateFileDownload(meetingCode.toString(), encoded);
 
         // Create path to download the file
         final String fileDir = getConfiguration().get("system.directory") != null ? getConfiguration().get("system.directory") + "/files" : "files";
 
+        try {
+            fileName = URLDecoder.decode(fileName, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e);
+        }
         // Creating an object of Path class and
         // assigning local directory path of file to it
-        Path path = Paths.get(fileDir, new String(fileName.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8));
+        Path path = Paths.get(fileDir, fileName);
 
         // Converting the file into a byte array
         // using Files.readAllBytes() method
-        byte[] arr = new byte[0];
+        byte[] arr;
         try {
             String mimeType = Files.probeContentType(path);
             if (mimeType != null) {
                 response.addHeader(Header.CONTENT_TYPE.name(), mimeType);
-            } else {
-                response.addHeader(Header.CONTENT_DISPOSITION.name(), "application/octet-stream;filename=\"" + fileName + "\"");
             }
+
+            response.addHeader(Header.CONTENT_DISPOSITION.name(), "attachment; filename*=UTF-8''" +
+                    URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replace("+", "%20"));
 
             arr = Files.readAllBytes(path);
             if (encoded) {
-                byte[] keys = meetingCode.toString().getBytes(StandardCharsets.UTF_8);
-                int blocks = (arr.length - arr.length % 1024) / 1024;
-                int i = 0;
-                do {
-                    int min = Math.min(keys.length, arr.length);
-                    for (int j = 0; j < min; j++) {
-                        arr[i * 1024 + j] = (byte) (arr[i * 1024 + j] ^ keys[j]);
-                    }
-                } while (i++ < blocks);
+                encryptFile(arr, meetingCode.toString());
             }
         } catch (IOException e) {
             throw new ApplicationException("Error reading the file: " + e.getMessage(), e);
@@ -772,19 +1732,6 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     @Action("files")
     public byte[] download(String fileName, Request request, Response response) throws ApplicationException {
         return this.download(fileName, true, request, response);
-    }
-
-    @Action("talk/topic")
-    public boolean topic(Request request) {
-        final Object meeting_code = request.getSession().getAttribute("meeting_code");
-        if (meeting_code != null && request.getParameter("topic") != null) {
-            SharedVariables sharedVariables = SharedVariables.getInstance(meeting_code.toString());
-            StringVariable variable = new StringVariable(meeting_code.toString(), filter(request.getParameter("topic")));
-            sharedVariables.setVariable(variable, true);
-            return true;
-        }
-
-        return false;
     }
 
     protected smalltalk exit(Request request) {
@@ -801,46 +1748,340 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
         return text;
     }
 
-    @Override
-    public void onSessionEvent(SessionEvent arg0) {
-        Object meetingCode = arg0.getSession().getAttribute("meeting_code");
-        if (arg0.getType() == SessionEvent.Type.CREATED) {
-            if (meetingCode == null) {
-                meetingCode = java.util.UUID.randomUUID().toString();
-                arg0.getSession().setAttribute("meeting_code", meetingCode);
+    /**
+     * Format a streaming response to ensure proper spacing between words
+     *
+     * @param rawResponse The raw response from the API
+     * @return A properly formatted response with correct spacing
+     */
+    private String formatStreamingResponse(String rawResponse) {
+        if (rawResponse == null || rawResponse.isEmpty()) {
+            return "";
+        }
 
-                dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
-            }
+        // Use regex to add spaces between words that are incorrectly joined
+        String formattedResponse = rawResponse
+                // Add space between lowercase and uppercase (camelCase separation)
+                .replaceAll("([a-z])([A-Z])", "$1 $2")
+                // Add space between letter and number
+                .replaceAll("([a-zA-Z])([0-9])", "$1 $2")
+                // Add space between number and letter
+                .replaceAll("([0-9])([a-zA-Z])", "$1 $2")
+                // Add space after punctuation if not followed by a space
+                .replaceAll("([.,!?;:])([^\\s])", "$1 $2");
 
-            final String sessionId = arg0.getSession().getId();
-            if (!this.list.containsKey(sessionId)) {
-                this.list.put(sessionId, new ArrayDeque<Builder>());
-            }
-        } else if (arg0.getType() == SessionEvent.Type.DESTROYED) {
-            if (meetingCode != null) {
-                final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-                final Builder builder = new Builder();
-                builder.put("user", null);
-                builder.put("time", format.format(new Date()));
-                builder.put("cmd", "expired");
-                this.save(meetingCode, builder);
+        return formattedResponse;
+    }
 
-                Queue<Builder> messages;
-                Set<String> session_ids;
-                if ((session_ids = this.sessions.get(meetingCode)) != null) {
-                    session_ids.remove(arg0.getSession().getId());
-                }
+    /**
+     * Check if a character is a punctuation mark
+     *
+     * @param c The character to check
+     * @return true if the character is a punctuation mark, false otherwise
+     */
+    private boolean isPunctuation(char c) {
+        return c == '.' || c == ',' || c == '!' || c == '?' || c == ';' || c == ':' || c == '-' || c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' || c == '"' || c == '\'' || c == '`';
+    }
 
-                if ((messages = this.groups.get(meetingCode)) != null) {
-                    messages.remove(meetingCode);
-                }
+    private void notifyUserJoined(String meetingCode, String username) {
+        try {
+            final Builder builder = new Builder();
+            builder.put("user", "System");
+            builder.put("user_id", -1);
+            builder.put("time", format.format(new Date()));
+            builder.put("message", username + " has joined the meeting");
+            builder.put("type", "system");
+            builder.put("event", "user_joined");
+            builder.put("username", username);
+            builder.put("timestamp", System.currentTimeMillis());
+            builder.put("color", "#4CAF50"); // Green color for join messages
+            save(meetingCode, builder);
 
-                final String sessionId = arg0.getSession().getId();
-                if (this.list.containsKey(sessionId)) {
-                    this.list.remove(sessionId);
-                    wakeup();
-                }
-            }
+            // Enhanced logging
+            System.out.println("=== User Join Notification ===");
+            System.out.println("Meeting: " + meetingCode);
+            System.out.println("User: " + username);
+            System.out.println("Time: " + format.format(new Date()));
+            System.out.println("===========================");
+        } catch (Exception e) {
+            System.err.println("Error sending join notification: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
+    private void notifyUserLeft(String meetingCode, String username) {
+        try {
+            final Builder builder = new Builder();
+            builder.put("user", "System");
+            builder.put("user_id", -1);
+            builder.put("time", format.format(new Date()));
+            builder.put("message", username + " has left the meeting");
+            builder.put("type", "system");
+            builder.put("event", "user_left");
+            builder.put("username", username);
+            builder.put("timestamp", System.currentTimeMillis());
+            builder.put("color", "#F44336"); // Red color for leave messages
+            save(meetingCode, builder);
+
+            // Enhanced logging
+            System.out.println("=== User Leave Notification ===");
+            System.out.println("Meeting: " + meetingCode);
+            System.out.println("User: " + username);
+            System.out.println("Time: " + format.format(new Date()));
+            System.out.println("===========================");
+        } catch (Exception e) {
+            System.err.println("Error sending leave notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void notifyMeetingStatus(String meetingCode, String status, String details) {
+        try {
+            final Builder builder = new Builder();
+            builder.put("user", "System");
+            builder.put("user_id", -1);
+            builder.put("time", format.format(new Date()));
+            builder.put("message", details);
+            builder.put("type", "system");
+            builder.put("event", "meeting_status");
+            builder.put("status", status);
+            builder.put("timestamp", System.currentTimeMillis());
+            builder.put("color", "#2196F3"); // Blue color for status messages
+            save(meetingCode, builder);
+
+            // Enhanced logging
+            System.out.println("=== Meeting Status Update ===");
+            System.out.println("Meeting: " + meetingCode);
+            System.out.println("Status: " + status);
+            System.out.println("Details: " + details);
+            System.out.println("Time: " + format.format(new Date()));
+            System.out.println("===========================");
+        } catch (Exception e) {
+            System.err.println("Error sending meeting status notification: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onSessionEvent(SessionEvent event) {
+        switch (event.getType()) {
+            case CREATED:
+                handleSessionCreated(event);
+                break;
+            case DESTROYED:
+                handleSessionDestroyed(event);
+                break;
+            default:
+                // Log unexpected event type
+                System.err.println("Unexpected session event type: " + event.getType());
+        }
+    }
+
+    private void handleSessionCreated(SessionEvent event) {
+        Object meetingCode = event.getSession().getAttribute("meeting_code");
+        if (meetingCode == null) {
+            meetingCode = generateMeetingCode();
+            event.getSession().setAttribute("meeting_code", meetingCode);
+            dispatcher.dispatch(new SessionCreated(String.valueOf(meetingCode)));
+
+            // Notify about new meeting creation
+            notifyMeetingStatus(meetingCode.toString(), "created", "New meeting created");
+        }
+
+        final String sessionId = event.getSession().getId();
+        initializeSessionQueue(sessionId);
+
+        // Notify other users about the new user
+        String username = (String) event.getSession().getAttribute("username");
+        if (username == null) {
+            username = (String) event.getSession().getAttribute("user");
+        }
+        if (username != null) {
+            notifyUserJoined(meetingCode.toString(), username);
+            // Update meeting status
+            notifyMeetingStatus(meetingCode.toString(), "user_joined",
+                    "User " + username + " joined the meeting. Total users: " +
+                            (sessions.get(meetingCode) != null ? sessions.get(meetingCode).size() : 1));
+        }
+    }
+
+    private String generateMeetingCode() {
+        return UUID.randomUUID().toString();
+    }
+
+    private void handleSessionDestroyed(SessionEvent event) {
+        String sessionId = event.getSession().getId();
+        Object meetingCode = event.getSession().getAttribute("meeting_code");
+
+        // Notify other users about the user leaving
+        String username = (String) event.getSession().getAttribute("username");
+        if (username == null) {
+            username = (String) event.getSession().getAttribute("user");
+        }
+        if (username != null && meetingCode != null) {
+            notifyUserLeft(meetingCode.toString(), username);
+
+            // Update meeting status
+            Set<String> remainingUsers = sessions.get(meetingCode);
+            int remainingCount = remainingUsers != null ? remainingUsers.size() - 1 : 0;
+            notifyMeetingStatus(meetingCode.toString(), "user_left",
+                    "User " + username + " left the meeting. Remaining users: " + remainingCount);
+        }
+
+        // Clean up conversation history
+        ConversationHistoryManager.clearConversationHistory(sessionId);
+        SessionVariableManager.clearSession(sessionId);
+        System.out.println("Cleared conversation history for session: " + sessionId);
+
+        if (meetingCode != null) {
+            cleanupSession(event.getSession(), meetingCode.toString());
+        }
+    }
+
+    private void initializeSessionQueue(String sessionId) {
+        if (!this.list.containsKey(sessionId)) {
+            this.list.put(sessionId, new ArrayDeque<Builder>());
+        }
+    }
+
+    private void cleanupSession(Session session, String meetingCode) {
+        notifySessionExpired(meetingCode);
+        removeSessionFromGroups(session.getId(), meetingCode);
+        removeSessionQueue(session.getId());
+    }
+
+    private void notifySessionExpired(String meetingCode) {
+        final Builder builder = new Builder();
+        builder.put("user", "System");
+        builder.put("time", format.format(new Date()));
+        builder.put("cmd", "expired");
+        builder.put("message", "Session expired");
+        this.save(meetingCode, builder);
+    }
+
+    private void removeSessionFromGroups(String sessionId, String meetingCode) {
+        Set<String> sessionIds = this.sessions.get(meetingCode);
+        if (sessionIds != null) {
+            sessionIds.remove(sessionId);
+        }
+
+        Queue<Builder> messages = this.groups.get(meetingCode);
+        if (messages != null) {
+            messages.remove(meetingCode);
+        }
+    }
+
+    private void removeSessionQueue(String sessionId) {
+        if (this.list.containsKey(sessionId)) {
+            this.list.remove(sessionId);
+            wakeup();
+        }
+    }
+
+    /**
+     * Save a chat message to the history database using a Builder
+     *
+     * @param builder     The message builder containing all message data
+     * @param meetingCode The meeting code
+     * @throws ApplicationException If an error occurs
+     */
+    private void saveChatHistory(Builder builder, String meetingCode) throws ApplicationException {
+        try {
+            // Get user ID from builder
+            Object userIdObj = builder.get("user_id");
+            if (userIdObj == null) {
+                throw new ApplicationException("User ID not found in message");
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                throw new ApplicationException("Invalid user ID format");
+            }
+
+            // Only save if this is a final message
+            ChatHistory history = new ChatHistory();
+            history.setMeetingCode(meetingCode);
+            history.setUserId(userId);
+            history.setMessage(builder.get("message").toString());
+            if (builder.get("session_id") != null)
+                history.setSessionId(builder.get("session_id").toString());
+            history.setMessageType(userId == 0 ? "assistant" : "user");
+            history.setCreatedAt(builder.get("time").toString());
+            history.append();
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to save chat history: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Save a chat message pair to the history database
+     *
+     * @param meetingCode      The meeting code
+     * @param sessionId        The session ID
+     * @param userMessage      The user's message
+     * @param assistantMessage The assistant's response
+     * @throws ApplicationException If an error occurs
+     */
+    private void saveChatHistory(String meetingCode, String sessionId, String userMessage, String assistantMessage, Request request) throws ApplicationException {
+        try {
+            // Get user ID from session
+            Object userIdObj = request.getSession().getAttribute("user_id");
+            if (userIdObj == null) {
+                throw new ApplicationException("User ID not found in session");
+            }
+
+            // Convert user ID to integer
+            Integer userId;
+            try {
+                userId = Integer.parseInt(userIdObj.toString());
+            } catch (NumberFormatException e) {
+                throw new ApplicationException("Invalid user ID format");
+            }
+
+            // Save only the final assistant message
+            ChatHistory assistantHistory = new ChatHistory();
+            assistantHistory.setMeetingCode(meetingCode);
+            assistantHistory.setUserId(0); // System/assistant messages use ID 0
+            assistantHistory.setMessage(assistantMessage);
+            assistantHistory.setSessionId(sessionId);
+            assistantHistory.setMessageType("assistant");
+            assistantHistory.setCreatedAt(format.format(new Date()));
+            assistantHistory.append();
+        } catch (Exception e) {
+            throw new ApplicationException("Failed to save chat history: " + e.getMessage());
+        }
+    }
+
+    private String save(String meetingCode, Builder data) {
+        // Get all sessions in this meeting
+        Set<String> sessionIds = this.sessions.get(meetingCode);
+        if (sessionIds != null) {
+            // Broadcast to all sessions in the meeting
+            for (String sessionId : sessionIds) {
+                SSEPushManager.getInstance().push(sessionId, data);
+            }
+
+            // Only save to chat history if this is a final message
+            try {
+                if ((data.get("final")) == null || (Boolean) data.get("final")) {
+                    // Save the chat history
+                    if (data.get("message") != null && !data.get("message").toString().isEmpty()) {
+                        saveChatHistory(data, meetingCode);
+                    }
+                }
+            } catch (ApplicationException e) {
+                System.err.println("Failed to save chat history: " + e.getMessage());
+                // Continue execution even if saving to history fails
+            }
+
+            wakeup();
+            return "{ \"status\": \"ok\" }";
+        }
+
+        return "{ \"error\": \"invalid_meeting_code\" }";
+    }
+
 }

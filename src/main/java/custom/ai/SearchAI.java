@@ -3,8 +3,9 @@ package custom.ai;
 import org.tinystruct.AbstractApplication;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.Builder;
-import org.tinystruct.http.*;
-import org.tinystruct.http.client.HttpRequestBuilder;
+import org.tinystruct.net.URLHandlerFactory;
+import org.tinystruct.net.URLRequest;
+import org.tinystruct.net.URLResponse;
 import org.tinystruct.system.annotation.Action;
 
 import javax.swing.text.MutableAttributeSet;
@@ -15,7 +16,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,34 +35,32 @@ public class SearchAI extends AbstractApplication implements Provider {
         }
         String query = getContext().getAttribute("--query").toString().trim();
 
-        HttpRequestBuilder builder = new HttpRequestBuilder();
-        Headers headers = new Headers();
-        headers.add(Header.USER_AGENT.set("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:109.0) Gecko/20100101 Firefox/111.0"));
-        headers.add(Header.ACCEPT.set("text/html,application/xhtml+xml,application/xmlq=0.9,image/avif,image/webp,image/apng,*/*q=0.8,application/signed-exchangev=b3q=0.7"));
-        headers.add(Header.ACCEPT_ENCODING.set("gzip, deflate, br"));
-
         String url = SEARCH_URL;
-        List<String> urls;
-        if ((urls = this.extractUrls(query)) != null && urls.size() > 0) {
-            builder.setHeaders(headers).setMethod(Method.GET);
-            url = urls.get(0);
-        } else {
-            String contentType = "application/x-www-form-urlencoded";
-            headers.add(Header.CONTENT_TYPE.set(contentType));
-            headers.add(Header.REFERER.set("https://lite.duckduckgo.com/"));
-            headers.add(Header.HOST.set("lite.duckduckgo.com"));
-            headers.add(Header.ORIGIN.set("https://lite.duckduckgo.com"));
-            headers.add(Header.CONNECTION.set("keep-alive"));
-
-            builder.setHeaders(headers).setMethod(Method.POST);
-            builder.setParameter("q", query + "" + LocalDateTime.now().getYear() + "-" + LocalDateTime.now().getMonthValue());
-            builder.setParameter("kl", "");
-        }
 
         try {
             URLRequest request = new URLRequest(new URL(url));
-            byte[] bytes = request.send(builder);
+            request.setHeader("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:109.0) Gecko/20100101 Firefox/111.0");
+            request.setHeader("Accept", "text/html,application/xhtml+xml,application/xmlq=0.9,image/avif,image/webp,image/apng,*/*q=0.8,application/signed-exchangev=b3q=0.7");
+            request.setHeader("Accept-Encoding", "gzip, deflate, br");
 
+            List<String> urls;
+            if ((urls = this.extractUrls(query)) != null && urls.size() > 0) {
+                url = urls.get(0);
+                request.setMethod("Get");
+            } else {
+                String contentType = "application/x-www-form-urlencoded";
+                request.setHeader("Content-Type", contentType);
+                request.setHeader("Referer", "https://lite.duckduckgo.com/");
+                request.setHeader("Host", "lite.duckduckgo.com");
+                request.setHeader("Origin", "https://lite.duckduckgo.com");
+                request.setHeader("Connection", "keep-alive");
+                request.setMethod("POST");
+
+                request.setParameter("q", query + "" + LocalDateTime.now().getYear() + "-" + LocalDateTime.now().getMonthValue());
+                request.setParameter("kl", "");
+            }
+
+            URLResponse urlResponse = URLHandlerFactory.getHandler(request.getURL()).handleRequest(request);
             // Create a parser delegator
             ParserDelegator parserDelegator = new ParserDelegator();
 
@@ -98,7 +96,7 @@ public class SearchAI extends AbstractApplication implements Provider {
                 @Override
                 public void handleEndTag(HTML.Tag t, int pos) {
                     if (withDuckDuckGo && list.size() < 3 && t == HTML.Tag.TD) {
-                        if (buffer.length() > 0 && buffer.indexOf("No results.") == -1){
+                        if (buffer.length() > 0 && buffer.indexOf("No results.") == -1) {
                             if (i == 7) {
                                 i = 0;
                                 list.add(buffer.toString().replaceAll("\"", "\\\""));
@@ -131,7 +129,7 @@ public class SearchAI extends AbstractApplication implements Provider {
             // Remove all style tags manually as the HTMLEditorKit not working properly
             String pattern = "<style[^>]*>[\\s\\S]*?<\\/style>";
             Pattern regex = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
-            Matcher matcher = regex.matcher(new String(bytes));
+            Matcher matcher = regex.matcher(urlResponse.getBody());
 
             String html = matcher.replaceAll("");
 
@@ -147,8 +145,6 @@ public class SearchAI extends AbstractApplication implements Provider {
             throw new ApplicationException(e.getMessage(), e.getCause());
         } catch (ApplicationException e) {
             throw e;
-        } catch (URISyntaxException e) {
-            throw new ApplicationException(e.getMessage(), e.getCause());
         } catch (IOException e) {
             e.printStackTrace();
         }

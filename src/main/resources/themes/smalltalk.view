@@ -8,442 +8,1961 @@
     <meta name="description" content=""/>
     <meta content="tinystruct 2.0 (http://tinystruct.org)" name="generator"/>
     <title>Small Talk</title>
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet"/>
     <!-- Bootstrap core CSS -->
     <link href="/scripts/bootstrap/bootstrap.min.css?raw=true" rel="stylesheet"/>
     <link href="/scripts/highlight/github-dark-dimmed.css" rel="stylesheet"/>
 
     <!-- Custom styles for this template -->
     <style type="text/css">
-  #list ::-moz-selection {
-    background: #2583AD;
-  }
-  #list ::selection {
-    background: #2583AD;
-  }
-  #list {
-    overflow-x:hidden;
-    max-height:350px;
-    padding:10px;
-    background: #f5f5f5;
-    border: 1px solid #f5f5f5;
-    resize: vertical;
-    margin: 10px 0 10px 0;
-  }
+        /* Base styles */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            line-height: 1.5;
+            font-size: 120%;
+            color: #374151;
+            background-color: #f9fafb;
+        }
 
-  #list.light-green {
-    background: #000;
-    color: #00ff00;
-  }
+        /* Navbar styles */
+        .navbar-default {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
 
-  #list.light-green ul {
+        .navbar-brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+        }
 
-  }
+        /* Chat container styles */
+        #list {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            margin: 1rem 0;
+            max-height: 600px;
+        }
 
-  #list.light-green ul li {
+        /* Message styles */
+        #messages li {
+            padding: 0.75rem 0;
+            font-size: 0.9375rem;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+            flex-direction: column;
+        }
 
-  }
+        #messages li .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
 
-  #list.light-green ul li span.content {
-    color: #fff;
-  }
+        #messages li .time {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
 
-  #list.dark-green {
-    background: #000;
-    color: #a4dba8;
-  }
+        #messages li .name {
+            font-weight: 600;
+            color: #111827;
+            margin-right: 0.5rem;
+        }
 
-  #list.dark-green ul {
+        #messages li .content {
+            color: #374151;
+            line-height: 1.6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.25rem;
+            max-width: 85%;
+            word-wrap: break-word;
+        }
 
-  }
+        /* User message styles */
+        #messages li:not(.chat-gpt):not(.system-notification) .content {
+            background-color: #e3f2fd;
+            border-bottom-right-radius: 0.25rem;
+            margin-left: auto;
+            position: relative;
+        }
 
-  #list.dark-green ul li {
+        /* AI message styles */
+        #messages li.chat-gpt .content {
+            background-color: #f3f4f6;
+            border-bottom-left-radius: 0.25rem;
+            margin-right: auto;
+            position: relative;
+        }
 
-  }
+        /* Dark theme support for messages */
+        #list.dark-green li:not(.chat-gpt):not(.system-notification) .content,
+        #list.light-green li:not(.chat-gpt):not(.system-notification) .content {
+            background-color: #1a365d;
+            color: #e5e7eb;
+        }
 
-  #list.dark-green ul li span.content {
-    color: #fff;
-  }
+        #list.dark-green li:not(.chat-gpt):not(.system-notification) .content::after,
+        #list.light-green li:not(.chat-gpt):not(.system-notification) .content::after {
+            background: #1a365d;
+        }
 
-  #list ul {
-    list-style: none;
-    padding-left: 0;
-    margin-bottom: 0;
-  }
-  #list ul li {
-    padding: 4px 5px;
-  }
+        #list.dark-green li.chat-gpt .content,
+        #list.light-green li.chat-gpt .content {
+            background-color: #2d3748;
+            color: #e5e7eb;
+        }
 
-  #list ul li pre {
-    color: #ffffff;
-    background-color: #22272e;
-  }
+        #list.dark-green li.chat-gpt .content::after,
+        #list.light-green li.chat-gpt .content::after {
+            background: #2d3748;
+        }
 
-  #list ul li.even, #list ul li.chat-gpt {
-    background: #e7e7e7;
-  }
+        /* System notification styles */
+        #messages li.system-notification {
+            background-color: #f3f4f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+            color: #6b7280;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
 
-  #list.dark-green ul li.even, #list.light-green ul li.even, #list.dark-green ul li.chat-gpt, #list.light-green ul li.chat-gpt {
-    background: #033300;
-  }
+        #messages li.system-notification.user-joined {
+            border-left-color: #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
 
-  #list ul li span.time {
-  }
+        #messages li.system-notification.user-left {
+            border-left-color: #F44336;
+            background-color: rgba(244, 67, 54, 0.1);
+        }
 
-  #list ul li span.name {
-  }
+        #messages li.system-notification.meeting-status {
+            border-left-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
 
-  #list ul li span.content {
-  }
+        #messages li.system-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
-  ul.nav li a.theme svg {
-    width: 1em;
-    height: 1em;
-    display: inline-block;
-   }
-  
-  #sender {
-      border-color: #ddd;
-      border-radius: 4px 4px 0 0;
-      border-width: 1px;
-      box-shadow: none;
-      margin-left: 0;
-      margin-right: 0;
-  }
+        #messages li.system-notification .notification-icon {
+            font-size: 1rem;
+        }
 
-  body > .container {
-    padding-top: 75px;
-  }
+        #messages li.system-notification .notification-text {
+            flex-grow: 1;
+        }
 
-  body > .container img {
-      width: 100%;
-      max-width: 100%;
-  }
+        #messages li.system-notification .notification-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
 
-  #matrix { position: absolute; right:0; bottom:0; width:77px; height:77px; border:1px solid #337ab7; display: none; text-align:center; color: #337ab7; background:#fff;}
-  .note { position: relative }
-  .pad { margin: 10px 0;position:relative; }
-  .text { min-height:60px; _height:60px; padding:10px; font-size:12px; color:#777; border:1px solid #d9d9d9; outline:0; background:#fff; }
-  .text:hover, .hover .text { border-color:#337ab7; caret-color:#337ab7;}
-  .arrowline:hover, .hover .arrowline { border-color:transparent transparent #337ab7 transparent; }
-  .arrowbox { width:20px; height:20px; position:absolute; left:52px; top:-12px; }
-  .arrow { width:0; height:0; font-size:0; line-height:0; position:absolute; overflow:hidden; }
-  .arrowline { top:-1px; border-style:solid solid solid; border-width:7px; border-color:transparent transparent #d9d9d9 transparent; }
-  .arrowbg { top:0.35px; border-style:solid solid solid; border-width:7px; border-color:transparent transparent #fff transparent; }
+        /* Dark theme support for notifications */
+        #list.dark-green li.system-notification,
+        #list.light-green li.system-notification {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e5e7eb;
+        }
 
-  .file-loading {
-      top: 0;
-      right: 0;
-      width: 25px;
-      height: 25px;
-      font-size: 999px;
-      text-align: right;
-      color: #fff;
-      background: transparent url('/scripts/bootstrap/fileinput/loading.gif') top left no-repeat;
-      border: none;
-  }
-  
-  .file-object {
-      margin: 0 0 -5px 0;
-      padding: 0;
-  }
-  
-  .btn-file {
-      position: relative;
-      overflow: hidden;
-      background: #fff none repeat scroll 0 0;
-      border: 0 solid;
-      color: #000;
-      position: relative;
-  }
-  
-  .btn-file input[type=file] {
-      position: absolute;
-      top: 0;
-      right: 0;
-      min-width: 100%;
-      min-height: 100%;
-      text-align: right;
-      opacity: 0;
-      background: none repeat scroll 0 0 transparent;
-      cursor: inherit;
-      display: block;
-  }
-  
-  .file-caption-name {
-      display: inline-block;
-      overflow: hidden;
-      height: 20px;
-      word-break: break-all;
-  }
-  
-  .input-group-lg .file-caption-name {
-      height: 25px;
-  }
-  
-  .file-preview-detail-modal {
-      text-align: left;
-  }
-  
-  .file-error-message {
-      color: #a94442;
-      background-color: #f2dede;
-      margin: 5px;
-      border: 1px solid #ebccd1;
-      border-radius: 4px;
-      padding: 15px;
-  }
-  
-  .file-error-message pre, .file-error-message ul {
-      margin: 0;
-      text-align: left;
-  }
-  
-  .file-error-message pre {
-      margin: 5px 0;
-  }
-  
-  .file-caption-disabled {
-      background-color: #EEEEEE;
-      cursor: not-allowed;
-      opacity: 1;
-  }
-  
-  .file-preview {
-      border-radius: 5px;
-      border: 1px solid #ddd;
-      padding: 5px;
-      width: 100%;
-      margin-bottom: 5px;
-  }
-  
-  .file-preview-frame {
-      display: table;
-      margin: 8px;
-      height: 160px;
-      border: 1px solid #ddd;
-      box-shadow: 1px 1px 5px 0 #a2958a;
-      padding: 6px;
-      float: left;
-      text-align: center;
-      vertical-align: middle;
-  }
-  
-  .file-preview-frame:not(.file-preview-error):hover {
-      box-shadow: 3px 3px 5px 0 #333;
-  }
-  
-  .file-preview-image {
-      height: 160px;
-      vertical-align: middle;
-  }
-  
-  .file-preview-text {
-      text-align: left;
-      width: 160px;
-      margin-bottom: 2px;
-      color: #428bca;
-      background: #fff;
-      overflow-x: hidden;
-  }
-  
-  .file-preview-other {
-      display: table-cell;
-      text-align: center;
-      vertical-align: middle;
-      width: 160px;
-      height: 160px;
-      border: 2px solid #999;
-      border-radius: 30px;
-  }
-  
-  .file-preview-other:hover {
-      opacity: 0.8;
-  }
-  
-  .file-actions, .file-other-error {
-      text-align: left;
-  }
-  
-  .file-icon-lg {
-      font-size: 1.2em;
-  }
-  
-  .file-icon-2x {
-      font-size: 2.4em;
-  }
-  
-  .file-icon-4x {
-      font-size: 4.8em;
-  }
-  
-  .file-input-new .file-preview, .file-input-new .close, .file-input-new .glyphicon-file,
-  .file-input-new .fileinput-remove-button, .file-input-new .fileinput-upload-button,
-  .file-input-ajax-new .fileinput-remove-button, .file-input-ajax-new .fileinput-upload-button {
-      display: none;
-  }
-  
-  .file-thumb-loading {
-      background: transparent url('../img/loading.gif') no-repeat scroll center center content-box !important;
-  }
-  
-  .file-actions {
-      margin-top: 15px;
-  }
-  
-  .file-footer-buttons {
-      float: right;
-  }
-  
-  .file-upload-indicator {
-      padding-top: 2px;
-      cursor: default;
-      opacity: 0.8;
-      width: 60%;
-  }
-  
-  .file-upload-indicator:hover {
-      font-weight: bold;
-      opacity: 1;
-  }
-  
-  .file-footer-caption {
-      display: block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      width: 160px;
-      text-align: center;
-      padding-top: 4px;
-      font-size: 11px;
-      color: #777;
-      margin: 5px auto 10px auto;
-  }
-  
-  .file-preview-error {
-      opacity: 0.65;
-      box-shadow: none;
-  }
-  
-  .file-preview-frame:not(.file-preview-error) .file-footer-caption:hover {
-      color: #000;
-  }
-  
-  .file-drop-zone {
-      border: 1px dashed #aaa;
-      border-radius: 4px;
-      height: 100%;
-      text-align: center;
-      vertical-align: middle;
-      margin: 12px 15px 12px 12px;
-      padding: 5px;
-  }
-  
-  .file-drop-zone-title {
-      color: #aaa;
-      font-size: 40px;
-      padding: 85px 10px;
-  }
-  
-  .file-highlighted {
-      border: 2px dashed #999 !important;
-      background-color: #f0f0f0;
-  }
-  
-  .file-uploading {
-      background: url('../img/loading-sm.gif') no-repeat center bottom 10px;
-      opacity: 0.65;
-  }
-  
-  .file-thumb-progress .progress, .file-thumb-progress .progress-bar {
-      height: 10px;
-      font-size: 9px;
-      line-height: 10px;
-  }
-  
-  .file-thumbnail-footer {
-      position: relative;
-  }
-  
-  .file-thumb-progress {
-      position: absolute;
-      top: 22px;
-      left: 0;
-      right: 0;
-  }
-  
-  /* IE 10 fix */
-  .btn-file ::-ms-browse {
-      width:100%;
-      height:100%;
-  }
+        #list.dark-green li.system-notification.user-joined,
+        #list.light-green li.system-notification.user-joined {
+            background-color: rgba(76, 175, 80, 0.2);
+        }
 
+        #list.dark-green li.system-notification.user-left,
+        #list.light-green li.system-notification.user-left {
+            background-color: rgba(244, 67, 54, 0.2);
+        }
 
-  #text {
-    width: intrinsic;           /* Safari/WebKit uses a non-standard name */
-    width: -moz-max-content;    /* Firefox/Gecko */
-    width: -webkit-max-content; /* Chrome */
-    width: auto;
-    /* display: inline; */
-    font-style: Consolas;
-    font-family: monospace;
-    --caret-color: transparent;
-  }
+        #list.dark-green li.system-notification.meeting-status,
+        #list.light-green li.system-notification.meeting-status {
+            background-color: rgba(33, 150, 243, 0.2);
+        }
 
-  #text:focus {
-    outline: none;
-  }
+        /* Markdown content styles */
+        #messages li .content p {
+            margin: 0.75rem 0;
+        }
 
-  #cursor {
-    width: intrinsic;           /* Safari/WebKit uses a non-standard name */
-    width: -moz-max-content;    /* Firefox/Gecko */
-    width: -webkit-max-content; /* Chrome */
-    width: max-content;
-    font-family: monospace;
+        #messages li .content p:first-child {
+            margin-top: 0;
+        }
 
-    border: 1px solid #00ff00;
-    background-color: none;
+        #messages li .content p:last-child {
+            margin-bottom: 0;
+        }
 
-    height: 17px;
-    float: left;
-    color: #fff;
-    position: absolute;
-    left: 0;
-    top: 0;
-    margin: 10px;
-    display: none;
-  }
+        #messages li .content pre {
+            background-color: #1f2937;
+            color: #e5e7eb;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+            margin: 0.75rem 0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            position: relative;
+        }
 
-  #cursor.focus {
-    border: 1px solid #00ff00;
-    background-color: #00ff00;
-    color: #00ff00;
-  }
+        #messages li .content pre .preview-button {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
 
-  ul#messages > li.pre-wrapper {
-    overflow-x: auto !important;
-    white-space: pre-wrap !important;       /* Since CSS 2.1 */
-    white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
-    white-space: -pre-wrap !important;      /* Opera 4-6 */
-    white-space: -o-pre-wrap !important;    /* Opera 7 */
-    word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
-  }
+        #messages li .content pre:hover .preview-button {
+            opacity: 1;
+        }
 
-  ul#messages .content ul {
+        #messages li .content pre .preview-button:hover {
+            background-color: #45a049;
+        }
 
-  }
+        #messages li .content .plantuml-preview {
+            margin-top: 0.5rem;
+            text-align: center;
+        }
 
-  ul#messages .content ul li {
-    white-space: pre-wrap !important;       /* Since CSS 2.1 */
-    white-space: -moz-pre-wrap !important;  /* Mozilla, since 1999 */
-    white-space: -pre-wrap !important;      /* Opera 4-6 */
-    white-space: -o-pre-wrap !important;    /* Opera 7 */
-    word-wrap: break-word !important;       /* Internet Explorer 5.5+ */
-  }
+        #messages li .content .plantuml-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.375rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
 
-  p, pre {
-    margin: 0;
-  }
+        #messages li .content code {
+            background-color: #f3f4f6;
+            color: #111827;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
 
+        #messages li .content pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+            font-size: inherit;
+        }
+
+        #messages li .content blockquote {
+            border-left: 4px solid #e5e7eb;
+            margin: 0.75rem 0;
+            padding: 0.5rem 0 0.5rem 1rem;
+            color: #6b7280;
+        }
+
+        #messages li .content ul,
+        #messages li .content ol {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+        }
+
+        #messages li .content li {
+            margin: 0.25rem 0;
+        }
+
+        #messages li .content h1,
+        #messages li .content h2,
+        #messages li .content h3,
+        #messages li .content h4,
+        #messages li .content h5,
+        #messages li .content h6 {
+            margin: 1rem 0 0.5rem;
+            font-weight: 600;
+            line-height: 1.25;
+            color: #111827;
+        }
+
+        #messages li .content h1 { font-size: 1.5rem; }
+        #messages li .content h2 { font-size: 1.25rem; }
+        #messages li .content h3 { font-size: 1.125rem; }
+        #messages li .content h4 { font-size: 1rem; }
+        #messages li .content h5 { font-size: 0.875rem; }
+        #messages li .content h6 { font-size: 0.75rem; }
+
+        #messages li .content table {
+            border-collapse: collapse;
+            margin: 0.75rem 0;
+            width: 100%;
+            font-size: 0.875rem;
+        }
+
+        #messages li .content th,
+        #messages li .content td {
+            border: 1px solid #e5e7eb;
+            padding: 0.5rem;
+        }
+
+        #messages li .content th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+
+        #messages li .content img {
+            max-width: 100%;
+            height: auto;
+            margin: 0.75rem 0;
+            border-radius: 0.375rem;
+        }
+
+        #messages li .content a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        #messages li .content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Input area styles */
+        #sender {
+            background: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-top: 1rem;
+        }
+
+        .text {
+            padding: 1rem;
+            min-height: 60px;
+            font-size: 0.9375rem;
+            color: #374151;
+            border: none;
+            outline: none;
+            background: transparent;
+        }
+
+        #text {
+            min-height: 40px;
+            padding: 0.75rem;
+            font-size: 0.9375rem;
+            color: #374151;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        #button {
+            background-color: #2563eb;
+            color: #ffffff;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #button:hover {
+            background-color: #1d4ed8;
+        }
+
+        /* Dark theme support */
+        #list.dark-green,
+        #list.light-green {
+            background: #1f2937;
+            border-color: #374151;
+        }
+
+        #list.dark-green .content,
+        #list.light-green .content {
+            color: #e5e7eb;
+        }
+
+        #list.dark-green .content pre,
+        #list.light-green .content pre {
+            background-color: #111827;
+        }
+
+        #list.dark-green .content code,
+        #list.light-green .content code {
+            background-color: #374151;
+            color: #e5e7eb;
+        }
+
+        #list.dark-green .content blockquote,
+        #list.light-green .content blockquote {
+            border-left-color: #4b5563;
+            color: #9ca3af;
+        }
+
+        #list.dark-green .content th,
+        #list.light-green .content th {
+            background-color: #374151;
+        }
+
+        #list.dark-green .content th,
+        #list.dark-green .content td,
+        #list.light-green .content th,
+        #list.light-green .content td {
+            border-color: #4b5563;
+        }
+
+        #list.dark-green .content a,
+        #list.light-green .content a {
+            color: #60a5fa;
+        }
+
+        /* AI toggle button styles */
+        .ai-toggle-wrapper {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 1;
+        }
+
+        .ai-toggle {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .ai-toggle input {
+            display: none;
+        }
+
+        .ai-toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #f3f4f6;
+            color: #6b7280;
+            font-size: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        .ai-toggle-label i {
+            font-size: 0.875rem;
+            transition: transform 0.2s ease;
+        }
+
+        .ai-toggle input:checked + .ai-toggle-label {
+            background-color: #10a37f;
+            color: #ffffff;
+        }
+
+        .ai-toggle input:checked + .ai-toggle-label i {
+            transform: scale(1.1);
+        }
+
+        .ai-toggle:hover .ai-toggle-label {
+            background-color: #e5e7eb;
+        }
+
+        .ai-toggle input:checked:hover + .ai-toggle-label {
+            background-color: #0d8c6d;
+        }
+
+        /* System notification styles */
+        #messages li.system-notification {
+            background-color: #f3f4f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            margin: 0.5rem 0;
+            font-size: 0.875rem;
+            color: #6b7280;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        #messages li.system-notification.user-joined {
+            border-left-color: #4CAF50;
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+
+        #messages li.system-notification.user-left {
+            border-left-color: #F44336;
+            background-color: rgba(244, 67, 54, 0.1);
+        }
+
+        #messages li.system-notification.meeting-status {
+            border-left-color: #2196F3;
+            background-color: rgba(33, 150, 243, 0.1);
+        }
+
+        #messages li.system-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #messages li.system-notification .notification-icon {
+            font-size: 1rem;
+        }
+
+        #messages li.system-notification .notification-text {
+            flex-grow: 1;
+        }
+
+        #messages li.system-notification .notification-time {
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+
+        /* Dark theme support for notifications */
+        #list.dark-green li.system-notification,
+        #list.light-green li.system-notification {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #e5e7eb;
+        }
+
+        #list.dark-green li.system-notification.user-joined,
+        #list.light-green li.system-notification.user-joined {
+            background-color: rgba(76, 175, 80, 0.2);
+        }
+
+        #list.dark-green li.system-notification.user-left,
+        #list.light-green li.system-notification.user-left {
+            background-color: rgba(244, 67, 54, 0.2);
+        }
+
+        #list.dark-green li.system-notification.meeting-status,
+        #list.light-green li.system-notification.meeting-status {
+            background-color: rgba(33, 150, 243, 0.2);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #list {
+                max-height: 400px;
+            }
+
+            #messages li {
+                font-size: 0.875rem;
+            }
+
+            #text {
+                font-size: 0.875rem;
+            }
+        }
+
+        #list ::-moz-selection {
+            background: #2583AD;
+        }
+
+        #list ::selection {
+            background: #2583AD;
+        }
+
+        #list {
+            overflow-x: hidden;
+            max-height: 350px;
+            padding: 10px;
+            background: #f5f5f5;
+            border: 1px solid #f5f5f5;
+            resize: vertical;
+            margin: 10px 0 10px 0;
+        }
+
+        #list.light-green {
+            background: #000;
+            color: #00ff00;
+        }
+
+        #list.light-green ul {
+
+        }
+
+        #list.light-green ul li {
+
+        }
+
+        #list.light-green ul li span.content {
+            color: #fff;
+        }
+
+        #list.dark-green {
+            background: #000;
+            color: #a4dba8;
+        }
+
+        #list.dark-green ul {
+
+        }
+
+        #list.dark-green ul li {
+
+        }
+
+        #list.dark-green ul li span.content {
+            color: #fff;
+        }
+
+        #list ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        #list ul li {
+            padding: 4px 5px;
+        }
+
+        #list ul li pre {
+            color: #ffffff;
+            background-color: #22272e;
+        }
+
+        #list ul li.even, #list ul li.chat-gpt, #list ul li.pre-wrapper.even {
+            background: #e7e7e7;
+        }
+
+        #list.dark-green ul li.even, #list.light-green ul li.even, #list.dark-green ul li.chat-gpt, #list.light-green ul li.chat-gpt, #list.dark-green ul li.pre-wrapper.even, #list.light-green ul li.pre-wrapper.even {
+            background: #033300;
+        }
+
+        #list ul li span.time {
+        }
+
+        #list ul li span.name {
+        }
+
+        #list ul li span.content {
+            white-space: pre-wrap;
+        }
+
+        ul.nav li a.theme svg {
+            width: 1em;
+            height: 1em;
+            display: inline-block;
+        }
+
+        #sender {
+            border-color: #ddd;
+            border-radius: 4px 4px 0 0;
+            border-width: 1px;
+            box-shadow: none;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        body > .container {
+            padding-top: 75px;
+        }
+
+        body > .container img {
+            width: 100%;
+            max-width: 100%;
+        }
+
+        #matrix {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 77px;
+            height: 77px;
+            border: 1px solid #337ab7;
+            display: none;
+            text-align: center;
+            color: #337ab7;
+            background: #fff;
+        }
+
+        .note {
+            position: relative
+        }
+
+        .pad {
+            margin: 10px 0;
+            position: relative;
+        }
+
+        .text {
+            min-height: 60px;
+            _height: 60px;
+            padding: 10px;  /* Remove left/right padding */
+            font-size: 12px;
+            color: #777;
+            border: 1px solid #d9d9d9;
+            outline: 0;
+            background: #fff;
+            position: relative;
+            border-radius: 5px;
+        }
+
+        .text:hover, .hover .text {
+            border-color: #337ab7;
+            caret-color: #337ab7;
+        }
+
+        .arrowline:hover, .hover .arrowline {
+            border-color: transparent transparent #337ab7 transparent;
+        }
+
+        .arrowbox {
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            left: 52px;
+            top: -12px;
+        }
+
+        .arrow {
+            width: 0;
+            height: 0;
+            font-size: 0;
+            line-height: 0;
+            position: absolute;
+            overflow: hidden;
+        }
+
+        .arrowline {
+            top: -1px;
+            border-style: solid solid solid;
+            border-width: 7px;
+            border-color: transparent transparent #d9d9d9 transparent;
+        }
+
+        .arrowbg {
+            top: 0.35px;
+            border-style: solid solid solid;
+            border-width: 7px;
+            border-color: transparent transparent #fff transparent;
+        }
+
+        .file-loading {
+            top: 0;
+            right: 0;
+            width: 25px;
+            height: 25px;
+            font-size: 999px;
+            text-align: right;
+            color: #fff;
+            background: transparent url('/scripts/bootstrap/fileinput/loading.gif') top left no-repeat;
+            border: none;
+        }
+
+        .file-object {
+            margin: 0 0 -5px 0;
+            padding: 0;
+        }
+
+        .btn-file {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            overflow: hidden;
+            background: transparent;
+            border: none;
+            color: #337ab7;
+            padding: 0;
+            margin: 0;
+            transition: all 0.3s ease;
+            z-index: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-file input[type=file] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .btn-file:hover {
+            color: #23527c;
+            transform: scale(1.1);  /* Only scale, no vertical translation */
+        }
+
+        .btn-file:focus {
+            outline: 2px solid #337ab7;
+            outline-offset: 2px;
+        }
+
+        .btn-file:focus:not(:focus-visible) {
+            outline: none;
+        }
+
+        /* Make sure the icon is properly centered */
+        .btn-file i {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        #button {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;  /* Change from top: 50% to bottom: 10px */
+            transform: none;  /* Remove vertical centering transform */
+            z-index: 1;
+        }
+
+        .attachment-label {
+            display: none;
+        }
+
+        .file-caption-name {
+            display: inline-block;
+            overflow: hidden;
+            height: 20px;
+            word-break: break-all;
+        }
+
+        .input-group-lg .file-caption-name {
+            height: 25px;
+        }
+
+        .file-preview-detail-modal {
+            text-align: left;
+        }
+
+        .file-error-message {
+            color: #a94442;
+            background-color: #f2dede;
+            margin: 5px;
+            border: 1px solid #ebccd1;
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .file-error-message pre, .file-error-message ul {
+            margin: 0;
+            text-align: left;
+        }
+
+        .file-error-message pre {
+            margin: 5px 0;
+        }
+
+        .file-caption-disabled {
+            background-color: #EEEEEE;
+            cursor: not-allowed;
+            opacity: 1;
+        }
+
+        .file-preview {
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .file-preview-frame {
+            display: table;
+            margin: 8px;
+            height: 160px;
+            border: 1px solid #ddd;
+            box-shadow: 1px 1px 5px 0 #a2958a;
+            padding: 6px;
+            float: left;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .file-preview-frame:not(.file-preview-error):hover {
+            box-shadow: 3px 3px 5px 0 #333;
+        }
+
+        .file-preview-image {
+            height: 160px;
+            vertical-align: middle;
+        }
+
+        .file-preview-text {
+            text-align: left;
+            width: 160px;
+            margin-bottom: 2px;
+            color: #428bca;
+            background: #fff;
+            overflow-x: hidden;
+        }
+
+        .file-preview-other {
+            display: table-cell;
+            text-align: center;
+            vertical-align: middle;
+            width: 160px;
+            height: 160px;
+            border: 2px solid #999;
+            border-radius: 30px;
+        }
+
+        .file-preview-other:hover {
+            opacity: 0.8;
+        }
+
+        .file-actions, .file-other-error {
+            text-align: left;
+        }
+
+        .file-icon-lg {
+            font-size: 1.2em;
+        }
+
+        .file-icon-2x {
+            font-size: 2.4em;
+        }
+
+        .file-icon-4x {
+            font-size: 4.8em;
+        }
+
+        .file-input-new .file-preview, .file-input-new .close, .file-input-new .glyphicon-file,
+        .file-input-new .fileinput-remove-button, .file-input-new .fileinput-upload-button,
+        .file-input-ajax-new .fileinput-remove-button, .file-input-ajax-new .fileinput-upload-button {
+            display: none;
+        }
+
+        .file-thumb-loading {
+            background: transparent url('../img/loading.gif') no-repeat scroll center center content-box !important;
+        }
+
+        .file-actions {
+            margin-top: 15px;
+        }
+
+        .file-footer-buttons {
+            float: right;
+        }
+
+        .file-upload-indicator {
+            padding-top: 2px;
+            cursor: default;
+            opacity: 0.8;
+            width: 60%;
+        }
+
+        .file-upload-indicator:hover {
+            font-weight: bold;
+            opacity: 1;
+        }
+
+        .file-footer-caption {
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 160px;
+            text-align: center;
+            padding-top: 4px;
+            font-size: 11px;
+            color: #777;
+            margin: 5px auto 10px auto;
+        }
+
+        .file-preview-error {
+            opacity: 0.65;
+            box-shadow: none;
+        }
+
+        .file-preview-frame:not(.file-preview-error) .file-footer-caption:hover {
+            color: #000;
+        }
+
+        .file-drop-zone {
+            border: 1px dashed #aaa;
+            border-radius: 4px;
+            height: 100%;
+            text-align: center;
+            vertical-align: middle;
+            margin: 12px 15px 12px 12px;
+            padding: 5px;
+        }
+
+        .file-drop-zone-title {
+            color: #aaa;
+            font-size: 40px;
+            padding: 85px 10px;
+        }
+
+        .file-highlighted {
+            border: 2px dashed #999 !important;
+            background-color: #f0f0f0;
+        }
+
+        .file-uploading {
+            background: url('../img/loading-sm.gif') no-repeat center bottom 10px;
+            opacity: 0.65;
+        }
+
+        .file-thumb-progress .progress, .file-thumb-progress .progress-bar {
+            height: 10px;
+            font-size: 9px;
+            line-height: 10px;
+        }
+
+        .file-thumbnail-footer {
+            position: relative;
+        }
+
+        .file-thumb-progress {
+            position: absolute;
+            top: 22px;
+            left: 0;
+            right: 0;
+        }
+
+        /* IE 10 fix */
+        .btn-file ::-ms-browse {
+            width: 100%;
+            height: 100%;
+        }
+
+        #text {
+            min-height: 40px;
+            padding: 0;  /* Add padding for the buttons */
+            width: 100%;
+            font-style: Consolas;
+            font-family: monospace;
+            --caret-color: transparent;
+        }
+
+        #text:focus {
+            outline: none;
+        }
+
+        #cursor {
+            width: intrinsic; /* Safari/WebKit uses a non-standard name */
+            width: -moz-max-content; /* Firefox/Gecko */
+            width: -webkit-max-content; /* Chrome */
+            width: max-content;
+            font-family: monospace;
+
+            border: 1px solid #00ff00;
+            background-color: none;
+
+            height: 17px;
+            float: left;
+            color: #fff;
+            position: absolute;
+            left: 0;
+            top: 0;
+            margin: 10px;
+            display: none;
+        }
+
+        #cursor.focus {
+            border: 1px solid #00ff00;
+            background-color: #00ff00;
+            color: #00ff00;
+        }
+
+        ul#messages > li.pre-wrapper {
+            overflow-x: auto !important;
+            white-space: pre-wrap !important; /* Since CSS 2.1 */
+            white-space: -moz-pre-wrap !important; /* Mozilla, since 1999 */
+            white-space: -pre-wrap !important; /* Opera 4-6 */
+            white-space: -o-pre-wrap !important; /* Opera 7 */
+            word-wrap: break-word !important; /* Internet Explorer 5.5+ */
+        }
+
+        /* Styling for streaming messages */
+        .typing-indicator {
+            display: none;
+        }
+
+        .typing-indicator::after {
+            content: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        @keyframes typing {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
+
+        /* AI toggle button styles */
+        .ai-toggle-wrapper {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 1;
+        }
+
+        .ai-toggle {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            margin-bottom: 0;
+        }
+
+        .ai-toggle input {
+            display: none;
+        }
+
+        .ai-toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: #f3f4f6;
+            color: #6b7280;
+            font-size: 0.75rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        .ai-toggle-label i {
+            font-size: 0.875rem;
+            transition: transform 0.2s ease;
+        }
+
+        .ai-toggle input:checked + .ai-toggle-label {
+            background-color: #10a37f;
+            color: #ffffff;
+        }
+
+        .ai-toggle input:checked + .ai-toggle-label i {
+            transform: scale(1.1);
+        }
+
+        .ai-toggle:hover .ai-toggle-label {
+            background-color: #e5e7eb;
+        }
+
+        .ai-toggle input:checked:hover + .ai-toggle-label {
+            background-color: #0d8c6d;
+        }
+
+        ul#messages .content ul {
+
+        }
+
+        ul#messages .content ul li {
+            white-space: pre-wrap !important; /* Since CSS 2.1 */
+            white-space: -moz-pre-wrap !important; /* Mozilla, since 1999 */
+            white-space: -pre-wrap !important; /* Opera 4-6 */
+            white-space: -o-pre-wrap !important; /* Opera 7 */
+            word-wrap: break-word !important; /* Internet Explorer 5.5+ */
+        }
+
+        p, pre {
+            margin: 0;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            left: -250px;
+            top: 0;
+            width: 250px;
+            height: 100%;
+            background: #2c3e50;
+            transition: all 0.3s ease;
+            z-index: 1040;
+            padding-top: 60px;
+            box-shadow: 3px 0 6px rgba(0,0,0,0.1);
+        }
+
+        .sidebar.active {
+            left: 0;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            left: 15px;
+            top: 5px;
+            padding: 11px;
+            z-index: 1051;
+            cursor: pointer;
+            border-radius: 30px;
+            width: 42px;
+            height: 42px;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar-toggle span {
+            display: block;
+            width: 20px;
+            height: 2px;
+
+            background: #5e5e5e;
+            margin: 4px 0;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle.active span {
+            background: #fff;
+        }
+
+        .sidebar-toggle.active span:nth-child(1) {
+
+        }
+
+        .sidebar-toggle.active span:nth-child(2) {
+
+        }
+
+        .sidebar-toggle.active span:nth-child(3) {
+
+        }
+
+        .sidebar-header {
+            padding: 0 20px;
+            color: #ecf0f1;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu li {
+            padding: 15px 20px;
+            color: #ecf0f1;
+            border-bottom: 1px solid #34495e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-menu li:hover {
+            background: #34495e;
+        }
+
+        .sidebar-menu li i {
+            margin-right: 10px;
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            color: #ecf0f1;
+        }
+
+        .sidebar-section h3 {
+            margin-top: 0;
+            color: #3498db;
+            font-size: 16px;
+        }
+
+        .online-users {
+            list-style: none;
+            padding: 0;
+        }
+
+        .online-users li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .user-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-online {
+            background: #2ecc71;
+        }
+
+        .status-offline {
+            background: #95a5a6;
+        }
+
+        /* Adjust main content when sidebar is active */
+        .content-wrapper {
+            transition: all 0.3s ease;
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .content-wrapper.shifted {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+        }
+
+        /* Navbar adjustments */
+        .navbar-default {
+            transition: all 0.3s ease;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            right: 0;
+        }
+
+        .navbar-default.shifted {
+            width: calc(100% - 250px);
+            margin-left: 250px;
+        }
+
+        /* Container adjustments */
+        .container {
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 1170px;
+            padding-right: 15px;
+            padding-left: 15px;
+            margin-right: auto;
+            margin-left: auto;
+        }
+
+        .container.shifted {
+            margin-left: 250px;
+            width: calc(100% - 250px);
+            max-width: calc(1170px - 250px);
+        }
+
+        /* List adjustments */
+        #list {
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                left: -100%;
+                width: 100%;
+                z-index: 1050;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            .content-wrapper.shifted,
+            .navbar-default.shifted,
+            .container.shifted {
+                margin-left: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            #list {
+                width: 100% !important;
+            }
+
+            .sidebar-toggle {
+                top: 7px;
+                left: 10px;
+                width: 35px;
+                height: 35px;
+                padding: 8px;
+            }
+
+            .navbar-default {
+                padding-left: 50px;
+            }
+        }
+
+        .glyphicon {
+            display: none !important;
+        }
+
+        /* File upload styles */
+        .upload-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-preview-container {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 300px;
+            z-index: 1000;
+        }
+
+        .file-preview-container.active {
+            display: block;
+        }
+
+        .file-preview-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 5px;
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+
+        .file-preview-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .file-preview-name {
+            flex-grow: 1;
+            margin-right: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-preview-remove {
+            color: #dc3545;
+            cursor: pointer;
+            padding: 2px 5px;
+        }
+
+        .file-preview-remove:hover {
+            color: #bd2130;
+        }
+
+        .upload-progress {
+            height: 3px;
+            width: 0;
+            background-color: #007bff;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            transition: width 0.3s ease;
+        }
+
+        .upload-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            background: #28a745;
+            color: white;
+            display: none;
+            z-index: 1050;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Remove unnecessary file input styles */
+        .file-loading,
+        .file-caption-name,
+        .file-preview-detail-modal,
+        .file-preview-frame,
+        .file-preview-other,
+        .file-actions,
+        .file-upload-indicator,
+        .file-footer-caption,
+        .file-drop-zone {
+            display: none !important;
+        }
+
+        .panel-primary {
+            border-color: #ffffff;
+        }
+
+        .panel {
+            margin-bottom: 20px;
+            background-color: #fff;
+            border: 0px solid transparent;
+        }
+
+        .panel-primary>.panel-heading {
+            color: #000;
+            background-color: #ffffff;
+            border-color: #ffffff;
+        }
+
+        .typing-indicator {
+            display: none;
+        }
+
+        .typing-indicator::after {
+            content: none;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        @keyframes typing {
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
+            100% { content: '.'; }
+        }
+
+        #messages li {
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: translateY(0);
+            color: inherit;
+        }
+
+        #messages li.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .content {
+            transition: all 0.3s ease;
+            color: inherit;
+            display: inline-block;
+        }
+
+        /* Ensure text colors are visible in different themes */
+        #list.light-green .content,
+        #list.dark-green .content {
+            color: #fff;
+        }
+
+        #list .content {
+            color: #000;
+        }
+
+        /* Ensure time and name are visible */
+        #messages li .time,
+        #messages li .name {
+            color: inherit;
+            display: inline-block;
+        }
+
+        /* Fix for pre-wrapper class */
+        #messages li.pre-wrapper {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: inherit;
+        }
+
+        /* Ensure markdown content is visible */
+        #messages li pre {
+            background-color: #f8f9fa;
+            padding: 1em;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+
+        #messages li code {
+            background-color: #f8f9fa;
+            padding: 0.2em 0.4em;
+        }
+
+        /* Remove PlantUML diagram styles */
+        .plantuml-diagram {
+            max-width: 100%;
+            height: auto;
+            margin: 1em 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: white;
+            display: block;
+        }
+
+        /* Dark mode support for PlantUML diagrams */
+        @media (prefers-color-scheme: dark) {
+            .plantuml-diagram {
+                border-color: #404040;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                background-color: #1a1a1a;
+            }
+        }
+
+        /* Remove typing indicator styles */
+        .typing-indicator {
+            display: none !important;
+        }
+
+        .typing-indicator::after {
+            content: none !important;
+        }
+
+        /* Markdown content styles */
+        #messages li .content {
+            /*white-space: pre-wrap;*/
+            word-wrap: break-word;
+        }
+
+        #messages li .content p {
+            margin: 0.5em 0;
+        }
+
+        #messages li .content p:first-child {
+            margin-top: 0;
+        }
+
+        #messages li .content p:last-child {
+            margin-bottom: 0;
+        }
+
+        #messages li .content code {
+            background-color: #f8f9fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        #messages li .content blockquote {
+            border-left: 4px solid #ddd;
+            margin: 0.5em 0;
+            padding-left: 1em;
+            color: #666;
+        }
+
+        #messages li .content ul, 
+        #messages li .content ol {
+            margin: 0.5em 0;
+            padding-left: 2em;
+        }
+
+        #messages li .content h1,
+        #messages li .content h2,
+        #messages li .content h3,
+        #messages li .content h4,
+        #messages li .content h5,
+        #messages li .content h6 {
+            margin: 0.5em 0;
+            line-height: 1.2;
+        }
+
+        #messages li .content table {
+            border-collapse: collapse;
+            margin: 0.5em 0;
+            width: 100%;
+        }
+
+        #messages li .content th,
+        #messages li .content td {
+            border: 1px solid #ddd;
+            padding: 0.5em;
+        }
+
+        #messages li .content th {
+            background-color: #f8f9fa;
+        }
+
+        #messages li .content img {
+            max-width: 100%;
+            height: auto;
+            margin: 0.5em 0;
+        }
+
+        #messages li .content a {
+            color: #337ab7;
+            text-decoration: none;
+        }
+
+        #messages li .content a:hover {
+            text-decoration: underline;
+        }
+
+        /* Dark theme support for markdown content */
+        #list.dark-green .content,
+        #list.light-green .content {
+            color: #fff;
+        }
+
+        #list.dark-green .content pre,
+        #list.light-green .content pre,
+        #list.dark-green .content code,
+        #list.light-green .content code {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #list.dark-green .content blockquote,
+        #list.light-green .content blockquote {
+            border-left-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        #list.dark-green .content th,
+        #list.light-green .content th {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #list.dark-green .content th,
+        #list.dark-green .content td,
+        #list.light-green .content th,
+        #list.light-green .content td {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #list.dark-green .content a,
+        #list.light-green .content a {
+            color: #66b3ff;
+        }
+
+        /* Chat History Modal Styles */
+        .chat-history-container {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .chat-history-filters {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .chat-history-filters .form-group {
+            margin-bottom: 10px;
+        }
+
+        .chat-history-list {
+            padding: 15px;
+        }
+
+        #chat-history-messages {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #chat-history-messages li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #chat-history-messages li .time {
+            color: #6b7280;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        #chat-history-messages li .name {
+            font-weight: 600;
+            color: #111827;
+            margin-right: 0.5rem;
+        }
+
+        #chat-history-messages li .content {
+            color: #374151;
+            margin-top: 5px;
+        }
+
+        #chat-history-messages li.system-notification {
+            background-color: #f3f4f6;
+            border-left: 4px solid #6b7280;
+        }
+
+        #chat-history-messages li.user-joined {
+            background-color: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4CAF50;
+        }
+
+        #chat-history-messages li.user-left {
+            background-color: rgba(244, 67, 54, 0.1);
+            border-left: 4px solid #F44336;
+        }
+
+        #chat-history-messages li.meeting-status {
+            background-color: rgba(33, 150, 243, 0.1);
+            border-left: 4px solid #2196F3;
+        }
+
+        .meetings-list {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .meetings-list h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        #user-meetings {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #user-meetings li {
+            padding: 10px;
+            margin-bottom: 5px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #user-meetings li:hover {
+            background-color: #f0f0f0;
+            border-color: #ccc;
+        }
+
+        #user-meetings li.active {
+            background-color: #e3f2fd;
+            border-color: #2196F3;
+        }
+
+        #user-meetings .meeting-code {
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        #user-meetings .meeting-time {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        #user-meetings .meeting-preview {
+            font-size: 0.9em;
+            color: #444;
+            margin-top: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .meetings-list {
+            padding: 15px;
+        }
+
+        .meetings-list h4 {
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        #user-meetings {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #user-meetings li {
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        #user-meetings li:hover {
+            background-color: #f8f9fa;
+            border-color: #2196F3;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        #user-meetings .meeting-code {
+            font-weight: 600;
+            color: #2196F3;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        #user-meetings .meeting-time {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        #user-meetings .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Password toggle button styles */
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 0;
+            z-index: 2;
+        }
+
+        .password-toggle:hover {
+            color: #333;
+        }
+
+        .password-field-wrapper {
+            position: relative;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin-right: 8px;
+        }
+
+        .status-indicator.connected {
+            background-color: #28a745;
+        }
+
+        .status-indicator.disconnected {
+            background-color: #dc3545;
+        }
+
+        .message-form button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .message-form input:disabled {
+            cursor: not-allowed;
+            background-color: #f8f9fa;
+        }
     </style>
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]>
@@ -457,532 +1976,1675 @@
     <script type="text/javascript" src="/scripts/jquery-1.11.3.min.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/struct.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/timer.js?raw=true"></script>
-    <script type="text/javascript" src="/scripts/bootstrap/fileinput/fileinput.js?raw=true"></script>
     <script type="text/javascript" src="/scripts/marked.min.js"></script>
     <script type="text/javascript" src="/scripts/highlight/highlight.min.js"></script>
+    <script type="text/javascript" src="/scripts/sse-client.js"></script>
 
     <script type="text/javascript">
-  //<![CDATA[
-  var timer = new Timer(.5,function(){});
-  var old_title = document.title;
-  var dotted = '', user = struct.get("user")? struct.get("user"): false;
-  var markedOptions= {
-      renderer: new marked.Renderer(),
-      highlight: function(code, lang) {
-        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-        return hljs.highlight(code, { language }).value;
-      },
-      langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
-      pedantic: false,
-      gfm: true,
-      breaks: false,
-      sanitize: false,
-      smartypants: false,
-      xhtml: false
-  };
+        //<![CDATA[
+        // Initialize the application
 
-  function update($data) {
-    if(typeof($data.message)!='undefined') {
-      placeholder = document.createElement('li');
-      placeholder.setAttribute('class','content');
-      placeholder.setAttribute('class','pre-wrapper');
-      placeholder.innerHTML = "<span class='time'>" + $data.time + "</span> <span class='name'>" + $data.user + "</span>: ";
-      $('#messages').append(placeholder);
+        var timer = new Timer(.5, function () {
+        });
+        var old_title = document.title;
+        var dotted = '', user = struct.get("user") ? struct.get("user") : false;
+        var markedOptions = {
+            renderer: new marked.Renderer(),
+            highlight: function (code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, {language}).value;
+            },
+            langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
+            pedantic: false,
+            gfm: true,
+            breaks: false,
+            sanitize: false,
+            smartypants: false,
+            xhtml: false
+        };
 
-      $text = $data.message;
-      if($text.indexOf("data:image/png;base64,") == 0) {
-        placeholder.innerHTML += "<span class='content'>";
-        placeholder.innerHTML += "<img src='"+$text+"' />"
-        placeholder.innerHTML += "</span>";
-        $(placeholder).addClass('chat-gpt');
-      }
-      else {
-        $tmp = $text.replace(/<br\s*[\/]?>/gi, '\n');
-        if($data.user == 'ChatGPT') {
-          placeholder.innerHTML += "<span class='content'>";
-          k = 0;
-          animation_timer = new Timer(.01, function(){});
-          animation_timer.setAction(function(){
-            if(k < $tmp.length) {
-                c = $tmp.charAt(k++);
-                 if(c=='\n')
-                  placeholder.innerHTML += "  \n";
-                /* else if(c==' ')
-                  placeholder.textContent += "&nbsp;";*/
-                else
-                  placeholder.innerHTML += c;
+        // Add UTF-8 safe base64 encoding function
+        function utf8_to_b64(str) {
+            return window.btoa(unescape(encodeURIComponent(str)));
+        }
 
-                if(c == ',') {
-                    this.setInterval(0.1);
-                }
-                else {
-                    this.setInterval(0.01);
-                }
+        // Password toggle functionality
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const button = input.nextElementSibling;
+            const icon = button.querySelector('i');
 
-                this.start();
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
-            else this.complete();
-          });
-          animation_timer.start().complete(function(){ this.stop(); placeholder.innerHTML += "</span>";
-          $(placeholder).removeClass('pre-wrapper');
-          $(placeholder).addClass('chat-gpt');
-          placeholder.innerHTML = marked.parse(placeholder.textContent, markedOptions);
-          });
-        }
-        else {
-          placeholder.innerHTML += "<span class='content'>" + $data.message +"</span>";
-        }
-      }
-      $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-      
-      if(document.title == old_title) {
-        document.title = 'New Message(s) Received!';
-      }
-      else {
-        document.title = old_title;
-      }
-    }
-    else {
-      if(typeof($data.cmd) != 'undefined') {
-        if(!user) {
-          $("#modal").modal();
-          return false;
         }
 
-        $_user = $data.user;
-        if($_user) {
-          switch($data.cmd) 
-          {
-            case 'onblur':          
-              document.title = old_title;
-              timer.stop();
-              break;
-            case 'greeting':
-              $li = $("<li />");
-              $li.html("System Notification: " + $data.user + " joined this conversation.");
-              $('#messages').append($li);
-              $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-              break;
-            case 'session-timeout':
-                $li = $("<li />");
-                $li.html("System Notification: " + $data.user + " left from this conversation.");
-                $('#messages').append($li);
-                $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-                break;
-            case 'expired':
-                $li = $("<li />");
-                $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
-                $('#messages').append($li);
-                $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-                break;
-            default:
-              timer.setAction(function(){
-                document.title = $_user + " is typing" + dotted;
-                dotted += '.';
-                if(dotted.length>3) this.complete();
-                this.start();
-              });
-              timer.start().complete(function(){ dotted = ''; });//.stop(4);
-          }
-        }
-      }
-    }
-  }
+        // Check if user is logged in
+        function checkAuthStatus() {
+            console.log('Checking authentication status...');
 
-  function command(cmd) {
-    $.ajax({
-      type: "POST",
-      url: "[%LINK:talk/command%]",
-      dataType: "json",
-      data: { cmd: cmd }
-    }).done(function( msg ) {
+            // First check if we already have the show_login variable set by the server
+            var showLogin = '{%show_login%}';
+            console.log('Server-side show_login:', showLogin);
 
-    }).fail(function( msg ) {
-      switch(msg.responseJSON.error) {
-        case 'session-timeout':
-            $li = $("<li />");
-            $li.html("System Notification:\t" + $data.user + " left from this conversation.");
-            $('#messages').append($li);
-            $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-            
-            if(confirm("Your session is timed out, Do you want to reload the conversation?")) {
-               $.ajax({
-                 type: "POST",
-                 url: $('#link').text()
-               }).done(function( msg ) {});
+            if (showLogin === 'true' || showLogin === 'false') {
+                // Use the server-side variable to set initial visibility
+                if (showLogin === 'true') {
+                    console.log('Using server-side variable: User is not logged in');
+                    $('#auth-forms').show();
+                    $('#chat-interface').hide();
+                    $('#user-info').hide();
+                } else {
+                    console.log('Using server-side variable: User is logged in');
+                    $('#auth-forms').hide();
+                    $('#chat-interface').show();
+                    $('#user-info').show();
+                    $('#current-username').text('{%username%}');
+                }
+                return;
             }
-            break;
-          case 'expired':
-            $li = $("<li />");
-            $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
-            $('#messages').append($li);
-            $('#list').animate({scrollTop: $('#messages').height()}, 'fast'); 
-            break;
-          case 'missing user':
-              if (user) {
+
+            // If server-side variable is not set, check via AJAX
+            $.ajax({
+                url: '/?q=auth/profile',
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    // User is logged in
+                    console.log('User is logged in:', response.username);
+                    $('#auth-forms').hide();
+                    $('#chat-interface').show();
+                    $('#user-info').show();
+                    $('#current-username').text(response.username);
+                },
+                error: function() {
+                    // User is not logged in
+                    console.log('User is not logged in');
+                    $('#auth-forms').show();
+                    $('#chat-interface').hide();
+                    $('#user-info').hide();
+                }
+            });
+        }
+
+        // Handle login form submission
+        function setupLoginForm() {
+            $('#login-form').submit(function(e) {
+                e.preventDefault();
+
+                var username = $('#login-username').val();
+                var password = $('#login-password').val();
+
+                // Clear previous errors
+                $('#login-error').hide().text('');
+
+                // Send login request
                 $.ajax({
-                  type: "POST",
-                  url: "{%start_url%}/"+ user
-                }).done(function( msg ) {});
-              }
-              else {
-                $("#modal").modal();
-              }
-           break;
-          default:break;
-      }
-      
-      console.log('Fail.');
-      console.log(msg);
-    });
-  }
+                    url: '/?q=auth/login',
+                    type: 'POST',
+                    data: {
+                        username: username,
+                        password: password
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        console.log('Login successful:', response);
+                        // Set a flag to indicate we just logged in - use localStorage for persistence across page reloads
+                        localStorage.setItem('justLoggedIn', 'true');
+                        localStorage.setItem('loginTimestamp', Date.now().toString());
 
-  function save() {
-    $message = $("#text").html();
-    image = "";
-    if($("#topic").text().toLowerCase().indexOf("@chatgpt")!=-1) {
-      $message = "@ChatGPT " + $("#text").text() + "\n";
+                        // Hide login form and show chat interface
+                        $('#auth-forms').hide();
+                        $('#chat-interface').show();
+                        $('#user-info').show();
+                        $('#current-username').text(response.username);
+                        struct.save("user", response.username);
+                        command("greeting");
 
-      $("#text").find("img").each(function() {
-          image = $(this).attr("src");
-      });
-    }
-
-    $.ajax({
-      type: "POST",
-      url: "[%LINK:talk/save%]",
-      dataType: "json",
-      data: { text: $message, time: new Date().getTime(), image: image }
-    }).done(function( msg ) {
-        $("#text").html('');
-    });
-
-    // $("li").even().addClass("even);
-  }
-
-  var is_running = false;
-  var connection_timer = new Timer(5, function(){ autoupdate()});
-  var blur_timer = new Timer(5);
-  function autoupdate() {
-    if(!is_running) {
-      is_running = true;
-      $.getJSON( "{%meeting_update_url%}", function(data) {
-        update(data);
-        is_running = false;
-      }).done(function( msg ) {
-        autoupdate();
-        is_running = false;
-      }).fail(function( err ) {
-        if(typeof(err.responseJSON) != 'undefined') {
-          $msg = err.responseJSON;
-          if($msg.error == "expired") {
-            command("expired");
-          }
-          else if($msg.error == "session-timeout") {
-            command("session-timeout");
-          }
-          else {
-            connection_timer.start();
-            is_running = false;
-            console.log("The message has not been sent successfully.error:" + $msg.error);
-            console.log($msg);
-          }
+                        // Reload the page to ensure everything is properly initialized
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        var errorMessage = 'Login failed. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#login-error').text(errorMessage).show();
+                    }
+                });
+            });
         }
-        else {
-          connection_timer.start();
-          is_running = false;
-          console.log("The message has not been sent successfully.");
-          console.log(err);
+
+        // Handle registration form submission
+        function setupRegisterForm() {
+            $('#register-form').submit(function(e) {
+                e.preventDefault();
+
+                var username = $('#register-username').val();
+                var password = $('#register-password').val();
+                var email = $('#register-email').val();
+                var fullName = $('#register-fullname').val();
+
+                // Clear previous errors
+                $('#register-error').hide().text('');
+
+                // Validate email
+                if (!email || !isValidEmail(email)) {
+                    $('#register-error').text('Please enter a valid email address.').show();
+                    return;
+                }
+
+                // Send registration request
+                $.ajax({
+                    url: '/?q=auth/register',
+                    type: 'POST',
+                    data: {
+                        username: username,
+                        password: password,
+                        email: email,
+                        fullName: fullName
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        console.log('Registration successful:', response);
+                        // Hide registration form and show chat interface
+                        $('#auth-forms').hide();
+                        $('#chat-interface').show();
+                        $('#user-info').show();
+                        $('#current-username').text(response.username);
+                        // Reload the page to ensure everything is properly initialized
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        var errorMessage = 'Registration failed. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#register-error').text(errorMessage).show();
+                    }
+                });
+            });
         }
-      });
-    }
-  }
 
-  var n=0;
-  var current_position = 0;
-  window.key = [];
+        // Add email validation function
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
 
-  function currentX(_, s, current_position) {
-      len = 0;
-      window.key = [];
-      for(var i=0;i<s.length;i++) {
-          _.html(s.charAt(i));
-          window.key[i] = _.width()>0?_.width():7;
-          len += window.key[i];
-          if(i==current_position) break;
-      }
+        // Handle logout
+        function setupLogout() {
+            $('#logout-link').click(function(e) {
+                e.preventDefault();
 
-      return len;
-  }
+                $.ajax({
+                    url: '/?q=auth/logout',
+                    type: 'POST',
+                    success: function() {
+                        // Reload the page to show login form
+                        window.location.reload();
+                    }
+                });
+            });
+        }
 
-  $(function(){
-    $("#button").click(function(){
-      save();
-      timer.stop();
-    });
-
-    //Start here.
-    $("#text").keypress(function(event){
-      if(event.which == 13) {
-        save();
-        timer.stop();
-      }
-    });
-
-    $("#text").focus(function(event){
-      command("onfocus");
-      document.title = old_title;
-    });
-
-    $("#text").blur(function(event){
-      blur_timer.setAction(function(){
-        command("onblur");
-        document.title = old_title;
-      });
-      blur_timer.start();
-    });
-
-    $("#sender").submit(function(event){
-      event.preventDefault();
-      save();
-    });
-
-    var post_timer = new Timer(.2, function(){
-      if(n++<200){
-        $("#text").text(user+' posts '+n);
-        $("#sender").submit();
-      }
-      else this.complete();
-      this.start();
-    });
-
-    $("#test").click(function(event){
-      event.preventDefault();
-      post_timer.start().complete(function(){ this.stop(); });
-    });
-
-    autoupdate();
-
-    $(".pad").hover(function(){
-      $(this).addClass("hover");
-      $("#text").focus();
-    },function(){
-      $(this).removeClass("hover"); 
-    });
-
-    $(".text").click(function(){
-      $("#text").focus();
-    });
-
-    $("#dialog_submit").click(function(){
-      $.ajax({
-        type: "POST",
-        url: "{%start_url%}/"+ $("#nickname").val()
-      }).done(function( msg ) {
-        $("#modal").modal('hide');
-        user = $("#nickname").val();
-        struct.save("user", user);
-        command("greeting");
-      });
-    });
-
-    $("#topic_submit").click(function(){
-      $.ajax({
-        type: "POST",
-        url: "[%LINK:talk/topic%]",
-        data: {topic: $("#brief").val()}
-      }).done(function( msg ) {
-        $("#topic_modal").modal('hide');
-        $("#topic").html($("#brief").val());
-      });
-    });
-
-    $("#nickname").keyup(function(event){
-      if(event.which == 13) {
-        $("#dialog_submit").click();
-      }
-    });
-
-    if(!$("#topic").text()) {
-        $("#topic_modal").modal();
-    }
-
-    $("#link").click(function(){
-      navigator.clipboard.writeText(this.innerText)
-                  .then(() => {
-                      console.log('Copied.');
-                  })
-                  .catch(err => {
-                      console.error('Failed to copy url:', err);
-                  });
-      $.ajax({
-        type: "POST",
-        url: "{%meeting_qr_code_url%}",
-        data: {meeting_code: "{%meeting_code%}"}
-      }).done(function( msg ) {
-        $("#matrix").css({"background":"url("+msg+") transparent center center"});
-        $("#matrix > span").hide();
-        $("#matrix").show();
-      });
-    });
-
-    $("#link").mouseover(function(){
-      $("#matrix").show();
-    });
-
-    $("#link").mouseout(function(){
-      $("#matrix").hide();
-    });
-
-    $("#text").on('paste', function (e) {
-      if(e.originalEvent) {
-        var original = e.originalEvent;
-        for (var i = 0; i < original.clipboardData.items.length; i++) {
-          if (original.clipboardData.items[i].kind == "file" && original.clipboardData.items[i].type == "image/png") {
-            var file = original.clipboardData.items[i].getAsFile();
-            var reader = new FileReader();
-            reader.onloadend = function () {
-              var img = $("<img />");
-              img.attr('src', this.result);
-              $('#text').append(img);
+        function update($data) {
+            // Check if user is logged in before processing updates
+            if ($('#auth-forms').is(':visible')) {
+                // User is not logged in, ignore updates
+                return;
             }
-            reader.readAsDataURL(file);
-            break;
-          }
+
+            if (typeof ($data.message) != 'undefined') {
+                let placeholder;
+                let isNewElement = true;
+
+                // Check if user is at bottom before adding new message
+                const chatList = document.getElementById('list');
+                const userHasScrolled = chatList.dataset.userScrolled === 'true';
+                const isAtBottom = chatList.scrollHeight - chatList.scrollTop <= chatList.clientHeight + 100; // 100px threshold
+
+                // Check if this is a streaming update (has ID and streaming flag)
+                if ($data.id && ($data.streaming === true || $data.incremental === true)) {
+                    // Look for an existing element with this ID
+                    const existingElement = document.querySelector(`#messages li[data-message-id="${$data.id}"]`);
+                    if (existingElement) {
+                        // Use the existing element
+                        placeholder = existingElement;
+                        isNewElement = false;
+                    }
+                }
+
+                // If no existing element was found, create a new one
+                if (isNewElement) {
+                    placeholder = document.createElement('li');
+                    
+                    // Add data-message-id attribute for streaming updates
+                    if ($data.id) {
+                        placeholder.setAttribute('data-message-id', $data.id);
+                    } else {
+                        // Generate a unique ID if none is provided
+                        const uniqueId = 'msg_' + new Date().getTime() + '_' + Math.floor(Math.random() * 1000);
+                        placeholder.setAttribute('data-message-id', uniqueId);
+                    }
+
+                    // Handle system notifications
+                    if ($data.type === 'system') {
+                        placeholder.classList.add('system-notification');
+                        
+                        // Add specific classes based on event type
+                        if ($data.event === 'user_joined') {
+                            placeholder.classList.add('user-joined');
+                        } else if ($data.event === 'user_left') {
+                            placeholder.classList.add('user-left');
+                        } else if ($data.event === 'meeting_status') {
+                            placeholder.classList.add('meeting-status');
+                        }
+
+                        // Create notification content structure
+                        const content = document.createElement('div');
+                        content.className = 'notification-content';
+
+                        // Add icon based on event type
+                        const icon = document.createElement('i');
+                        icon.className = 'notification-icon fas';
+                        if ($data.event === 'user_joined') {
+                            icon.classList.add('fa-user-plus');
+                        } else if ($data.event === 'user_left') {
+                            icon.classList.add('fa-user-minus');
+                        } else if ($data.event === 'meeting_status') {
+                            icon.classList.add('fa-info-circle');
+                        }
+                        content.appendChild(icon);
+
+                        // Add notification text
+                        const text = document.createElement('div');
+                        text.className = 'notification-text';
+                        text.textContent = $data.message;
+                        content.appendChild(text);
+
+                        // Add timestamp
+                        const time = document.createElement('div');
+                        time.className = 'notification-time';
+                        time.textContent = $data.time;
+                        content.appendChild(time);
+
+                        placeholder.appendChild(content);
+                    } else {
+                        // Regular message
+                        if ($data.user === 'AI') {
+                            placeholder.classList.add('chat-gpt');
+                        }
+                        
+                        // Create message header
+                        const header = document.createElement('div');
+                        header.className = 'message-header';
+                        
+                        // Add timestamp
+                        const time = document.createElement('span');
+                        time.className = 'time';
+                        time.textContent = $data.time;
+                        header.appendChild(time);
+                        
+                        // Add username
+                        const name = document.createElement('span');
+                        name.className = 'name';
+                        name.textContent = $data.user;
+                        header.appendChild(name);
+                        
+                        placeholder.appendChild(header);
+                        
+                        // Create message content container
+                        const content = document.createElement('div');
+                        content.className = 'content';
+                        placeholder.appendChild(content);
+                    }
+
+                    $('#messages').append(placeholder);
+                }
+
+                // Handle message content
+                if ($data.type !== 'system') {
+                    $text = $data.message;
+                    const contentSpan = placeholder.querySelector('.content');
+                    
+                    // Handle different types of messages
+                    if ($data.user === 'AI') {
+                        // AI messages - use markdown rendering
+                        requestAnimationFrame(() => {
+                            // First set the raw text content to preserve newlines
+                            contentSpan.textContent = $text;
+                            
+                            // Clean up escaped characters before markdown processing
+                            $text = $text.replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                        .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                        .replace(/\\`/g, '`')    // Convert escaped backticks
+                                        .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                        .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                        .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                        .replace(/\\t/g, '\t');  // Convert escaped tabs
+                            
+                            // Parse markdown directly without PlantUML processing
+                            const parsedContent = marked.parse($text, markedOptions);
+                            contentSpan.innerHTML = parsedContent;
+                            
+                            // Apply syntax highlighting to code blocks
+                            contentSpan.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                                
+                                // Check if this is a PlantUML code block by examining content
+                                const content = block.textContent.trim();
+                                const isPlantUML = content.includes('@startuml') || 
+                                                 content.includes('@start') || 
+                                                 content.includes('skinparam') ||
+                                                 content.includes('->') ||
+                                                 content.includes('--') ||
+                                                 content.includes('note') ||
+                                                 content.includes('title') ||
+                                                 content.includes('participant') ||
+                                                 content.includes('actor');
+                                
+                                if (isPlantUML) {
+                                    const pre = block.parentElement;
+                                    const previewButton = document.createElement('button');
+                                    previewButton.className = 'preview-button';
+                                    previewButton.textContent = 'Preview';
+                                    previewButton.onclick = function() {
+                                        // Clean up the script content before sending
+                                        const script = block.textContent
+                                            .replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                            .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                            .replace(/\\`/g, '`')    // Convert escaped backticks
+                                            .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                            .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                            .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                            .replace(/\\t/g, '\t');  // Convert escaped tabs
+                                        
+                                        const encodedScript = utf8_to_b64(script);
+                                        
+                                        // Show loading state
+                                        previewButton.textContent = 'Loading...';
+                                        previewButton.disabled = true;
+                                        
+                                        // Call the backend to generate the PlantUML image
+                                        $.ajax({
+                                            url: '/?q=plantuml2png',
+                                            type: 'POST',
+                                            data: {
+                                                'plantuml-script': encodedScript
+                                            },
+                                            success: function(response) {
+                                                if (response && response.length > 0) {
+                                                    // Create preview container if it doesn't exist
+                                                    let previewContainer = pre.nextElementSibling;
+                                                    if (!previewContainer || !previewContainer.classList.contains('plantuml-preview')) {
+                                                        previewContainer = document.createElement('div');
+                                                        previewContainer.className = 'plantuml-preview';
+                                                        pre.parentNode.insertBefore(previewContainer, pre.nextSibling);
+                                                    }
+                                                    
+                                                    // Parse the response string to get the base64 image
+                                                    try {
+                                                        // Remove the square brackets and split by comma
+                                                        const base64String = response.replace(/[\[\]]/g, '').split(',')[0];
+                                                        // Add the image
+                                                        previewContainer.innerHTML = `<img src="data:image/png;base64,${base64String}" alt="PlantUML Diagram">`;
+                                                    } catch (error) {
+                                                        console.error('Error parsing PlantUML response:', error);
+                                                        previewButton.textContent = 'Error';
+                                                        previewButton.disabled = false;
+                                                        setTimeout(() => {
+                                                            previewButton.textContent = 'Preview';
+                                                            previewButton.disabled = false;
+                                                        }, 2000);
+                                                        return;
+                                                    }
+                                                    
+                                                    // Reset button state
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }
+                                            },
+                                            error: function() {
+                                                previewButton.textContent = 'Error';
+                                                previewButton.disabled = false;
+                                                setTimeout(() => {
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }, 2000);
+                                            }
+                                        });
+                                    };
+                                    pre.appendChild(previewButton);
+                                }
+                            });
+
+                            // Only auto-scroll if user hasn't manually scrolled and is not at bottom
+                            if (!userHasScrolled && !isAtBottom) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        });
+                    } else {
+                        // Regular user messages - use markdown
+                        requestAnimationFrame(() => {
+                            // First set the raw text content to preserve newlines
+                            contentSpan.textContent = $text;
+                            
+                            // Clean up escaped characters before markdown processing
+                            $text = $text.replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                        .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                        .replace(/\\`/g, '`')    // Convert escaped backticks
+                                        .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                        .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                        .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                        .replace(/\\t/g, '\t');  // Convert escaped tabs
+                            
+                            // Parse markdown directly without PlantUML processing
+                            const parsedContent = marked.parse($text, markedOptions);
+                            contentSpan.innerHTML = parsedContent;
+                            
+                            // Apply syntax highlighting to code blocks
+                            contentSpan.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                                
+                                // Check if this is a PlantUML code block by examining content
+                                const content = block.textContent.trim();
+                                const isPlantUML = content.includes('@startuml') || 
+                                                 content.includes('@start') || 
+                                                 content.includes('skinparam') ||
+                                                 content.includes('->') ||
+                                                 content.includes('--') ||
+                                                 content.includes('note') ||
+                                                 content.includes('title') ||
+                                                 content.includes('participant') ||
+                                                 content.includes('actor');
+                                
+                                if (isPlantUML) {
+                                    const pre = block.parentElement;
+                                    const previewButton = document.createElement('button');
+                                    previewButton.className = 'preview-button';
+                                    previewButton.textContent = 'Preview';
+                                    previewButton.onclick = function() {
+                                        // Clean up the script content before sending
+                                        const script = block.textContent
+                                            .replace(/\\\\/g, '\\')  // Fix double-escaped backslashes
+                                            .replace(/\\n/g, '\n')   // Convert escaped newlines
+                                            .replace(/\\`/g, '`')    // Convert escaped backticks
+                                            .replace(/\\'/g, '\'')   // Convert escaped single quotes
+                                            .replace(/\\"/g, '"')    // Convert escaped double quotes
+                                            .replace(/\\r/g, '\r')   // Convert escaped carriage returns
+                                            .replace(/\\t/g, '\t');  // Convert escaped tabs
+                                        
+                                        const encodedScript = utf8_to_b64(script);
+                                        
+                                        // Show loading state
+                                        previewButton.textContent = 'Loading...';
+                                        previewButton.disabled = true;
+                                        
+                                        // Call the backend to generate the PlantUML image
+                                        $.ajax({
+                                            url: '/?q=plantuml2png',
+                                            type: 'POST',
+                                            data: {
+                                                'plantuml-script': encodedScript
+                                            },
+                                            success: function(response) {
+                                                if (response && response.length > 0) {
+                                                    // Create preview container if it doesn't exist
+                                                    let previewContainer = pre.nextElementSibling;
+                                                    if (!previewContainer || !previewContainer.classList.contains('plantuml-preview')) {
+                                                        previewContainer = document.createElement('div');
+                                                        previewContainer.className = 'plantuml-preview';
+                                                        pre.parentNode.insertBefore(previewContainer, pre.nextSibling);
+                                                    }
+                                                    
+                                                    // Parse the response string to get the base64 image
+                                                    try {
+                                                        // Remove the square brackets and split by comma
+                                                        const base64String = response.replace(/[\[\]]/g, '').split(',')[0];
+                                                        // Add the image
+                                                        previewContainer.innerHTML = `<img src="data:image/png;base64,${base64String}" alt="PlantUML Diagram">`;
+                                                    } catch (error) {
+                                                        console.error('Error parsing PlantUML response:', error);
+                                                        previewButton.textContent = 'Error';
+                                                        previewButton.disabled = false;
+                                                        setTimeout(() => {
+                                                            previewButton.textContent = 'Preview';
+                                                            previewButton.disabled = false;
+                                                        }, 2000);
+                                                        return;
+                                                    }
+                                                    
+                                                    // Reset button state
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }
+                                            },
+                                            error: function() {
+                                                previewButton.textContent = 'Error';
+                                                previewButton.disabled = false;
+                                                setTimeout(() => {
+                                                    previewButton.textContent = 'Preview';
+                                                    previewButton.disabled = false;
+                                                }, 2000);
+                                            }
+                                        });
+                                    };
+                                    pre.appendChild(previewButton);
+                                }
+                            });
+
+                            // Only auto-scroll if user hasn't manually scrolled and is not at bottom
+                            if (!userHasScrolled && !isAtBottom) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        });
+                    }
+                }
+
+                if (document.title == old_title) {
+                    document.title = 'New Message(s) Received!';
+                } else {
+                    document.title = old_title;
+                }
+            } else if (typeof ($data.cmd) != 'undefined') {
+                // Handle commands (typing indicators, etc.)
+                if (!user) {
+                    $("#modal").modal();
+                    return false;
+                }
+
+                $_user = $data.user;
+                if ($_user) {
+                    switch ($data.cmd) {
+                        case 'onblur':
+                            document.title = old_title;
+                            timer.stop();
+                            break;
+                        case 'greeting':
+                            $li = $("<li />");
+                            $li.html("System Notification: " + $data.user + " joined this conversation.");
+                            $('#messages').append($li);
+                            // Only auto-scroll if user hasn't manually scrolled
+                            if (!chatList.dataset.userScrolled) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
+                            break;
+                        case 'session-timeout':
+                            $li = $("<li />");
+                            $li.html("System Notification: " + $data.user + " left from this conversation.");
+                            $('#messages').append($li);
+                            // Only auto-scroll if user hasn't manually scrolled
+                            if (!chatList.dataset.userScrolled) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
+                            break;
+                        case 'expired':
+                            $li = $("<li />");
+                            $li.html("System Notification: It's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                            $('#messages').append($li);
+                            // Only auto-scroll if user hasn't manually scrolled
+                            if (!chatList.dataset.userScrolled) {
+                                chatList.scrollTo({
+                                    top: chatList.scrollHeight,
+                                    behavior: 'smooth'
+                                });
+                            }
+                            break;
+                        default:
+                            timer.setAction(function () {
+                                document.title = $_user + " is typing" + dotted;
+                                dotted += '.';
+                                if (dotted.length > 3) this.complete();
+                                this.start();
+                            });
+                            timer.start().complete(function () {
+                                dotted = '';
+                            });
+                    }
+                }
+            }
         }
-      }
-    });
 
-    $("#attachment").fileinput({
-      uploadAsync: false,
-      showPreview: false,
-      showCaption: false, 
-      maxFileCount: 2,
-      uploadUrl: "/?q=talk/upload", // server upload action
-    });
+        function command(cmd) {
+            $.ajax({
+                type: "POST",
+                url: "[%LINK:talk/command%]",
+                dataType: "json",
+                data: {cmd: cmd}
+            }).done(function (msg) {
 
-    $("#attachment").on('filebatchuploadsuccess', function(event, data, previewId, index) {
-      var form = data.form, files = data.files, extra = data.extra,
-          response = data.response, reader = data.reader;
+            }).fail(function (msg) {
+                switch (msg.responseJSON.error) {
+                    case 'session-timeout':
+                        $li = $("<li />");
+                        $li.html("System Notification:\t" + $data.user + " left from this conversation.");
+                        $('#messages').append($li);
+                        $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
 
-      $ul = $("<ul />");
-      for(var i = 0; i < response.length; i++) {
-        if(response[i].type.indexOf("image/")!=-1) {
-            e = $("<img />");e.attr("src", response[i].file);
+                        if (confirm("Your session is timed out, Do you want to reload the conversation?")) {
+                            $.ajax({
+                                type: "POST",
+                                url: $('#link').text()
+                            }).done(function (msg) {
+                            });
+                        }
+                        break;
+                    case 'expired':
+                        $li = $("<li />");
+                        $li.html("System Notification:\tIt's an expired conversation, you have to refresh the current page or request a new meeting code.");
+                        $('#messages').append($li);
+                        $('#list').animate({scrollTop: $('#messages').height()}, 'fast');
+                        break;
+                    case 'missing user':
+                        if (user) {
+                            $.ajax({
+                                type: "POST",
+                                url: "{%start_url%}/" + user
+                            }).done(function (msg) {
+                            });
+                        } else {
+                            $("#modal").modal();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                console.log('Fail.');
+                console.log(msg);
+            });
         }
-        else {
-          e = $("<a target='_blank' >" + response[i].file + "</a>");e.attr("href", response[i].file);
+
+        function save() {
+            $message = $("#text").html();
+            if (!$message || $message.trim() === '') return;
+
+            image = "";
+
+            // Check if AI mode is enabled via the toggle button
+            const AIMode =  localStorage.getItem('ai-mode') === 'enabled';
+
+            if (AIMode) {
+                $message = "@AI " + $("#text").text() + "\n";
+
+                $("#text").find("img").each(function () {
+                    image = $(this).attr("src");
+                });
+            }
+
+            // Clear input field immediately for better UX
+            $("#text").html('');
+
+            $.ajax({
+                type: "POST",
+                url: "[%LINK:talk/save%]",
+                dataType: "json",
+                data: {
+                    text: $message,
+                    time: new Date().getTime(),
+                    image: image,
+                    stream: AIMode ? "true" : "false" // Enable streaming for AI messages
+                }
+            }).done(function (msg) {
+                // Input already cleared
+            }).fail(function(error) {
+                console.error('Failed to save message:', error);
+            });
         }
 
-        $li = $("<li />");
-        $li.append(e);
-        $ul.append($li);
-      }
+        var is_running = false;
+        var connection_timer = new Timer(5, function () {
+            // Timer callback removed as it's no longer needed
+        });
+        var blur_timer = new Timer(5);
 
-      $("#text").append($ul);
-    });
+        var n = 0;
+        var current_position = 0;
+        window.key = [];
 
-    $('a.theme').click(function(){
-        $('#list').removeClass().toggleClass($(this).text().toLowerCase().replace(/\s/, "-"));
-        $('a.theme').find('svg').attr('class','bi bi-check hidden');
-        $(this).find('svg').attr('class','bi bi-check');
-    });
-  });
-  //]]>
+        function currentX(_, s, current_position) {
+            len = 0;
+            window.key = [];
+            for (var i = 0; i < s.length; i++) {
+                _.html(s.charAt(i));
+                window.key[i] = _.width() > 0 ? _.width() : 7;
+                len += window.key[i];
+                if (i == current_position) break;
+            }
 
+            return len;
+        }
 
+        $(function () {
+            // Initialize authentication
+            checkAuthStatus();
+            setupLoginForm();
+            setupRegisterForm();
+            setupLogout();
 
+            // Handle forgot password link click
+            $('#forgot-password-link').click(function(e) {
+                e.preventDefault();console.log('forgot');
+                $('#forgotPasswordModal').modal('show');
+            });
+
+            // Handle back to login link click
+            $('#back-to-login').click(function(e) {
+                e.preventDefault();
+                $('#forgotPasswordModal').modal('hide');
+            });
+
+            // Handle forgot password form submission
+            $('#forgot-password-form').submit(function(e) {
+                e.preventDefault();
+
+                var email = $('#forgot-email').val();
+
+                // Clear previous messages
+                $('#forgot-password-error').hide().text('');
+                $('#forgot-password-success').hide().text('');
+
+                // Send forgot password request
+                $.ajax({
+                    url: '/?q=auth/forgot-password',
+                    type: 'POST',
+                    data: {
+                        email: email
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#forgot-password-success').text('If an account exists with this email, you will receive password reset instructions.').show();
+                        $('#forgot-email').val('');
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'An error occurred. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#forgot-password-error').text(errorMessage).show();
+                    }
+                });
+            });
+
+            // Handle password reset form submission
+            $('#reset-password-form').submit(function(e) {
+                e.preventDefault();
+
+                var token = $('#reset-token').val();
+                var newPassword = $('#new-password').val();
+                var confirmPassword = $('#confirm-password').val();
+
+                // Clear previous messages
+                $('#reset-password-error').hide().text('');
+                $('#reset-password-success').hide().text('');
+
+                // Validate passwords match
+                if (newPassword !== confirmPassword) {
+                    $('#reset-password-error').text('Passwords do not match').show();
+                    return;
+                }
+
+                // Send reset password request
+                $.ajax({
+                    url: '/?q=reset-password',
+                    type: 'POST',
+                    data: {
+                        token: token,
+                        password: newPassword
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        $('#reset-password-success').text('Your password has been reset successfully. You can now login with your new password.').show();
+                        $('#new-password').val('');
+                        $('#confirm-password').val('');
+
+                        // Redirect to login after 3 seconds
+                        setTimeout(function() {
+                            window.location.href = '/?q=login';
+                        }, 3000);
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'An error occurred. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        $('#reset-password-error').text(errorMessage).show();
+                    }
+                });
+            });
+
+            // Check for reset token in URL
+            var urlParams = new URLSearchParams(window.location.search);
+            var token = urlParams.get('token');
+            if (token) {
+                $('#login-form').hide();
+                $('#forgot-password-form').hide();
+                $('#reset-password-form').show();
+                $('#reset-token').val(token);
+            }
+
+            // Add scroll event listener to detect user scrolling
+            const chatList = document.getElementById('list');
+            chatList.addEventListener('scroll', function() {
+                // Simply set userScrolled to true when user scrolls
+                chatList.dataset.userScrolled = true;
+            });
+
+            // Reset user scroll flag when user manually scrolls to bottom
+            chatList.addEventListener('scrollend', function() {
+                chatList.dataset.userScrolled = false;
+            });
+
+            // Check if we should use SSE or fall back to the original implementation
+
+            const meetingURL = "{%meeting_update_url%}";
+
+            // Extract the part after '?q='
+            const queryString = meetingURL.split('?q=')[1];
+
+            if (typeof queryString != 'undefined') {
+                // Use regex to find the UUID (meeting code)
+                const match = queryString.match(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/);
+                const meetingCode = match ? match[0] : null;
+
+                // Use it
+                if (meetingCode) {
+                    window.smallTalk = new SSEClient();
+                    window.smallTalk.connect(meetingCode);
+                } else {
+                    console.error("Meeting code not found in the given URL.");
+                }
+            }
+
+            $("#button").click(function () {
+                save();
+                timer.stop();
+            });
+
+            //Start here.
+            $("#text").keypress(function (event) {
+                if (event.which == 13) { // Enter key
+                    if (!event.shiftKey) {
+                        // If Enter without Shift, send message and prevent default
+                        event.preventDefault();
+                        save();
+                        timer.stop();
+                    }
+                    // If Shift+Enter, let the default behavior happen (new line)
+                }
+            });
+
+            $("#text").focus(function (event) {
+                command("onfocus");
+                document.title = old_title;
+            });
+
+            $("#text").blur(function (event) {
+                blur_timer.setAction(function () {
+                    command("onblur");
+                    document.title = old_title;
+                });
+                blur_timer.start();
+            });
+
+            $("#sender").submit(function (event) {
+                event.preventDefault();
+                save();
+            });
+
+            var post_timer = new Timer(.2, function () {
+                if (n++ < 200) {
+                    $("#text").text(user + ' posts ' + n);
+                    $("#sender").submit();
+                } else this.complete();
+                this.start();
+            });
+
+            $("#test").click(function (event) {
+                event.preventDefault();
+                post_timer.start().complete(function () {
+                    this.stop();
+                });
+            });
+
+            $(".pad").hover(function () {
+                $(this).addClass("hover");
+                $("#text").focus();
+            }, function () {
+                $(this).removeClass("hover");
+            });
+
+            $(".text").click(function () {
+                $("#text").focus();
+            });
+
+            $("#dialog_submit").click(function () {
+                $.ajax({
+                    type: "POST",
+                    url: "{%start_url%}/" + $("#nickname").val()
+                }).done(function (msg) {
+                    $("#modal").modal('hide');
+                    user = $("#nickname").val();
+                    struct.save("user", user);
+                    command("greeting");
+                });
+            });
+
+            $("#nickname").keyup(function (event) {
+                if (event.which == 13) {
+                    $("#dialog_submit").click();
+                }
+            });
+
+            // Setup AI toggle button
+            $("#ai-toggle").change(function(event) {
+                localStorage.setItem('ai-mode', event.target.checked ? 'enabled' : 'disabled');
+                updateAIToggleState();
+            });
+
+            // Initialize toggle state from localStorage
+            updateAIToggleState();
+
+            function updateAIToggleState() {
+                const AIMode = localStorage.getItem('ai-mode') || 'disabled';
+                $("#ai-toggle").prop('checked', AIMode === 'enabled');
+            }
+
+            $("#link").click(function () {
+                navigator.clipboard.writeText(this.innerText)
+                    .then(() => {
+                        console.log('Copied.');
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy url:', err);
+                    });
+                $.ajax({
+                    type: "POST",
+                    url: "{%meeting_qr_code_url%}",
+                    data: {meeting_code: "{%meeting_code%}"}
+                }).done(function (msg) {
+                    $("#matrix").css({"background": "url(" + msg + ") transparent center center"});
+                    $("#matrix > span").hide();
+                    $("#matrix").show();
+                });
+            });
+
+            $("#link").mouseover(function () {
+                $("#matrix").show();
+            });
+
+            $("#link").mouseout(function () {
+                $("#matrix").hide();
+            });
+
+            $("#text").on('paste', function (e) {
+                if (e.originalEvent) {
+                    var original = e.originalEvent;
+                    for (var i = 0; i < original.clipboardData.items.length; i++) {
+                        if (original.clipboardData.items[i].kind == "file" && original.clipboardData.items[i].type == "image/png") {
+                            var file = original.clipboardData.items[i].getAsFile();
+                            var reader = new FileReader();
+                            reader.onloadend = function () {
+                                var img = $("<img />");
+                                img.attr('src', this.result);
+                                $('#text').append(img);
+                            }
+                            reader.readAsDataURL(file);
+                            break;
+                        }
+                    }
+                }
+            });
+
+            $('a.theme').click(function () {
+                $('#list').removeClass().toggleClass($(this).text().toLowerCase().replace(/\s/, "-"));
+                $('a.theme').find('svg').attr('class', 'bi bi-check hidden');
+                $(this).find('svg').attr('class', 'bi bi-check');
+            });
+
+            // Add Sidebar functionality
+            class Sidebar {
+                constructor() {
+                    this.sidebar = null;
+                    this.toggle = null;
+                    this.contentWrapper = null;
+                    this.isActive = false;
+                    this.init();
+                }
+
+                init() {
+                    this.createSidebar();
+                    this.setupEventListeners();
+                    this.updateOnlineUsers();
+                }
+
+                createSidebar() {
+                    // Create sidebar HTML
+                    const sidebarHTML = `
+                        <div class="sidebar">
+                            <div class="sidebar-header">
+                                <h3>Small Talk</h3>
+                            </div>
+                            <ul class="sidebar-menu">
+                                <li><i class="fas fa-home"></i> New Chat</li>
+                                <li><i class="fas fa-book"></i> Libraries</li>
+                                <li><i class="fas fa-history"></i> Chat History</li>
+                                <li class="admin-only" style="display: none;"><i class="fas fa-shield-alt"></i> User Management</li>
+                                <li class="admin-only"><i class="fas fa-cog"></i> Settings</li>
+                            </ul>
+                            <div class="sidebar-section">
+                                <h3>Online Users</h3>
+                                <ul class="online-users">
+                                    <!-- Dynamically populated -->
+                                </ul>
+                            </div>
+                            <div class="sidebar-section">
+                                <h3>Room Info</h3>
+                                <p>Active Since: <span id="sidebar-active-time"></span></p>
+                            </div>
+                        </div>
+                        <div class="sidebar-toggle">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    `;
+
+                    // Insert sidebar into DOM
+                    document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
+
+                    // Store references
+                    this.sidebar = document.querySelector('.sidebar');
+                    this.toggle = document.querySelector('.sidebar-toggle');
+                    this.contentWrapper = document.querySelector('.container');
+                    this.contentWrapper.classList.add('content-wrapper');
+                }
+
+                setupEventListeners() {
+                    this.toggle.addEventListener('click', () => this.toggleSidebar());
+
+                    // Handle window resize
+                    window.addEventListener('resize', () => {
+                        if (window.innerWidth <= 768) {
+                            this.contentWrapper.classList.remove('shifted');
+                            document.querySelectorAll('.container').forEach(container => {
+                                container.classList.remove('shifted');
+                            });
+                        } else if (this.isActive) {
+                            this.contentWrapper.classList.add('shifted');
+                            document.querySelectorAll('.container').forEach(container => {
+                                container.classList.add('shifted');
+                            });
+                        }
+
+                        // Adjust list width after resize
+                        this.adjustListWidth();
+                    });
+
+                    // Setup menu item clicks
+                    document.querySelectorAll('.sidebar-menu li').forEach(item => {
+                        item.addEventListener('click', (e) => this.handleMenuClick(e));
+                    });
+                }
+
+                toggleSidebar() {
+                    this.isActive = !this.isActive;
+                    this.sidebar.classList.toggle('active');
+                    this.toggle.classList.toggle('active');
+                    this.contentWrapper.classList.toggle('shifted');
+                    // Toggle shifted class on all elements
+                }
+
+                handleMenuClick(e) {
+                    const action = e.target.textContent.trim().toLowerCase();
+                    switch(action) {
+                        case 'home':
+                            // Handle home action
+                            window.location.href = '/?q=talk';
+                            break;
+                        case 'settings':
+                            // Navigate to settings page
+                            window.location.href = '/?q=settings';
+                            break;
+                        case 'libraries':
+                            // Go to libraries page
+                            window.location.href = '/?q=libraries';
+                            break;
+                        case 'chat history':
+                            // Go to chat history page
+                            window.location.href = '/?q=talk/history';
+                            break;
+                        case 'user management':
+                            // Navigate to management page
+                            window.location.href = '/?q=management';
+                            break;
+                    }
+                }
+
+                adjustListWidth() {
+                    // Remove the width adjustment logic
+                }
+
+                updateOnlineUsers() {
+                    const onlineUsersList = this.sidebar.querySelector('.online-users');
+                    // Example of updating online users
+                    const updateUsers = () => {
+                        if (user) {
+                            const userHTML = `
+                                <li>
+                                    <span class="user-status status-online"></span>
+                                    ${user}
+                                </li>
+                            `;
+                            onlineUsersList.innerHTML = userHTML;
+                        }
+                    };
+
+                    // Update initially
+                    updateUsers();
+
+                    // Update periodically
+                    setInterval(updateUsers, 30000);
+                }
+            }
+
+            // Initialize sidebar after DOM is loaded
+            const sidebar = new Sidebar();
+
+            // Set initial active time
+            const activeTimeElement = document.querySelector('#sidebar-active-time');
+            if (activeTimeElement) {
+                const now = new Date();
+                activeTimeElement.textContent = now.toLocaleTimeString();
+            }
+
+            // File Upload Handling
+            const fileInput = document.getElementById('attachment');
+            const previewContainer = document.querySelector('.file-preview-container');
+            const previewList = document.querySelector('.file-preview-list');
+            const uploadProgress = document.querySelector('.upload-progress');
+            let selectedFiles = [];
+
+            // Remove the click handler that was preventing the default behavior
+            document.querySelector('.btn-file').removeEventListener('click', function(e) {
+                e.preventDefault();
+                this.querySelector('input[type="file"]').click();
+            });
+
+            // Show preview container when hovering over the upload wrapper
+            document.querySelector('.upload-wrapper').addEventListener('mouseenter', function() {
+                if (selectedFiles.length > 0) {
+                    previewContainer.style.display = 'block';
+                }
+            });
+
+            document.querySelector('.upload-wrapper').addEventListener('mouseleave', function(e) {
+                if (!e.relatedTarget || !e.relatedTarget.closest('.file-preview-container')) {
+                    previewContainer.style.display = 'none';
+                }
+            });
+
+            // Handle file selection
+            fileInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                selectedFiles = files;
+
+                // Clear previous preview
+                previewList.innerHTML = '';
+
+                // Add new previews
+                files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-preview-item';
+
+                    const name = document.createElement('div');
+                    name.className = 'file-preview-name';
+                    name.textContent = file.name;
+
+                    const remove = document.createElement('div');
+                    remove.className = 'file-preview-remove';
+                    remove.innerHTML = '×';
+                    remove.onclick = (e) => {
+                        e.stopPropagation();
+                        selectedFiles = selectedFiles.filter(f => f !== file);
+                        item.remove();
+                        if (selectedFiles.length === 0) {
+                            previewContainer.style.display = 'none';
+                            fileInput.value = '';
+                        }
+                    };
+
+                    item.appendChild(name);
+                    item.appendChild(remove);
+                    previewList.appendChild(item);
+                });
+
+                if (files.length > 0) {
+                    previewContainer.style.display = 'block';
+                }
+            });
+
+            // Handle file upload
+            function uploadFiles(files) {
+                if (files.length === 0) return;
+
+                const formData = new FormData();
+                files.forEach(file => {
+                    formData.append('attachment', file);
+                });
+
+                // Show progress bar
+                uploadProgress.style.display = 'block';
+
+                $.ajax({
+                    url: '/?q=talk/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    xhr: function() {
+                        const xhr = new XMLHttpRequest();
+                        xhr.upload.addEventListener('progress', function(e) {
+                            if (e.lengthComputable) {
+                                const percent = (e.loaded / e.total) * 100;
+                                uploadProgress.style.width = percent + '%';
+                            }
+                        });
+                        return xhr;
+                    }
+                }).done(function(response) {
+                    // Handle successful upload
+                    uploadProgress.style.width = '100%';
+
+                    // Parse response and add files to message
+                    const files = JSON.parse(response);
+                    files.forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                            const img = $('<img />');
+                            img.attr('src', file.file);
+                            $('#text').append(img);
+                        } else {
+                            const link = $('<a target="_blank"></a>');
+                            link.attr('href', file.file);
+                            link.text(file.originalName || 'Download File');
+                            $('#text').append(link);
+                        }
+                    });
+
+                    // Show success message
+                    showUploadStatus('Files uploaded successfully!');
+
+                    // Reset upload state
+                    setTimeout(() => {
+                        uploadProgress.style.width = '0';
+                        uploadProgress.style.display = 'none';
+                        previewContainer.style.display = 'none';
+                        selectedFiles = [];
+                        fileInput.value = '';
+                    }, 1000);
+                }).fail(function(err) {
+                    // Handle upload error
+                    uploadProgress.style.backgroundColor = '#dc3545';
+                    showUploadStatus('Upload failed. Please try again.', 'error');
+                    console.error('Upload failed:', err);
+                });
+            }
+
+            // Show upload status message
+            function showUploadStatus(message, type = 'success') {
+                const status = document.createElement('div');
+                status.className = 'upload-status';
+                status.style.backgroundColor = type === 'success' ? '#28a745' : '#dc3545';
+                status.textContent = message;
+                document.body.appendChild(status);
+
+                // Show status
+                status.style.display = 'block';
+
+                // Remove after 3 seconds
+                setTimeout(() => {
+                    status.style.opacity = '0';
+                    setTimeout(() => status.remove(), 300);
+                }, 3000);
+            }
+
+            // Modify the existing save function to handle file uploads
+            const originalSave = save;
+            save = function() {
+                if (selectedFiles.length > 0) {
+                    uploadFiles(selectedFiles);
+                }
+                originalSave();
+            };
+
+            // Chat History Functions
+            function loadChatHistory() {
+                $.ajax({
+                    url: '/?q=talk/history',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        const historyList = $('#chat-history-messages');
+                        historyList.empty();
+
+                        if (Array.isArray(response)) {
+                            response.forEach(function(msg) {
+                                const li = $('<li></li>');
+                                
+                                // Add appropriate classes based on message type
+                                if (msg.type === 'system') {
+                                    li.addClass('system-notification');
+                                    if (msg.event === 'user_joined') {
+                                        li.addClass('user-joined');
+                                    } else if (msg.event === 'user_left') {
+                                        li.addClass('user-left');
+                                    } else if (msg.event === 'meeting_status') {
+                                        li.addClass('meeting-status');
+                                    }
+                                }
+
+                                // Add message content
+                                li.append(`<span class="time">${msg.time}</span>`);
+                                li.append(`<span class="name">${msg.user}</span>`);
+                                li.append(`<div class="content">${msg.message}</div>`);
+
+                                // Add image if present
+                                if (msg.image) {
+                                    const img = $('<img>').attr('src', msg.image);
+                                    li.find('.content').append(img);
+                                }
+
+                                historyList.append(li);
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Failed to load chat history:', error);
+                        alert('Failed to load chat history. Please try again.');
+                    }
+                });
+            }
+
+            // Setup chat history filters
+            $('#history-date-filter').on('change', function() {
+                filterChatHistory();
+            });
+
+            $('#history-user-filter').on('input', function() {
+                filterChatHistory();
+            });
+
+            function filterChatHistory() {
+                const dateFilter = $('#history-date-filter').val();
+                const userFilter = $('#history-user-filter').val().toLowerCase();
+
+                $('#chat-history-messages li').each(function() {
+                    const $li = $(this);
+                    const time = $li.find('.time').text();
+                    const user = $li.find('.name').text().toLowerCase();
+                    let show = true;
+
+                    if (dateFilter) {
+                        const messageDate = new Date(time).toISOString().split('T')[0];
+                        if (messageDate !== dateFilter) {
+                            show = false;
+                        }
+                    }
+
+                    if (userFilter && !user.includes(userFilter)) {
+                        show = false;
+                    }
+
+                    $li.toggle(show);
+                });
+            }
+
+            // Export chat history
+            $('#export-history').on('click', function() {
+                const history = [];
+                $('#chat-history-messages li').each(function() {
+                    const $li = $(this);
+                    history.push({
+                        time: $li.find('.time').text(),
+                        user: $li.find('.name').text(),
+                        message: $li.find('.content').text()
+                    });
+                });
+
+                const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'chat-history.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            function loadUserMeetings() {
+                $.ajax({
+                    url: '/?q=talk/user-meetings',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        const meetingsList = $('#user-meetings');
+                        meetingsList.empty();
+
+                        if (Array.isArray(response) && response.length > 0) {
+                            response.forEach(function(meeting) {
+                                const li = $('<li></li>');
+                                li.append(`<div class="meeting-code">Meeting: ${meeting.meetingCode}</div>`);
+                                li.append(`<div class="meeting-time">Last activity: ${meeting.lastMessageTime}</div>`);
+                                
+                                // Add click handler to copy meeting code
+                                li.click(function() {
+                                    navigator.clipboard.writeText(meeting.meetingCode)
+                                        .then(() => {
+                                            // Show temporary success message
+                                            const originalText = $(this).find('.meeting-code').text();
+                                            $(this).find('.meeting-code').text('Copied to clipboard!');
+                                            setTimeout(() => {
+                                                $(this).find('.meeting-code').text(originalText);
+                                            }, 2000);
+                                        })
+                                        .catch(err => {
+                                            console.error('Failed to copy meeting code:', err);
+                                        });
+                                });
+                                
+                                meetingsList.append(li);
+                            });
+                        } else {
+                            meetingsList.append('<li class="empty-state">No meetings found</li>');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Failed to load user meetings:', error);
+                        $('#user-meetings').html('<li class="empty-state">Failed to load meetings</li>');
+                    }
+                });
+            }
+
+            // Update the chat history modal show handler
+            $('#chat_history_modal').on('show.bs.modal', function() {
+                loadUserMeetings();
+            });
+
+            // Check if user is admin and show/hide management menu
+            function checkAdminStatus() {
+                $.ajax({
+                    url: '/?q=auth/profile',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.isAdmin) {
+                            $('.admin-only').show();
+                        } else {
+                            $('.admin-only').hide();
+                        }
+                    },
+                    error: function() {
+                        $('.admin-only').hide();
+                    }
+                });
+            }
+
+            // Call checkAdminStatus when user logs in
+            checkAdminStatus();
+
+            // Register SSE event handlers
+            const statusIndicator = $('.status-indicator');
+            const statusText = $('.status-text');
+            const sseClient = window.smallTalk;
+
+            // Disable message input until connection is established
+            $('#message-form').find('input, textarea, button').prop('disabled', true);
+            $('#message-form').find('button').addClass('disabled');
+            statusIndicator.removeClass('connected disconnected');
+
+            // Set up connection status handlers
+            const originalUpdate = window.update;
+            window.update = function(data) {
+                if (data.error) {
+                    console.error('SSE Error:', data.error);
+                    statusIndicator.addClass('disconnected').removeClass('connected');
+                    statusText.text('Disconnected - Reconnecting...');
+                    $('#message-form').find('input, textarea, button').prop('disabled', true);
+                    $('#message-form').find('button').addClass('disabled');
+                } else if (data.cmd === 'expired') {
+                    sseClient.disconnect();
+                    window.location.href = '/?q=talk';
+                    return;
+                }
+                
+                // Call original update function
+                if (originalUpdate) {
+                    originalUpdate(data);
+                }
+            };
+
+            // Handle connection status
+            sseClient.on('connected', function() {
+                console.log('SSE connection established');
+                statusIndicator.addClass('connected').removeClass('disconnected');
+                statusText.text('Connected');
+                $('#message-form').find('input, textarea, button').prop('disabled', false);
+                $('#message-form').find('button').removeClass('disabled');
+            });
+
+            sseClient.on('disconnected', function() {
+                console.log('SSE connection lost');
+                statusIndicator.addClass('disconnected').removeClass('connected');
+                statusText.text('Disconnected - Reconnecting...');
+                $('#message-form').find('input, textarea, button').prop('disabled', true);
+                $('#message-form').find('button').addClass('disabled');
+            });
+        });
+        //]]>
     </script>
 </head>
 <body>
-<!-- Fixed navbar -->
-<nav class="navbar navbar-default navbar-fixed-top">
-    <div class="container">
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
-                    aria-expanded="false" aria-controls="navbar">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="#">Small Talk</a>
-        </div>
-        <div id="navbar" class="collapse navbar-collapse">
-            <ul class="nav navbar-nav">
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                       aria-expanded="false">Settings <span class="caret"></span></a>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a class="btn disabled" href="#" role="button" data-toggle="dropdown" aria-expanded="false">Appearance
-                                <span class="caret"></span></a>
-                        </li>
-                        <li role="separator" class="divider"></li>
-                        <li><a class="dropdown-item theme" href="#">Default
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                 class="bi bi-check" viewBox="0 0 16 16">
-                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                            </svg>
-                        </a></li>
-                        <li><a class="dropdown-item theme" href="#">Dark Green
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                 class="bi bi-check hidden" viewBox="0 0 16 16">
-                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                            </svg>
-                        </a></li>
-                        <li><a class="dropdown-item theme" href="#">Light Green
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                 class="bi bi-check hidden" viewBox="0 0 16 16">
-                                <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
-                            </svg>
-                        </a></li>
-                    </ul>
-                </li>
-                <li class="dropdown">
-                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
-                       aria-expanded="false">Help <span class="caret"></span></a>
-                    <ul class="dropdown-menu">
-                        <li><a href="#">Manual</a></li>
-                        <li role="separator" class="divider"></li>
-                        <li><a href="#">About</a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div><!--/.nav-collapse -->
-    </div>
-</nav>
+
 
 <!-- Begin page content -->
 <div class="container">
-    <div class="pageheader"></div>
-    <p>Welcome to use smalltalk application!</p>
-    <p id="topic">{%topic%}</p>
-    <div id="list">
-        <ul id="messages">
-            <li>Type your message(s) in the below input box...</li>
-        </ul>
-    </div>
-    <form id="sender">
-        <div class="note">Share the link to invite others join this conversation: <a id="link"
-                                                                                     href="javascript:void(0)">{%meeting_url%}</a>
-            <div id="matrix"><img/><span>Click For QR Code</span></div>
-        </div>
-        <div class="pad">
-            <div class="text">
-                <div contenteditable="true" id="text"></div>
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
             </div>
-            <span class="arrowbox">
-            <b class="arrow arrowline"></b>
-            <b class="arrow arrowbg"></b>
-        </span>
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">
+                            {%username%} <span class="caret"></span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a href="#" id="logout-link">Logout</a></li>
+                            <li role="separator" class="divider"></li>
+                            <li><a href="#">About</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <label class="control-label" for="attachment">Select File(s)</label>
-        <input id="attachment" name="attachment" type="file" class="file-loading btn-default" multiple="true"/>
-        <br/>
-        <input type="button" id="button" value="Send" class="btn btn-primary"/>
-        <!--        <input type="button" id="test" value="Test" class="btn btn-secondary"/>-->
-    </form>
+    </nav>
+    <div class="pageheader"></div>
+
+    <!-- Chat Interface -->
+    <div id="chat-interface" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
+        <p>Welcome to use smalltalk application!</p>
+        <div id="user-info" style="display: {%show_login%} === 'true' ? 'none' : 'block';">
+            <p>Logged in as: <strong id="current-username">{%username%}</strong></p>
+        </div>
+        <div id="list">
+            <ul id="messages">
+                <li>Type your message(s) in the below input box...</li>
+            </ul>
+        </div>
+        <form id="sender">
+            <div class="note">Share the link to invite others join this conversation: <a id="link" href="javascript:void(0)">{%meeting_url%}</a>
+                <div id="matrix"><img/><span>Click For QR Code</span></div>
+            </div>
+            <div class="pad">
+                <div class="text">
+                    <div contenteditable="true" id="text"></div>
+                    <input type="button" id="button" value="Send" class="btn btn-primary btn-sm"/>
+                    <div class="upload-wrapper">
+                        <span class="btn btn-file">
+                            <i class="fas fa-paperclip"></i>
+                            <input id="attachment" name="attachment" type="file" multiple="true"/>
+                        </span>
+                        <div class="file-preview-container">
+                            <div class="file-preview-list"></div>
+                        </div>
+                        <div class="upload-progress"></div>
+                    </div>
+                    <div class="ai-toggle-wrapper">
+                        <label class="ai-toggle" title="Toggle AI mode">
+                            <input type="checkbox" id="ai-toggle" />
+                            <span class="ai-toggle-label">
+                                <i class="fas fa-brain"></i>
+                                <span>AI</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <span class="arrowbox">
+                    <b class="arrow arrowline"></b>
+                    <b class="arrow arrowbg"></b>
+                </span>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Modal -->
@@ -1026,6 +3688,32 @@
     </div>
 </div>
 
+<!-- Chat History Modal -->
+<div class="modal fade" id="chat_history_modal" tabindex="-1" role="dialog" aria-labelledby="chatHistoryModalLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                        aria-hidden="true"></span></button>
+                <h4 class="modal-title" id="chatHistoryModalLabel">Chat History</h4>
+            </div>
+            <div class="modal-body">
+                <div class="chat-history-container">
+                    <div class="meetings-list">
+                        <h4>Your Meetings</h4>
+                        <ul id="user-meetings" class="list-group">
+                            <!-- Dynamically populated -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <footer class="footer">
     <div class="container">
         <p class="text-muted"> © 2017 </p>
@@ -1038,5 +3726,66 @@
 <script src="/scripts/bootstrap/bootstrap.min.js?raw=true"></script>
 <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
 <script src="/scripts/bootstrap/ie10-viewport-bug-workaround.js?raw=true"></script>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" role="dialog" aria-labelledby="forgotPasswordModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="forgotPasswordModalLabel">Forgot Password</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="forgot-password-form">
+                        <div class="form-group">
+                            <label for="forgot-email">Email Address</label>
+                            <input type="email" class="form-control" id="forgot-email" placeholder="Enter your email address" required>
+                        </div>
+                        <div class="alert alert-danger" id="forgot-password-error" style="display: none;"></div>
+                        <div class="alert alert-success" id="forgot-password-success" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div class="modal fade" id="resetPasswordModal" tabindex="-1" role="dialog" aria-labelledby="resetPasswordModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="resetPasswordModalLabel">Reset Password</h4>
+                </div>
+                <div class="modal-body">
+                    <form id="reset-password-form">
+                        <input type="hidden" id="reset-token">
+                        <div class="form-group">
+                            <label for="new-password">New Password</label>
+                            <div class="password-field-wrapper">
+                                <input type="password" class="form-control" id="new-password" placeholder="Enter new password" required>
+                                <button type="button" class="password-toggle" onclick="togglePassword('new-password')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirm-password">Confirm Password</label>
+                            <div class="password-field-wrapper">
+                                <input type="password" class="form-control" id="confirm-password" placeholder="Confirm new password" required>
+                                <button type="button" class="password-toggle" onclick="togglePassword('confirm-password')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-danger" id="reset-password-error" style="display: none;"></div>
+                        <div class="alert alert-success" id="reset-password-success" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary">Reset Password</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

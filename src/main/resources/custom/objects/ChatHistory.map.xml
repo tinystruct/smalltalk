@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mapping>
+ <class name="ChatHistory" table="chat_history">
+  <id name="Id" column="id" increment="true" generate="true" length="20" type="bigint"/>
+  <property name="meetingCode" column="meeting_code" length="255" type="varchar"/>
+  <property name="userId" column="user_id" length="20" type="integer"/>
+  <property name="message" column="message" length="65535" type="text"/>
+  <property name="sessionId" column="session_id" length="255" type="varchar"/>
+  <property name="messageType" column="message_type" length="50" type="varchar"/>
+  <property name="imageUrl" column="image_url" length="65535" type="text"/>
+  <property name="createdAt" column="created_at" length="19" type="timestamp"/>
+ </class>
+</mapping> 
