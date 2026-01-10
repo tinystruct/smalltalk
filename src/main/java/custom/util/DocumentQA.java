@@ -44,17 +44,18 @@ public class DocumentQA {
 
             // Generate embedding for the query
             System.out.println("Generating embedding for query");
-            Vector<Double> queryEmbedding = manager.generateQueryEmbedding(query);
+            double[] queryEmbedding = manager.generateQueryEmbedding(query);
             if (queryEmbedding == null) {
                 System.err.println("Error: Failed to generate query embedding");
                 throw new ApplicationException("Failed to generate query embedding");
             }
-            System.out.println("Generated query embedding with dimension: " + queryEmbedding.size());
+            System.out.println("Generated query embedding with dimension: " + queryEmbedding.length);
 
             // Find similar documents - get more results than needed to ensure diversity
             System.out.println("Finding similar documents");
             int initialResultsCount = maxResults * 3; // Get 3x more results initially
-            List<EmbeddingManager.SimilarityResult> allResults = EmbeddingManager.findSimilar(queryEmbedding, initialResultsCount);
+            List<EmbeddingManager.SimilarityResult> allResults = EmbeddingManager.findSimilar(queryEmbedding,
+                    initialResultsCount);
             System.out.println("Found " + allResults.size() + " similar documents");
 
             // Filter by similarity threshold
@@ -62,7 +63,8 @@ public class DocumentQA {
                     .filter(result -> result.similarity >= SIMILARITY_THRESHOLD)
                     .collect(Collectors.toList());
 
-            System.out.println("Filtered to " + filteredResults.size() + " documents with similarity >= " + SIMILARITY_THRESHOLD);
+            System.out.println(
+                    "Filtered to " + filteredResults.size() + " documents with similarity >= " + SIMILARITY_THRESHOLD);
             return filteredResults;
         } catch (Exception e) {
             System.err.println("Error finding relevant documents: " + e.getMessage());
@@ -84,6 +86,7 @@ public class DocumentQA {
 
     /**
      * Format document fragments as context for a language model
+     * 
      * @param results List of document fragments with similarity scores
      * @return Formatted context string
      */
@@ -115,10 +118,10 @@ public class DocumentQA {
             // Create document entry
             StringBuilder documentEntry = new StringBuilder();
             documentEntry.append("Document ").append(i + 1)
-                   .append(" (Title: ").append(title)
-                   .append(", File: ").append(fileName)
-                   .append(", Relevance: ").append(String.format("%.2f", result.similarity))
-                   .append("):\n");
+                    .append(" (Title: ").append(title)
+                    .append(", File: ").append(fileName)
+                    .append(", Relevance: ").append(String.format("%.2f", result.similarity))
+                    .append("):\n");
             documentEntry.append(content).append("\n\n");
 
             // Check if adding this document would exceed the maximum context length
@@ -137,7 +140,7 @@ public class DocumentQA {
         // Add a note about how many documents were found vs. included
         if (documentsAdded < results.size()) {
             context.append("Note: Found " + results.size() + " relevant documents, but only included " +
-                          documentsAdded + " to stay within context limits.\n\n");
+                    documentsAdded + " to stay within context limits.\n\n");
         }
 
         return context.toString();
@@ -147,7 +150,8 @@ public class DocumentQA {
      * Enhance a user query with relevant document fragments
      *
      * @param query The original user query
-     * @return Enhanced query with document context, or the original query if no relevant documents found
+     * @return Enhanced query with document context, or the original query if no
+     *         relevant documents found
      */
     public static String enhanceQueryWithDocuments(String query) throws ApplicationException {
         try {
@@ -176,7 +180,7 @@ public class DocumentQA {
      * @return True if document context was added, false otherwise
      */
     public static boolean addDocumentContextToMessages(String query, String meetingCode,
-                                                       Builders messages) throws ApplicationException {
+            Builders messages) throws ApplicationException {
         try {
             System.out.println("Finding relevant documents for query: " + query);
             List<EmbeddingManager.SimilarityResult> relevantDocs = findRelevantDocuments(query);
@@ -209,21 +213,23 @@ public class DocumentQA {
 
             if (context.length() > maxSafeCharLimit) {
                 System.out.println("Warning: Context exceeds safe token limit. Truncating from " +
-                                  context.length() + " to " + maxSafeCharLimit + " characters");
+                        context.length() + " to " + maxSafeCharLimit + " characters");
                 formattedContext = context.substring(0, maxSafeCharLimit);
             }
 
             // Add system message with document context
             Builder contextMessage = new Builder();
             contextMessage.put("role", "system");
-            contextMessage.put("content", "I am providing you with some relevant document fragments to help answer the user's question. " +
-                    "These documents are highly relevant to the current conversation context. " +
-                    "Instructions for using this information:\n" +
-                    "1. Prioritize this information over your general knowledge when answering\n" +
-                    "2. Cite the specific document title/number when using information from it\n" +
-                    "3. If multiple documents contain relevant information, synthesize it\n" +
-                    "4. If the documents don't contain the answer, clearly state that and use your general knowledge\n" +
-                    "5. Maintain continuity with the previous conversation\n\n" + formattedContext);
+            contextMessage.put("content",
+                    "I am providing you with some relevant document fragments to help answer the user's question. " +
+                            "These documents are highly relevant to the current conversation context. " +
+                            "Instructions for using this information:\n" +
+                            "1. Prioritize this information over your general knowledge when answering\n" +
+                            "2. Cite the specific document title/number when using information from it\n" +
+                            "3. If multiple documents contain relevant information, synthesize it\n" +
+                            "4. If the documents don't contain the answer, clearly state that and use your general knowledge\n"
+                            +
+                            "5. Maintain continuity with the previous conversation\n\n" + formattedContext);
             messages.add(contextMessage);
 
             System.out.println("Added document context to messages");

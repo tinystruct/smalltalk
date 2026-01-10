@@ -9,6 +9,7 @@ import org.tinystruct.application.Context;
 import org.tinystruct.data.component.Builder;
 import org.tinystruct.data.component.Builders;
 import org.tinystruct.data.component.Table;
+import org.tinystruct.data.tools.CosineSimilarity;
 import org.tinystruct.system.ApplicationManager;
 
 import java.util.*;
@@ -21,28 +22,30 @@ public class EmbeddingManager extends AbstractApplication {
     private static final String EMBEDDING_MODEL = "text-embedding-ada-002";
 
     // In-memory cache for query embeddings to avoid redundant API calls
-    private static final Map<String, Vector<Double>> queryEmbeddingCache = new ConcurrentHashMap<>();
+    private static final Map<String, double[]> queryEmbeddingCache = new ConcurrentHashMap<>();
     private static final int MAX_CACHE_SIZE = 1000; // Maximum number of cached query embeddings
 
     /**
      * Check if an embedding exists for a given fragment
+     * 
      * @param fragment The document fragment to check
      * @return true if an embedding exists, false otherwise
      */
     private static boolean hasEmbedding(DocumentFragment fragment) throws ApplicationException {
         DocumentEmbedding embedding = new DocumentEmbedding();
-        Table results = embedding.findWith("WHERE fragment_id = ?", new Object[]{fragment.getId()});
+        Table results = embedding.findWith("WHERE fragment_id = ?", new Object[] { fragment.getId() });
         return results != null && !results.isEmpty();
     }
 
     /**
      * Retrieve an existing embedding from the database
+     * 
      * @param fragment The document fragment
      * @return The embedding vector if found, null otherwise
      */
-    private static Vector<Double> getExistingEmbedding(DocumentFragment fragment) throws ApplicationException {
+    private static double[] getExistingEmbedding(DocumentFragment fragment) throws ApplicationException {
         DocumentEmbedding embedding = new DocumentEmbedding();
-        Table results = embedding.findWith("WHERE fragment_id = ?", new Object[]{fragment.getId()});
+        Table results = embedding.findWith("WHERE fragment_id = ?", new Object[] { fragment.getId() });
 
         if (results == null || results.isEmpty()) {
             return null;
@@ -58,9 +61,9 @@ public class EmbeddingManager extends AbstractApplication {
      * Call OpenAI API to generate an embedding with retry logic
      *
      * @param text Text to generate embedding for
-     * @return Vector of embedding values
+     * @return Array of embedding values
      */
-    private Vector<Double> callOpenAIEmbeddingAPI(String text) throws ApplicationException {
+    private double[] callOpenAIEmbeddingAPI(String text) throws ApplicationException {
         int maxRetries = 3;
         int retryCount = 0;
 
@@ -83,8 +86,8 @@ public class EmbeddingManager extends AbstractApplication {
                 // Check if API key is configured
                 String API_KEY = getConfiguration().get("openai.api_key");
                 if (API_KEY == null || API_KEY.trim().isEmpty() ||
-                    API_KEY.equals("your_openai_api_key_here") ||
-                    API_KEY.equals("$_OPENAI_API_KEY")) {
+                        API_KEY.equals("your_openai_api_key_here") ||
+                        API_KEY.equals("$_OPENAI_API_KEY")) {
 
                     // Try to get from environment variable
                     String envApiKey = System.getenv("OPENAI_API_KEY");
@@ -93,7 +96,8 @@ public class EmbeddingManager extends AbstractApplication {
                         API_KEY = envApiKey;
                         System.out.println("Using OpenAI API key from environment variable");
                     } else {
-                        throw new ApplicationException("OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
+                        throw new ApplicationException(
+                                "OpenAI API key not configured. Please set a valid API key in application.properties or as an environment variable OPENAI_API_KEY");
                     }
                 }
 
@@ -114,8 +118,8 @@ public class EmbeddingManager extends AbstractApplication {
                 // Check for errors
                 if (response.get("error") != null) {
                     Builder error = (Builder) response.get("error");
-                    String errorMessage = error.get("message") != null ?
-                            error.get("message").toString() : "Unknown error from OpenAI API";
+                    String errorMessage = error.get("message") != null ? error.get("message").toString()
+                            : "Unknown error from OpenAI API";
                     throw new ApplicationException(errorMessage);
                 }
 
@@ -127,7 +131,8 @@ public class EmbeddingManager extends AbstractApplication {
                         throw new ApplicationException("No embedding data in API response");
                     }
                 } else {
-                    throw new ApplicationException("Invalid response format: 'data' field missing or not a Builders object");
+                    throw new ApplicationException(
+                            "Invalid response format: 'data' field missing or not a Builders object");
                 }
 
                 Object embeddingObj = data.get(0).get("embedding");
@@ -154,16 +159,22 @@ public class EmbeddingManager extends AbstractApplication {
                     throw new ApplicationException("Empty embedding vector in API response");
                 }
 
-                // Convert to Vector<Double>
-                Vector<Double> embedding = new Vector<>();
-                for (Object value : embeddingList) {
+                if (embeddingList.size() != EMBEDDING_DIMENSION) {
+                    System.out.println("Warning: Unexpected embedding dimension: " + embeddingList.size() +
+                            " (expected " + EMBEDDING_DIMENSION + ")");
+                }
+
+                // Convert to double[]
+                double[] embedding = new double[embeddingList.size()];
+                for (int i = 0; i < embeddingList.size(); i++) {
+                    Object value = embeddingList.get(i);
                     try {
                         if (value instanceof Number) {
-                            embedding.add(((Number) value).doubleValue());
+                            embedding[i] = ((Number) value).doubleValue();
                         } else {
                             // Remove any quotes from the string before parsing
                             String valueStr = value.toString().replaceAll("\"", "");
-                            embedding.add(Double.parseDouble(valueStr));
+                            embedding[i] = Double.parseDouble(valueStr);
                         }
                     } catch (NumberFormatException e) {
                         System.err.println("Error parsing embedding value: " + value +
@@ -172,12 +183,7 @@ public class EmbeddingManager extends AbstractApplication {
                     }
                 }
 
-                if (embedding.size() != EMBEDDING_DIMENSION) {
-                    System.out.println("Warning: Unexpected embedding dimension: " + embedding.size() +
-                            " (expected " + EMBEDDING_DIMENSION + ")");
-                }
-
-                System.out.println("Successfully generated embedding with dimension: " + embedding.size());
+                System.out.println("Successfully generated embedding with dimension: " + embedding.length);
                 return embedding;
 
             } catch (Exception e) {
@@ -186,12 +192,14 @@ public class EmbeddingManager extends AbstractApplication {
                 e.printStackTrace();
 
                 if (retryCount >= maxRetries) {
-                    throw new ApplicationException("Failed to call OpenAI embedding API after " + maxRetries + " attempts: " + e.getMessage(), e);
+                    throw new ApplicationException(
+                            "Failed to call OpenAI embedding API after " + maxRetries + " attempts: " + e.getMessage(),
+                            e);
                 }
 
                 try {
                     // Exponential backoff
-                    long sleepTime = 1000 * (long)Math.pow(2, retryCount - 1);
+                    long sleepTime = 1000 * (long) Math.pow(2, retryCount - 1);
                     System.out.println("Retrying in " + sleepTime + "ms...");
                     Thread.sleep(sleepTime);
                 } catch (InterruptedException ie) {
@@ -260,7 +268,7 @@ public class EmbeddingManager extends AbstractApplication {
      * @param fragment The document fragment to generate embedding for
      * @return The embedding vector
      */
-    public Vector<Double> generateEmbedding(DocumentFragment fragment) throws ApplicationException {
+    public double[] generateEmbedding(DocumentFragment fragment) throws ApplicationException {
         try {
             // Check if embedding already exists
             if (hasEmbedding(fragment)) {
@@ -268,7 +276,7 @@ public class EmbeddingManager extends AbstractApplication {
             }
 
             // Call OpenAI API to generate embedding
-            Vector<Double> embedding = callOpenAIEmbeddingAPI(fragment.getContent());
+            double[] embedding = callOpenAIEmbeddingAPI(fragment.getContent());
 
             // Save the new embedding
             saveEmbedding(fragment, embedding);
@@ -281,15 +289,16 @@ public class EmbeddingManager extends AbstractApplication {
 
     /**
      * Save embedding to database
-     * @param fragment The document fragment
+     * 
+     * @param fragment  The document fragment
      * @param embedding The embedding vector
      */
-    public static void saveEmbedding(DocumentFragment fragment, Vector<Double> embedding) throws ApplicationException {
+    public static void saveEmbedding(DocumentFragment fragment, double[] embedding) throws ApplicationException {
         try {
             DocumentEmbedding embeddingData = new DocumentEmbedding();
             embeddingData.setFragmentId(fragment.getId());
             embeddingData.setEmbeddingVector(embedding);
-            embeddingData.setEmbeddingDimension(embedding.size());
+            embeddingData.setEmbeddingDimension(embedding.length);
             embeddingData.setCreatedAt(new Date());
             embeddingData.append();
         } catch (Exception e) {
@@ -299,11 +308,12 @@ public class EmbeddingManager extends AbstractApplication {
 
     /**
      * Find similar document fragments using cosine similarity
+     * 
      * @param queryEmbedding The query embedding vector
-     * @param limit Maximum number of results to return
+     * @param limit          Maximum number of results to return
      * @return List of similar document fragments with their similarity scores
      */
-    public static List<SimilarityResult> findSimilar(Vector<Double> queryEmbedding, int limit) throws ApplicationException {
+    public static List<SimilarityResult> findSimilar(double[] queryEmbedding, int limit) throws ApplicationException {
         List<SimilarityResult> results = new ArrayList<>();
         try {
             if (queryEmbedding == null) {
@@ -311,12 +321,13 @@ public class EmbeddingManager extends AbstractApplication {
                 return results;
             }
 
-            System.out.println("Finding similar documents for query embedding with dimension: " + queryEmbedding.size());
+            System.out
+                    .println("Finding similar documents for query embedding with dimension: " + queryEmbedding.length);
 
             // Get all embeddings from database
             DocumentEmbedding embeddingModel = new DocumentEmbedding();
             // Use a valid SQL condition to find all records
-            Table embeddingTable = embeddingModel.findAll();  // Find all records
+            Table embeddingTable = embeddingModel.findAll(); // Find all records
 
             if (embeddingTable == null || embeddingTable.isEmpty()) {
                 System.out.println("No embeddings found in database");
@@ -335,7 +346,7 @@ public class EmbeddingManager extends AbstractApplication {
                     embeddingData.setData(embeddingTable.get(i));
                     String fragmentId = embeddingData.getFragmentId();
 
-                    Vector<Double> storedEmbedding = embeddingData.getEmbeddingVector();
+                    double[] storedEmbedding = embeddingData.getEmbeddingVector();
                     if (storedEmbedding == null) {
                         System.err.println("Warning: Null embedding vector for fragment ID: " + fragmentId);
                         errorCount++;
@@ -343,19 +354,19 @@ public class EmbeddingManager extends AbstractApplication {
                     }
 
                     // Verify vector dimensions match
-                    if (storedEmbedding.size() != queryEmbedding.size()) {
-                        System.err.println("Warning: Vector dimension mismatch. Query: " + queryEmbedding.size() +
-                                ", Stored: " + storedEmbedding.size() + " for fragment ID: " + fragmentId);
+                    if (storedEmbedding.length != queryEmbedding.length) {
+                        System.err.println("Warning: Vector dimension mismatch. Query: " + queryEmbedding.length +
+                                ", Stored: " + storedEmbedding.length + " for fragment ID: " + fragmentId);
                         errorCount++;
                         continue;
                     }
 
                     // Calculate cosine similarity
-                    double similarity = cosineSimilarity(queryEmbedding, storedEmbedding);
+                    double similarity = CosineSimilarity.cosineSimilarity(queryEmbedding, storedEmbedding);
 
                     // Get corresponding document fragment
                     DocumentFragment fragment = new DocumentFragment();
-                    Table fragmentTable = fragment.findWith("WHERE id = ?", new Object[]{fragmentId});
+                    Table fragmentTable = fragment.findWith("WHERE id = ?", new Object[] { fragmentId });
 
                     if (fragmentTable == null || fragmentTable.isEmpty()) {
                         System.err.println("Warning: No document fragment found for fragment ID: " + fragmentId);
@@ -395,31 +406,6 @@ public class EmbeddingManager extends AbstractApplication {
     }
 
     /**
-     * Calculate cosine similarity between two vectors
-     */
-    private static double cosineSimilarity(Vector<Double> v1, Vector<Double> v2) {
-        if (v1.size() != v2.size()) {
-            throw new IllegalArgumentException("Vectors must have the same dimension");
-        }
-
-        double dotProduct = 0.0;
-        double norm1 = 0.0;
-        double norm2 = 0.0;
-
-        for (int i = 0; i < v1.size(); i++) {
-            dotProduct += v1.get(i) * v2.get(i);
-            norm1 += v1.get(i) * v1.get(i);
-            norm2 += v2.get(i) * v2.get(i);
-        }
-
-        if (norm1 == 0.0 || norm2 == 0.0) {
-            return 0.0;
-        }
-
-        return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
-    }
-
-    /**
      * Initialize for an application once it's loaded.
      */
     @Override
@@ -456,7 +442,7 @@ public class EmbeddingManager extends AbstractApplication {
      * @param query The query string
      * @return The embedding vector
      */
-    public Vector<Double> generateQueryEmbedding(String query) throws ApplicationException {
+    public double[] generateQueryEmbedding(String query) throws ApplicationException {
         try {
             // Check if the query embedding is already in the cache
             if (queryEmbeddingCache.containsKey(query)) {
@@ -464,7 +450,7 @@ public class EmbeddingManager extends AbstractApplication {
             }
 
             // Generate new embedding
-            Vector<Double> embedding = callOpenAIEmbeddingAPI(query);
+            double[] embedding = callOpenAIEmbeddingAPI(query);
 
             // Cache the result for future use
             addToCache(query, embedding);
@@ -477,10 +463,11 @@ public class EmbeddingManager extends AbstractApplication {
 
     /**
      * Add a query and its embedding to the cache
-     * @param query The query string
+     * 
+     * @param query     The query string
      * @param embedding The embedding vector
      */
-    private static void addToCache(String query, Vector<Double> embedding) {
+    private static void addToCache(String query, double[] embedding) {
         // Manage cache size
         if (queryEmbeddingCache.size() >= MAX_CACHE_SIZE) {
             // Simple LRU-like strategy: remove a random entry (first one we encounter)

@@ -3,8 +3,6 @@ package custom.objects;
 import org.tinystruct.ApplicationException;
 import org.tinystruct.data.component.AbstractData;
 import org.tinystruct.data.component.Row;
-import org.tinystruct.data.component.Table;
-import org.tinystruct.system.ApplicationManager;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -12,7 +10,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Date;
-import java.util.Vector;
 
 /**
  * Represents an embedding for a document fragment.
@@ -64,24 +61,25 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
     }
 
     /**
-     * Store a Vector<Double> as a byte array in the embedding field
+     * Store a double[] as a byte array in the embedding field
+     * 
      * @param embeddingVector The embedding vector
      * @throws ApplicationException if serialization fails
      */
-    public void setEmbeddingVector(Vector<Double> embeddingVector) throws ApplicationException {
+    public void setEmbeddingVector(double[] embeddingVector) throws ApplicationException {
         try {
             if (embeddingVector == null) {
                 throw new ApplicationException("Cannot serialize null embedding vector");
             }
 
-            System.out.println("Serializing embedding vector with dimension: " + embeddingVector.size());
+            System.out.println("Serializing embedding vector with dimension: " + embeddingVector.length);
 
             // Print first few values for debugging
-            if (!embeddingVector.isEmpty()) {
+            if (embeddingVector.length > 0) {
                 StringBuilder sb = new StringBuilder("First 5 values: ");
-                for (int i = 0; i < Math.min(5, embeddingVector.size()); i++) {
-                    sb.append(embeddingVector.get(i));
-                    if (i < Math.min(4, embeddingVector.size() - 1)) {
+                for (int i = 0; i < Math.min(5, embeddingVector.length); i++) {
+                    sb.append(embeddingVector[i]);
+                    if (i < Math.min(4, embeddingVector.length - 1)) {
                         sb.append(", ");
                     }
                 }
@@ -97,7 +95,7 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
             System.out.println("Serialized embedding to " + serializedData.length + " bytes");
 
             this.setEmbedding(serializedData);
-            this.setEmbeddingDimension(embeddingVector.size());
+            this.setEmbeddingDimension(embeddingVector.length);
         } catch (Exception e) {
             System.err.println("Error serializing embedding vector: " + e.getMessage());
             e.printStackTrace();
@@ -107,10 +105,11 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
 
     /**
      * Get the embedding vector from the byte array
+     * 
      * @return The deserialized embedding vector
      * @throws ApplicationException if deserialization fails
      */
-    public Vector<Double> getEmbeddingVector() throws ApplicationException {
+    public double[] getEmbeddingVector() throws ApplicationException {
         try {
             if (this.getEmbedding() == null) {
                 System.err.println("Warning: Embedding is null for fragment ID: " + this.getFragmentId());
@@ -118,7 +117,8 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
             }
 
             byte[] embeddingData = this.getEmbedding();
-            System.out.println("Deserializing embedding data of size: " + embeddingData.length + " bytes for fragment ID: " + this.getFragmentId());
+            System.out.println("Deserializing embedding data of size: " + embeddingData.length
+                    + " bytes for fragment ID: " + this.getFragmentId());
 
             ByteArrayInputStream bais = new ByteArrayInputStream(embeddingData);
             ObjectInputStream ois = new ObjectInputStream(bais);
@@ -127,19 +127,18 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
 
             System.out.println("Deserialized object class: " + (obj != null ? obj.getClass().getName() : "null"));
 
-            if (!(obj instanceof Vector)) {
-                System.err.println("Error: Deserialized object is not a Vector: " +
+            if (!(obj instanceof double[])) {
+                System.err.println("Error: Deserialized object is not a double[]: " +
                         (obj != null ? obj.getClass().getName() : "null") +
                         " for fragment ID: " + this.getFragmentId());
                 return null;
             }
 
-            @SuppressWarnings("unchecked")
-            Vector<Double> embeddingVector = (Vector<Double>) obj;
+            double[] embeddingVector = (double[]) obj;
 
             // Validate the vector
-            if (embeddingVector.size() != this.getEmbeddingDimension()) {
-                System.err.println("Warning: Vector dimension (" + embeddingVector.size() +
+            if (embeddingVector.length != this.getEmbeddingDimension()) {
+                System.err.println("Warning: Vector dimension (" + embeddingVector.length +
                         ") does not match stored dimension (" + this.getEmbeddingDimension() + ") " +
                         "for fragment ID: " + this.getFragmentId());
             }
@@ -155,8 +154,10 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
 
     @Override
     public void setData(Row row) {
-        if (row.getFieldInfo("id") != null) this.setId(row.getFieldInfo("id").stringValue());
-        if (row.getFieldInfo("fragment_id") != null) this.setFragmentId(row.getFieldInfo("fragment_id").stringValue());
+        if (row.getFieldInfo("id") != null)
+            this.setId(row.getFieldInfo("id").stringValue());
+        if (row.getFieldInfo("fragment_id") != null)
+            this.setFragmentId(row.getFieldInfo("fragment_id").stringValue());
         if (row.getFieldInfo("embedding") != null) {
             // Get the raw object from the field info
             try {
@@ -171,8 +172,9 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
                         System.err.println("Failed to get embedding using stringValue(): " + e.getMessage());
                     }
                 }
-                String fragmentId = row.getFieldInfo("fragment_id") != null ?
-                        row.getFieldInfo("fragment_id").stringValue() : "unknown";
+                String fragmentId = row.getFieldInfo("fragment_id") != null
+                        ? row.getFieldInfo("fragment_id").stringValue()
+                        : "unknown";
 
                 System.out.println("Retrieved embedding object for fragment ID: " + fragmentId +
                         ", class: " + (embeddingObj != null ? embeddingObj.getClass().getName() : "null"));
@@ -199,8 +201,10 @@ public class DocumentEmbedding extends AbstractData implements Serializable {
         } else {
             System.err.println("No embedding field found in row");
         }
-        if (row.getFieldInfo("embedding_dimension") != null) this.setEmbeddingDimension(row.getFieldInfo("embedding_dimension").intValue());
-        if (row.getFieldInfo("created_at") != null) this.setCreatedAt(row.getFieldInfo("created_at").dateValue());
+        if (row.getFieldInfo("embedding_dimension") != null)
+            this.setEmbeddingDimension(row.getFieldInfo("embedding_dimension").intValue());
+        if (row.getFieldInfo("created_at") != null)
+            this.setCreatedAt(row.getFieldInfo("created_at").dateValue());
     }
 
     @Override
