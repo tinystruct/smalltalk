@@ -50,7 +50,7 @@ public class smalltalk extends DistributedMessageQueue implements SessionListene
     private static final String DEFAULT_MODEL = "gpt-4o";
     private static final int DEFAULT_MESSAGE_POOL_SIZE = 100;
     private static final int DEFAULT_MAX_TOKENS = 3000;
-    private static final double DEFAULT_TEMPERATURE = 0.8;
+    private static final double DEFAULT_TEMPERATURE = 0.2;
     private static final String DATE_FORMAT_PATTERN = "yyyy-M-d h:m:s";
     private static final String FILE_UPLOAD_DIR = "files";
     private static final int MAX_CONVERSATION_HISTORY = 5; // Store up to 5 message pairs for context
