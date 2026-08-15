@@ -10,6 +10,8 @@
         <module name="smalltalk-example" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel target="11" />
+    <bytecodeTargetLevel target="11">
+      <module name="hello" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
 </project>

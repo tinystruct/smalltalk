@@ -72,6 +72,7 @@ public class OpenAI extends AbstractApplication implements Provider {
 
         try {
             URLRequest request = new URLRequest(new URL(api));
+            request.setMethod("POST");
             request.setHeader("Authorization", "Bearer " + API_KEY);
             request.setHeader("Content-Type", contentType);
             request.setHeader("Accept", "application/json");
